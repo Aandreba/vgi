@@ -2,6 +2,9 @@
 
 #include <SDL3/SDL.h>
 #include <stdexcept>
+#include <vulkan/vulkan.hpp>
+
+#include "memory.hpp"
 
 namespace vgi {
     void init();
@@ -21,7 +24,15 @@ namespace vgi {
         inline T* tri(T* res) {
             if (!res) [[unlikely]]
                 throw sdl_error{};
-            return *res;
+            return res;
         }
     }  // namespace sdl
+
+    namespace vulk {
+        template<class T, class F, class... Args>
+            requires(std::is_invocable_r_v<vk::Result, const F&, Args..., uint32_t*, T*>)
+        unique_span<T> enumerate(const F& f, const Args&... args) {
+            ::vk::enumerateInstanceExtensionProperties() return {};
+        }
+    }  // namespace vulk
 }  // namespace vgi

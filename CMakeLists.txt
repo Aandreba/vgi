@@ -43,6 +43,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL3 glm)
 
+# Create a library for the Vulkan Memory Allocator
+add_library(vgi_vma STATIC "src/vma.cpp")
+
 # Create a library for the reusable code
 file(GLOB_RECURSE vgi_lib_sources CONFIGURE_DEPENDS "src/lib/vgi/*.cpp")
 add_library(vgi_static STATIC ${vgi_lib_sources})
@@ -53,7 +56,7 @@ target_literal_utf8(vgi_static)
 target_literal_utf8(vgi_shared)
 
 # Create a list with all of the libraries used by vgi (libraries can only be linked all together, at once)
-set(vgi_libraries glm::glm)
+set(vgi_libraries glm::glm vgi_vma)
 set(vgi_static_libraries SDL3::SDL3-static)
 set(vgi_shared_libraries SDL3::SDL3-shared)
 
@@ -73,6 +76,7 @@ set(
     GLM_FORCE_RADIANS
     GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
+target_compile_definitions(vgi_vma PUBLIC ${vgi_definitions})
 target_compile_definitions(vgi_static PUBLIC ${vgi_definitions})
 target_compile_definitions(vgi_shared PUBLIC ${vgi_definitions})
 
@@ -80,11 +84,13 @@ target_compile_definitions(vgi_shared PUBLIC ${vgi_definitions})
 if (APPLE AND DEFINED ENV{VULKAN_SDK})
     set(Vulkan_Include "$ENV{VULKAN_SDK}/include")
     set(Vulkan_LIBRARY "$ENV{VULKAN_SDK}/lib/libvulkan.dylib")
+    target_include_directories(vgi_vma PUBLIC ${Vulkan_Include})
     target_include_directories(vgi_static PUBLIC ${Vulkan_Include})
     target_include_directories(vgi_shared PUBLIC ${Vulkan_Include})
     set(GLSLC_PATH "$ENV{VULKAN_SDK}/bin/glslc")
 else()
     find_package(Vulkan REQUIRED)
+    target_link_libraries(vgi_vma PUBLIC Vulkan::Headers)
     list(APPEND vgi_libraries Vulkan::Vulkan)
     set(GLSLC_PATH Vulkan::glslc)
 endif()
