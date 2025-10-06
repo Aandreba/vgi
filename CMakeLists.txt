@@ -25,6 +25,8 @@ endif()
 
 # Define library options
 set(GLM_BUILD_TESTS OFF)
+set(SDL_STATIC ON)
+set(SDL_SHARED ON)
 
 # Fetch/Dowload libraries
 FetchContent_Declare(
@@ -55,19 +57,24 @@ set(vgi_libraries glm::glm)
 set(vgi_static_libraries SDL3::SDL3-static)
 set(vgi_shared_libraries SDL3::SDL3-shared)
 
-# Declare the 'src' directory as an include target
+# Declare the 'src/lib' directory as an include target.
 target_include_directories(vgi_static PUBLIC "src/lib")
 target_include_directories(vgi_shared PUBLIC "src/lib")
 
 # Specify the macros to be added when compiling the source
-target_compile_definitions(
-    vgi_static PUBLIC
+set(
+    vgi_definitions
     VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
     VULKAN_HPP_NO_CONSTRUCTORS
     VULKAN_HPP_HANDLES_MOVE_EXCHANGE
     VMA_STATIC_VULKAN_FUNCTIONS=0
     VMA_DYNAMIC_VULKAN_FUNCTIONS=1
+    # Adjust glm to use Vulkan's coordinate system
+    GLM_FORCE_RADIANS
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
+target_compile_definitions(vgi_static PUBLIC ${vgi_definitions})
+target_compile_definitions(vgi_shared PUBLIC ${vgi_definitions})
 
 # Find Vulkan SDK
 if (APPLE AND DEFINED ENV{VULKAN_SDK})
@@ -83,8 +90,14 @@ else()
 endif()
 
 # Link the required libraries into VGI
-target_link_directories(vgi_static PUBLIC ${vgi_libraries} ${vgi_static_libraries})
-target_link_directories(vgi_shared PUBLIC ${vgi_libraries} ${vgi_shared_libraries})
+target_link_libraries(vgi_static PUBLIC ${vgi_libraries} ${vgi_static_libraries})
+target_link_libraries(vgi_shared PUBLIC ${vgi_libraries} ${vgi_shared_libraries})
+
+# (Windows only) Enable preprocessor conformance mode
+if (MSVC)
+    target_compile_options(vgi_static PUBLIC /Zc:preprocessor)
+    target_compile_options(vgi_shared PUBLIC /Zc:preprocessor)
+endif()
 
 # Create the executable
 file(GLOB_RECURSE vgi_exe_sources CONFIGURE_DEPENDS "src/exe/*.cpp")
