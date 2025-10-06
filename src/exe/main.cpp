@@ -7,7 +7,7 @@ int run() {
 }
 
 int main() {
-    vgi::init();
+    vgi::init(u8"Entorn VGI");
     try {
         int ret = run();
         vgi::quit();

@@ -8,11 +8,17 @@
 #include "defs.hpp"
 
 namespace vgi {
+    /// @brief An enum representing the available verbosity levels of the logger.
     enum struct log_level : uint8_t {
+        /// @brief Designates very low priority, often extremely verbose, information.
         verbose,
+        /// @brief Designates lower priority information.
         debug,
+        /// @brief Designates useful information.
         info,
+        /// @brief Designates hazardous situations.
         warn,
+        /// @brief Designates very serious errors.
         error,
     };
 
@@ -58,7 +64,7 @@ namespace vgi {
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
     template<log_level level, class... Args>
-    VGI_FORCEINLINE void vlog_msg(std::format_string<Args...> fmt, Args&&... args) noexcept {
+    VGI_FORCEINLINE void log_msg(std::format_string<Args...> fmt, Args&&... args) noexcept {
         if constexpr (level < max_log_level) return;
         vlog_msg(level, fmt.get(), std::make_format_args(args...));
     }

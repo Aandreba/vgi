@@ -9,7 +9,8 @@
 
 namespace vgi {
     /// @brief Initializes the environment context
-    void init();
+    /// @param app_name Name of the application, in UTF-8
+    void init(const char8_t* app_name);
 
     /// @brief Shuts down the environment context
     void quit() noexcept;

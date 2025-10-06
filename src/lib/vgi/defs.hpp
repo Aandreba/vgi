@@ -3,9 +3,18 @@
 
 #include <cassert>
 
+#ifndef VGI_HAS_BUILTI
+/// @brief Checks whether the compiler has support for the specified builtin.
+#ifdef __has_builtin
+#define VGI_HAS_BUILTIN(x) __has_builtin(x)
+#else
+#define VGI_HAS_BUILTIN(x) 0
+#endif
+#endif
+
 #ifndef VGI_ASSERT
-/// @brief Invokes detectable illegal behavior when ok is false.
-/// @details In Debug mode, use regular asserts. On Release mode, use asserts to help the compiler
+/// @brief Invokes detectable illegal behavior when `cond` is `false`.
+/// @details In Debug mode, use regular C asserts. On Release mode, use asserts to help the compiler
 /// with optimization
 #ifndef NDEBUG
 #define VGI_ASSERT(cond) assert(cond)
