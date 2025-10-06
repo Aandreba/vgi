@@ -49,7 +49,35 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
 }
 
 namespace vgi {
-    static vk::Instance instance;
+    vk::Instance instance;
+
+    // Sets the C++ global locale to the user prefered one.
+    static void setup_locale() {
+        int count;
+        SDL_Locale **locales = sdl::tri(SDL_GetPreferredLocales(&count));
+
+        try {
+            for (int i = 0; i < count; ++i) {
+                const SDL_Locale *info = locales[i];
+                std::string locale_name = std::format("{}{}{}.UTF-8", info->language,
+                                                      info->country ? "_" : "", info->country);
+
+                std::locale locale;
+                try {
+                    locale = std::locale{locale_name, std::locale::all};
+                } catch (...) {
+                    continue;
+                }
+
+                std::locale::global(locale);
+                break;
+            }
+        } catch (...) {
+            SDL_free(locales);
+            throw;
+        }
+        SDL_free(locales);
+    }
 
     // Returns a vector with the names of all the instance extensions supported by the driver
     static std::vector<std::string> enuerate_instance_extensions() {
@@ -171,10 +199,14 @@ namespace vgi {
         };
 
         // Create Instance
-        instance = vk::createInstance({
+        instance = vk::createInstance(vk::InstanceCreateInfo{
                 .pNext = &debug_create_info,
                 .flags = flags,
                 .pApplicationInfo = &app_info,
+                .enabledLayerCount = layer_count.value(),
+                .ppEnabledLayerNames = layers.data(),
+                .enabledExtensionCount = extension_count.value(),
+                .ppEnabledExtensionNames = extensions.data(),
         });
     }
 
@@ -182,13 +214,22 @@ namespace vgi {
         // Initialize SDL
         sdl::tri(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD));
         try {
+            // Setup the global locale
+            setup_locale();
             // Load the Vulkan driver
             sdl::tri(SDL_Vulkan_LoadLibrary(nullptr));
             try {
                 // Load initial Vulkan functions
                 VULKAN_HPP_DEFAULT_DISPATCHER.init(reinterpret_cast<PFN_vkGetInstanceProcAddr>(
                         SDL_Vulkan_GetVkGetInstanceProcAddr()));
+
                 create_instance(app_name);
+                try {
+                    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+                } catch (...) {
+                    instance.destroy();
+                    throw;
+                }
             } catch (...) {
                 SDL_Vulkan_UnloadLibrary();
                 throw;
@@ -200,6 +241,7 @@ namespace vgi {
     }
 
     void quit() noexcept {
+        instance.destroy();
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
     }

@@ -15,6 +15,8 @@ namespace vgi {
         /// @param flags The flags that determine the properties and behaviour of the window
         window(const char8_t* title, int width, int height, SDL_WindowFlags flags = 0);
 
+        ~window() noexcept;
+
     private:
         SDL_Window* handle;
         vk::SurfaceKHR surface;

@@ -1,8 +1,15 @@
+#include <chrono>
 #include <iostream>
+#include <thread>
+#include <vgi/log.hpp>
 #include <vgi/vgi.hpp>
+#include <vgi/window.hpp>
+
+using namespace std::literals;
 
 int run() {
-    std::cout << "Hi!!" << std::endl;
+    vgi::window win{u8"Hello world!", 900, 600};
+    std::this_thread::sleep_for(5s);
     return 0;
 }
 
