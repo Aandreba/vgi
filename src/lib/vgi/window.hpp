@@ -15,6 +15,14 @@ namespace vgi {
         /// @param flags The flags that determine the properties and behaviour of the window
         window(const char8_t* title, int width, int height, SDL_WindowFlags flags = 0);
 
+        /// @brief Checks whether the windows has the provided identifier
+        /// @details This is necessary to map window events to a specific `window` object.
+        /// @param id a window identifier
+        /// @return `true` if the window is identified by `id`, `false` otherwise
+        inline bool operator==(SDL_WindowID id) const noexcept {
+            return SDL_GetWindowID(this->handle) == id;
+        }
+
         ~window() noexcept;
 
     private:
