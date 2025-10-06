@@ -1,10 +1,12 @@
+/*! \file */
 #pragma once
 
 #include <cassert>
 
-// In Debug mode, use regular asserts
-// On Release mode, use asserts to help the compiler with optimization
 #ifndef VGI_ASSERT
+/// @brief Invokes detectable illegal behavior when ok is false.
+/// @details In Debug mode, use regular asserts. On Release mode, use asserts to help the compiler
+/// with optimization
 #ifndef NDEBUG
 #define VGI_ASSERT(cond) assert(cond)
 #else
@@ -12,8 +14,8 @@
 #endif
 #endif
 
-// Restricted pointers cannot have overlapping memory, helping the compiler better optimize the code
 #ifndef VGI_RESTRICT
+/// @brief Restricted pointers cannot have overlapping memory, helping it optimize the code.
 #if defined(_MSC_VER) && !defined(__clang__)
 #define VGI_RESTRICT __restrict
 #elif defined(__clang__) || defined(__GNUC__)
@@ -23,7 +25,13 @@
 #endif
 #endif
 
-// This macro creates random names for variables and types, usefull for macros
-#define VGI_ANON SLOT_CONCAT(__vgi_anon_, __COUNTER__)
-#define VGI_CONCAT(x, y) VGI_CONCAT_(x, y)
-#define VGI_CONCAT_(x, y) x##y
+#ifndef VGI_FORCEINLINE
+/// @brief Forces the compiler to inline calls to this function whenever possible
+#if defined(_MSC_VER) && !defined(__clang__)
+#define VGI_FORCEINLINE inline __forceinline
+#elif defined(__has_attribute) && __has_attribute(always_inline)
+#define VGI_FORCEINLINE inline __attribute__((always_inline))
+#else
+#define VGI_FORCEINLINE inline
+#endif
+#endif

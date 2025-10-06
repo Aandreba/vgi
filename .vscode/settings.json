@@ -77,6 +77,22 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "filesystem": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "cinttypes": "cpp",
+        "condition_variable": "cpp",
+        "expected": "cpp",
+        "mutex": "cpp",
+        "set": "cpp",
+        "shared_mutex": "cpp",
+        "bitset": "cpp",
+        "codecvt": "cpp",
+        "deque": "cpp",
+        "future": "cpp",
+        "queue": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "stack": "cpp",
+        "unordered_set": "cpp",
+        "variant": "cpp"
     }
 }

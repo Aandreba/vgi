@@ -129,3 +129,25 @@ if(APPLE AND DEFINED Vulkan_LIBRARY)
         COMMAND_EXPAND_LISTS
     )
 endif()
+
+# Generate Doxygen docs (if enabled)
+option(VGI_DOXYGEN "Generar documentacio Doxygen" ON)
+if (VGI_DOXYGEN)
+    find_package(Doxygen)
+    if(Doxygen_FOUND)
+        set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
+        set(DOXYGEN_GENERATE_HTML          YES)
+        set(DOXYGEN_HAVE_DOT               YES)
+        set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
+        set(BUILTIN_STL_SUPPORT            YES)
+        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")  # requires a README.md in /myproject/
+        
+        doxygen_add_docs(vgi_docs
+            "src/lib/vgi"
+            ALL  # does not seem to work
+            COMMENT "Generate HTML documentation"
+        )
+    else()
+        message(WARNING "Doxygen not found. Documentation will not be generated")
+    endif()
+endif()

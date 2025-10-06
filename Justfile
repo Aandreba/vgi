@@ -8,7 +8,7 @@ build build_type="Debug":
     cmake -E make_directory build
     cmake -DCMAKE_BUILD_TYPE={{build_type}} -S . -B build
     cmake --build build -j {{num_cpus()}}
-
+    
 [unix]
 run build_type="Debug" *ARGS="": (build build_type)
     ./build/vgi_exe {{ARGS}}
@@ -16,3 +16,7 @@ run build_type="Debug" *ARGS="": (build build_type)
 [windows]
 run build_type="Debug" *ARGS="": (build build_type)
     Start-Process -NoNewWindow -FilePath "build\{{build_type}}\vgi_exe.exe" {{ARGS}}
+
+[windows]
+docs: build
+    Start-Process "file://{{justfile_directory()}}/build/docs/index.html"
