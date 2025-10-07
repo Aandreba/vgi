@@ -4,6 +4,7 @@ project(vgi CXX)
 # Import CMake modules
 include(FetchContent)
 include("cmake/BuildShaders.cmake")
+include("cmake/FindGraphViz.cmake")
 include("cmake/Unicode.cmake")
 
 # We configure support to compile C++ code using C++20
@@ -81,7 +82,7 @@ target_compile_definitions(vgi_static PUBLIC ${vgi_definitions})
 target_compile_definitions(vgi_shared PUBLIC ${vgi_definitions})
 
 # Find Vulkan SDK
-if (APPLE AND DEFINED ENV{VULKAN_SDK})
+if (DEFINED ENV{VULKAN_SDK})
     set(Vulkan_Include "$ENV{VULKAN_SDK}/include")
     set(Vulkan_LIBRARY "$ENV{VULKAN_SDK}/lib/libvulkan.dylib")
     target_include_directories(vgi_vma PUBLIC ${Vulkan_Include})
@@ -137,7 +138,7 @@ if (VGI_DOXYGEN)
     if(Doxygen_FOUND)
         set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
         set(DOXYGEN_GENERATE_HTML          YES)
-        set(DOXYGEN_HAVE_DOT               YES)
+        set(DOXYGEN_HAVE_DOT               $<IF:GRAPHVIZ_FOUND,YES,NO>)
         set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
         set(BUILTIN_STL_SUPPORT            YES)
         set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")  # requires a README.md in /myproject/

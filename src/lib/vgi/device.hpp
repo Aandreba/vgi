@@ -2,6 +2,7 @@
 #pragma once
 
 #include <optional>
+#include <ranges>
 #include <vulkan/vulkan.hpp>
 
 #include "memory.hpp"
@@ -9,45 +10,7 @@
 namespace vgi {
     /// @brief Physical device that can be used to perform hardware accelerated
     /// operations.
-    struct device {
-        device(const device&) = delete;
-        device& operator=(const device&) = delete;
-
-        /// @brief Basic properties of the device
-        inline const vk::PhysicalDeviceProperties& properties() const noexcept {
-            return this->props.get<vk::PhysicalDeviceProperties2>().properties;
-        }
-        /// @brief Main features of the device
-        inline const vk::PhysicalDeviceFeatures& features() const noexcept {
-            return this->props.get<vk::PhysicalDeviceFeatures2>().features;
-        }
-
-        /// @brief Type of device
-        inline vk::PhysicalDeviceType type() const noexcept {
-            return this->properties().deviceType;
-        }
-        /// @brief Device name
-        inline std::string name() const noexcept { return this->properties().deviceName; }
-        /// @brief Device name, as a UTF-8 encoded string
-        inline std::u8string_view name_utf8() const noexcept {
-            std::string_view name = this->properties().deviceName;
-            return std::u8string_view{reinterpret_cast<const char8_t*>(name.data()), name.size()};
-        }
-
-        /// @brief Casts the device into it's underlying `vk::PhysicalDevice`
-        inline operator vk::PhysicalDevice() const noexcept { return this->handle; }
-        //! @cond Doxygen_Suppress
-        inline const vk::PhysicalDevice* operator->() const noexcept { return &this->handle; }
-        inline vk::PhysicalDevice* operator->() noexcept { return &this->handle; }
-        inline const vk::PhysicalDevice& operator*() const noexcept { return this->handle; }
-        inline vk::PhysicalDevice& operator*() noexcept { return this->handle; }
-        //! @endcond
-
-        /// @brief Retreive all the devices detected
-        /// @return A list of all the devices detected by the host
-        static std::span<const device> all();
-
-    private:
+    class device {
         using props_type = vk::StructureChain<
                 vk::PhysicalDeviceProperties2, vk::PhysicalDeviceVulkan11Properties,
                 vk::PhysicalDeviceVulkan12Properties, vk::PhysicalDeviceVulkan13Properties>;
@@ -59,13 +22,55 @@ namespace vgi {
 
         using queue_family_type = vk::StructureChain<vk::QueueFamilyProperties2>;
 
+    public:
+        device(const device&) = delete;
+        device& operator=(const device&) = delete;
+
+        /// @brief Basic properties of the device
+        inline const vk::PhysicalDeviceProperties& props() const noexcept {
+            return this->props_chain.get<vk::PhysicalDeviceProperties2>().properties;
+        }
+        /// @brief Main features of the device
+        inline const vk::PhysicalDeviceFeatures& feats() const noexcept {
+            return this->feats_chain.get<vk::PhysicalDeviceFeatures2>().features;
+        }
+
+        /// @brief Iterator over all the queue family properties
+        /// @return Iterator of `const vk::QueueFamilyProperties&`
+        inline const auto queue_families() const noexcept {
+            return std::views::transform(
+                    this->queue_family_chains,
+                    [](const queue_family_type& chain) -> const vk::QueueFamilyProperties& {
+                        return chain.get<vk::QueueFamilyProperties2>().queueFamilyProperties;
+                    });
+        }
+
+        /// @brief Type of device
+        inline vk::PhysicalDeviceType type() const noexcept { return this->props().deviceType; }
+        /// @brief Device name
+        inline std::string_view name() const noexcept { return this->props().deviceName; }
+
+        /// @brief Casts the device into it's underlying `vk::PhysicalDevice`
+        inline operator vk::PhysicalDevice() const noexcept { return this->handle; }
+        //! @cond Doxygen_Suppress
+        inline const vk::PhysicalDevice* operator->() const noexcept { return &this->handle; }
+        inline vk::PhysicalDevice* operator->() noexcept { return &this->handle; }
+        inline const vk::PhysicalDevice& operator*() const noexcept { return this->handle; }
+        inline vk::PhysicalDevice& operator*() noexcept { return this->handle; }
+        //! @endcond
+
+        /// @brief Retreive all the detected devices
+        /// @return A list of all the devices detected by the host
+        static std::span<const device> all();
+
+    private:
         vk::PhysicalDevice handle;
-        props_type props;
-        feats_type feats;
-        std::vector<queue_family_type> queue_families;
+        props_type props_chain;
+        feats_type feats_chain;
+        std::vector<queue_family_type> queue_family_chains;
 
         device(vk::PhysicalDevice handle);
-
-        std::optional<uint32_t> select_queue_family(vk::SurfaceFormatKHR format) const;
+        std::optional<uint32_t> select_queue_family(vk::SurfaceKHR surface,
+                                                    vk::SurfaceFormatKHR format, bool vsync) const;
     };
 }  // namespace vgi

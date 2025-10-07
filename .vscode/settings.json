@@ -93,6 +93,7 @@
         "regex": "cpp",
         "stack": "cpp",
         "unordered_set": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "syncstream": "cpp"
     }
 }

@@ -13,6 +13,9 @@
 #include "defs.hpp"
 
 namespace vgi {
+    template<class T>
+    struct unique_span_builder;
+
     /// A simple host buffer with constant size, usefull as an unresizable 'std::vector'
     template<class T>
     struct unique_span {
@@ -163,17 +166,9 @@ namespace vgi {
     private:
         pointer VGI_RESTRICT ptr = nullptr;
         size_t len = 0;
-    };
 
-    /// @brief Specializes the `std::swap` algorithm for `vgi::unique_span`. Swaps the contents of
-    /// `lhs` and `rhs`. Calls `lhs.swap(rhs)`
-    /// @param lhs container whose contents to swap
-    /// @param rhs container whose contents to swap
-    template<class T>
-    constexpr void swap(unique_span<T>& lhs,
-                        unique_span<T>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-        lhs.swap(rhs);
-    }
+        friend struct unique_span_builder<T>;
+    };
 
     /// @brief Allocate a `unique_span` without initializing the values
     /// @tparam T Type of the elements to allocate
@@ -188,6 +183,61 @@ namespace vgi {
 
         VGI_ASSERT(ptr != nullptr);
         return unique_span<T>{ptr, n};
+    }
+
+    /// @brief Helper class to initialize a `unique_span`
+    /// @tparam T Element type
+    template<class T>
+    class unique_span_builder {
+        union entry {
+            char none[0];
+            T some;
+            ~entry() {}
+        };
+
+        unique_span<entry> entries;
+        size_t offset;
+
+    public:
+        unique_span_builder(size_t n) :
+            entries(make_unique_span_for_overwrite<entry>()), offset(0) {}
+
+        T* next() noexcept {
+            VGI_ASSERT(this->entries);
+            if (this->offset >= this->entries.size()) return nullptr;
+            return std::addressof(this->entries[this->offset++].some);
+        }
+
+        void pop_back() noexcept(std::is_nothrow_destructible_v<T>) {
+            VGI_ASSERT(this->entries);
+            VGI_ASSERT(this->offset > 0);
+            std::destroy_at(std::addressof(this->entries[this->offset--].some));
+        }
+
+        unique_span<T> build() && {
+            VGI_ASSERT(this->entries);
+            VGI_ASSERT(this->offset == this->entries.size());
+            return unique_span<T>{
+                    reinterpret_cast<T * VGI_RESTRICT>(std::exchange(this->entries.ptr, nullptr)),
+                    std::exchange(this->entries.len, 0)};
+        }
+
+        ~unique_span_builder() noexcept {
+            if (!this->entries) return;
+            if constexpr (!std::is_trivially_destructible_v<T>) {
+                std::destroy_n(reinterpret_cast<T*>(this->entries.data()), this->offset);
+            }
+        }
+    };
+
+    /// @brief Specializes the `std::swap` algorithm for `vgi::unique_span`. Swaps the contents of
+    /// `lhs` and `rhs`. Calls `lhs.swap(rhs)`
+    /// @param lhs container whose contents to swap
+    /// @param rhs container whose contents to swap
+    template<class T>
+    constexpr void swap(unique_span<T>& lhs,
+                        unique_span<T>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+        lhs.swap(rhs);
     }
 }  // namespace vgi
 
