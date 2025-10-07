@@ -26,6 +26,23 @@ namespace vgi {
         device(const device&) = delete;
         device& operator=(const device&) = delete;
 
+        /// @brief Move constructor of `device`
+        /// @param other Value to be moved
+        device(device&& other) noexcept :
+            handle(std::move(other.handle)), props_chain(other.props_chain),
+            feats_chain(other.feats_chain),
+            queue_family_chains(std::move(other.queue_family_chains)) {}
+
+        /// @brief Move assignment of `device`
+        /// @param other Value to be moved
+        device& operator=(device&& other) noexcept {
+            if (this == &other) [[unilkely]]
+                return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
         /// @brief Basic properties of the device
         inline const vk::PhysicalDeviceProperties& props() const noexcept {
             return this->props_chain.get<vk::PhysicalDeviceProperties2>().properties;

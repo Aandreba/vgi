@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vgi/device.hpp>
 #include <vgi/log.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
@@ -9,6 +10,12 @@ using namespace std::literals;
 
 int run() {
     vgi::window win{u8"Hello world!", 900, 600};
+
+    vgi::log("Detected devices ({}):", vgi::device::all().size());
+    for (const vgi::device& device: vgi::device::all()) {
+        vgi::log("{}", device.name());
+    }
+
     std::this_thread::sleep_for(5s);
     return 0;
 }

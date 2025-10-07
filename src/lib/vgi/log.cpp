@@ -12,10 +12,12 @@ constexpr static inline const size_t log_buf_size = 4096;
 #endif
 
 namespace vgi {
+    //! @cond Doxygen_Suppress
     struct input_fmt {
         std::string_view fmt;
         std::format_args args;
     };
+    //! @endcond
 
     template<size_t N>
     static std::string_view format(char (&log_buf)[N], std::string_view fmt,
@@ -42,6 +44,7 @@ namespace vgi {
     }
 }  // namespace vgi
 
+//! @cond Doxygen_Suppress
 /// @brief Specialize `std::formatter` to make `vgi::input_fmt` formattable
 template<>
 struct std::formatter<vgi::input_fmt, char> {
@@ -55,3 +58,4 @@ struct std::formatter<vgi::input_fmt, char> {
         return std::vformat_to(ctx.out(), val.fmt, val.args);
     }
 };
+//! @endcond

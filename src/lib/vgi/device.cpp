@@ -4,7 +4,7 @@
 
 namespace vgi {
     extern vk::Instance instance;
-    unique_span<device> all_devices;
+    std::vector<device> all_devices;
 
     device::device(vk::PhysicalDevice handle) :
         handle(handle),
@@ -71,11 +71,13 @@ namespace vgi {
     }
 
     std::span<const device> device::all() {
-        if (!all_devices) [[unlikely]] {
+        if (all_devices.empty()) [[unlikely]] {
             std::vector<vk::PhysicalDevice> logicals = instance.enumeratePhysicalDevices();
-            unique_span_builder<device> builder{logicals.size()};
-            for (vk::PhysicalDevice logical: logicals) new (builder.next()) device(logical);
-            all_devices = std::move(builder).build();
+            all_devices.reserve(logicals.size());
+            for (vk::PhysicalDevice logical: logicals) {
+                all_devices.push_back(device{logical});
+            }
+            all_devices.shrink_to_fit();
         }
         return all_devices;
     }
