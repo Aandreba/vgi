@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <new>
 #include <span>
@@ -30,11 +31,36 @@ namespace vgi {
         //! @endcond
 
         constexpr unique_span() noexcept = default;
+
         /// @brief Creates a new span that takes ownership of the provided pointer, destroying it's
         /// members and deallocating it when destroyed
         /// @param ptr Pointer to the elements
         /// @param len Number of elements stored
         constexpr unique_span(pointer VGI_RESTRICT ptr, size_t len) noexcept : ptr(ptr), len(len) {}
+
+        /// @brief Creates a new span by moving the values from `other` into it
+        /// @param other Vector with elements to move to the span
+        explicit unique_span(std::vector<value_type>&& other)
+            requires(std::is_move_constructible_v<T>)
+        {
+            size_t size = other.size();
+            size_t byte_size = sizeof(T) * size;
+            std::align_val_t alignment = static_cast<std::align_val_t>(alignof(T));
+            if (size == 0) return;
+
+            pointer VGI_RESTRICT data =
+                    static_cast<pointer VGI_RESTRICT>(::operator new(byte_size, alignment));
+
+            try {
+                std::uninitialized_move(other.begin(), other.end(), data);
+            } catch (...) {
+                ::operator delete(data, byte_size, alignment);
+                throw;
+            }
+
+            this->ptr = data;
+            this->len = size;
+        }
 
         // Make the struct non-copyable
         unique_span(const unique_span&) = delete;
@@ -171,13 +197,47 @@ namespace vgi {
     /// @return A container with `n` uninitialized elements of `T`
     template<class T>
     inline unique_span<T> make_unique_span_for_overwrite(size_t n) {
-        VGI_ASSERT(n <= SIZE_MAX / sizeof(T));
+        std::optional<size_t> byte_size = math::check_mul(n, sizeof(T));
+        if (!byte_size) throw std::bad_alloc{};
 
         T* VGI_RESTRICT ptr = static_cast<T*>(
-                ::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
+                ::operator new(byte_size.value(), static_cast<std::align_val_t>(alignof(T))));
 
         VGI_ASSERT(ptr != nullptr);
         return unique_span<T>{ptr, n};
+    }
+
+    template<class R, class F, class T = R>
+        requires(std::is_invocable_r_v<R, const F&, size_t> && std::convertible_to<R, T> &&
+                 std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
+    inline unique_span<T> make_unique_span_with_r(size_t n, const F& f) {
+        std::optional<size_t> byte_size = math::check_mul(n, sizeof(T));
+        if (!byte_size) throw std::bad_alloc{};
+        constexpr std::align_val_t alignment = static_cast<std::align_val_t>(alignof(T));
+        T* VGI_RESTRICT data = static_cast<T*>(::operator new(byte_size.value(), alignment));
+        VGI_ASSERT(data != nullptr);
+
+        size_t i = 0;
+        try {
+            for (; i < n; ++i) {
+                std::construct_at(std::addressof(
+                        data[i], static_cast<T>(std::invoke<const F&, size_t>(f, i))));
+            }
+        } catch (...) {
+            std::destroy_n(data, i);
+            ::operator delete(data, byte_size.value(), alignment);
+            throw;
+        }
+
+        return unique_span<R>{data, n};
+    }
+
+    template<class F, class T = std::invoke_result_t<const F&, size_t>>
+        requires(std::is_invocable_v<const F&, size_t> &&
+                 std::convertible_to<std::invoke_result_t<const F&, size_t>, T> &&
+                 std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
+    inline unique_span<T> make_unique_span_with(size_t n, const F& f) {
+        return make_unique_span_with_r<std::invoke_result_t<const F&, size_t>, F, T>(n, f);
     }
 
     /// @brief Specializes the `std::swap` algorithm for `vgi::unique_span`. Swaps the contents of

@@ -4,7 +4,7 @@
 
 namespace vgi {
     extern vk::Instance instance;
-    std::vector<device> all_devices;
+    unique_span<device> all_devices;
 
     device::device(vk::PhysicalDevice handle) :
         handle(handle),
@@ -63,19 +63,22 @@ namespace vgi {
     }
 
     std::span<const device> device::all() {
-        if (all_devices.empty()) [[unlikely]] {
+        if (!all_devices) [[unlikely]] {
             std::vector<vk::PhysicalDevice> logicals = instance.enumeratePhysicalDevices();
-            all_devices.reserve(logicals.size());
+            std::vector<device> devices;
+            devices.reserve(logicals.size());
+
             for (vk::PhysicalDevice logical: logicals) {
-                device& info = all_devices.emplace_back(device{logical});
+                device& info = devices.emplace_back(device{logical});
                 if (info.props().apiVersion < VK_API_VERSION_1_3) {
                     log_warn("Device '{}' only supports up to Vulkan {}.{}", info.name(),
                              VK_API_VERSION_MAJOR(info.props().apiVersion),
                              VK_API_VERSION_MINOR(info.props().apiVersion));
-                    all_devices.pop_back();
+                    devices.pop_back();
                 }
             }
-            all_devices.shrink_to_fit();
+
+            all_devices = unique_span<device>{std::move(devices)};
         }
         return all_devices;
     }

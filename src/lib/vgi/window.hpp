@@ -19,8 +19,10 @@ namespace vgi {
         /// @param vsync Specifies whether we want to limit the frame rate to follow the rate at
         /// which the monitor can present frames
         /// @param flags The flags that determine the properties and behaviour of the window
+        /// @param vsync Enables/Disables vertical blank synchronization
+        /// @param hdr10 Enables/Disables high-definition 10-bit display format
         window(const device& device, const char8_t* title, int width, int height,
-               SDL_WindowFlags flags = 0, bool vsync = true);
+               SDL_WindowFlags flags = 0, bool vsync = true, bool hdr10 = false);
 
         window(const window&) = delete;
         window& operator=(const window&) = delete;
@@ -30,7 +32,8 @@ namespace vgi {
         window(window&& other) noexcept :
             handle(std::exchange(other.handle, nullptr)), surface(std::move(other.surface)),
             physical(other.physical), logical(std::move(other.logical)),
-            queue(std::move(other.queue)), cmdpool(std::move(other.cmdpool)) {}
+            queue(std::move(other.queue)), cmdpool(std::move(other.cmdpool)),
+            swapchain(std::move(other.swapchain)) {}
 
         /// @brief Move assignment for `window`
         /// @param other Object to move
@@ -73,6 +76,13 @@ namespace vgi {
         vk::Device logical;
         vk::Queue queue;
         vk::CommandPool cmdpool;
+        vk::SwapchainKHR swapchain;
+        unique_span<vk::Image> swapchain_images;
+        unique_span<vk::ImageView> swapchain_views;
+        bool has_mailbox;
+        bool has_hdr10;
+
+        void create_swapchain(uint32_t& width, uint32_t& height, bool vsync, bool hdr10);
     };
 
 }  // namespace vgi
