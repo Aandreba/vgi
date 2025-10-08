@@ -4,6 +4,8 @@
 set windows-powershell := true
 set dotenv-load
 
+DOCS_URL := "file://" + justfile_directory() + "/build/docs/index.html"
+
 build build_type="Debug":
     cmake -E make_directory build
     cmake -DCMAKE_BUILD_TYPE={{build_type}} -S . -B build
@@ -22,4 +24,8 @@ run build_type="Debug" *ARGS="": (build build_type)
 
 [windows]
 docs: build
-    Start-Process "file://{{justfile_directory()}}/build/docs/index.html"
+    Start-Process "{{DOCS_URL}}"
+
+[unix]
+docs: build
+    open "{{DOCS_URL}}"
