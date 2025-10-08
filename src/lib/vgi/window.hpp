@@ -4,9 +4,9 @@
 #include <SDL3/SDL.h>
 #include <cstdint>
 #include <utility>
-#include <vulkan/vulkan.hpp>
 
 #include "device.hpp"
+#include "vulkan.hpp"
 
 namespace vgi {
     /// @brief Handle to a presentable window
@@ -28,7 +28,9 @@ namespace vgi {
         /// @brief Move constructor for `window`
         /// @param other Object to move
         window(window&& other) noexcept :
-            handle(std::exchange(other.handle, nullptr)), surface(std::move(other.surface)) {}
+            handle(std::exchange(other.handle, nullptr)), surface(std::move(other.surface)),
+            physical(other.physical), logical(std::move(other.logical)),
+            queue(std::move(other.queue)), cmdpool(std::move(other.cmdpool)) {}
 
         /// @brief Move assignment for `window`
         /// @param other Object to move
@@ -47,12 +49,20 @@ namespace vgi {
             return SDL_GetWindowID(this->handle) == id;
         }
 
+        /// @brief Get access to the methods of `vk::Device`
+        constexpr const vk::Device* operator->() const noexcept { return &this->logical; }
+        /// @brief Get access to the methods of `vk::Device`
+        constexpr vk::Device* operator->() noexcept { return &this->logical; }
         /// @brief Casts `window` to it's underlying `SDL_Window*`
         constexpr operator SDL_Window*() const noexcept { return this->handle; }
         /// @brief Casts `window` to it's underlying `vk::SurfaceKHR`
         constexpr operator vk::SurfaceKHR() const noexcept { return this->surface; }
-        /// @brief Casts `window` to it's underlying `vk::SurfaceKHR`
+        /// @brief Casts `window` to it's underlying `VkSurfaceKHR`
         constexpr operator VkSurfaceKHR() const noexcept { return this->surface; }
+        /// @brief Casts `window` to it's underlying `vk::Device`
+        constexpr operator vk::Device() const noexcept { return this->logical; }
+        /// @brief Casts `window` to it's underlying `VkDevice`
+        constexpr operator VkDevice() const noexcept { return this->logical; }
 
         ~window() noexcept;
 
@@ -61,6 +71,8 @@ namespace vgi {
         vk::SurfaceKHR surface;
         const device& physical;
         vk::Device logical;
+        vk::Queue queue;
+        vk::CommandPool cmdpool;
     };
 
 }  // namespace vgi

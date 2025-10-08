@@ -199,7 +199,9 @@ namespace vgi {
                      VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
-// Enable the validation layer if in debug mode and available
+// Enable the validation layer if in debug mode and available.
+// The validation layer sits on top of every vulkan function to check whether the arguments passed
+// are valid and correct (by default, Vulkan assumes all arguments are valid and correct).
 #ifndef NDEBUG
         const char *validation_layer_name =
                 reinterpret_cast<const char *>(u8"VK_LAYER_KHRONOS_validation");

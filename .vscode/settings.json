@@ -98,6 +98,7 @@
         "syncstream": "cpp",
         "__verbose_abort": "cpp",
         "execution": "cpp",
-        "version": "cpp"
+        "version": "cpp",
+        "__node_handle": "cpp"
     }
 }

@@ -3,9 +3,9 @@
 
 #include <optional>
 #include <ranges>
-#include <vulkan/vulkan.hpp>
 
 #include "memory.hpp"
+#include "vulkan.hpp"
 
 namespace vgi {
     /// @brief Physical device that can be used to perform hardware accelerated

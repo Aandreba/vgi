@@ -141,10 +141,12 @@ if (VGI_DOXYGEN)
     if(Doxygen_FOUND)
         set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
         set(DOXYGEN_GENERATE_HTML          YES)
-        set(DOXYGEN_HAVE_DOT               $<IF:GRAPHVIZ_FOUND,YES,NO>)
         set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
-        set(DOXYGEN_BUILTIN_STL_SUPPORT            YES)
+        set(DOXYGEN_BUILTIN_STL_SUPPORT    YES)
         set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")  # requires a README.md in /myproject/
+        if(GRAPHVIZ_FOUND)
+            set(DOXYGEN_HAVE_DOT           YES)
+        endif()
         
         doxygen_add_docs(vgi_docs
             "src/lib/vgi"

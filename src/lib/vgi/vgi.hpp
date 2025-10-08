@@ -3,9 +3,9 @@
 
 #include <SDL3/SDL.h>
 #include <stdexcept>
-#include <vulkan/vulkan.hpp>
 
 #include "memory.hpp"
+#include "vulkan.hpp"
 
 namespace vgi {
     /// @brief Initializes the environment context
