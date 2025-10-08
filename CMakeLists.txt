@@ -25,6 +25,8 @@ if(EXISTS ${CMAKE_HOME_DIRECTORY}/.env)
 endif()
 
 # Define library options
+set(GLM_ENABLE_CXX_20 ON)
+set(GLM_ENABLE_FAST_MATH ON)
 set(GLM_BUILD_TESTS OFF)
 set(SDL_STATIC ON)
 set(SDL_SHARED ON)
