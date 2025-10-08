@@ -8,7 +8,10 @@ build build_type="Debug":
     cmake -E make_directory build
     cmake -DCMAKE_BUILD_TYPE={{build_type}} -S . -B build
     cmake --build build -j {{num_cpus()}}
-    
+
+clean build_type="Debug":
+    cmake --build build -t clean
+
 [unix]
 run build_type="Debug" *ARGS="": (build build_type)
     ./build/vgi_exe {{ARGS}}

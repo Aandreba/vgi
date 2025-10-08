@@ -2,6 +2,7 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "cmake.useCMakePresets": "always",
     "files.associations": {
+        "*.msl": "metal",
         "*.spirv": "spvasm",
         "*.glsl": "glsl",
         "cassert": "cpp",
@@ -94,6 +95,9 @@
         "stack": "cpp",
         "unordered_set": "cpp",
         "variant": "cpp",
-        "syncstream": "cpp"
+        "syncstream": "cpp",
+        "__verbose_abort": "cpp",
+        "execution": "cpp",
+        "version": "cpp"
     }
 }

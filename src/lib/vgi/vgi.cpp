@@ -64,7 +64,7 @@ namespace vgi {
 
                 std::locale locale;
                 try {
-                    locale = std::locale{locale_name, std::locale::all};
+                    locale = std::locale{locale_name};
                 } catch (...) {
                     continue;
                 }

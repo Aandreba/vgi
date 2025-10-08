@@ -36,8 +36,7 @@ namespace vgi {
         /// @brief Move assignment of `device`
         /// @param other Value to be moved
         device& operator=(device&& other) noexcept {
-            if (this == &other) [[unilkely]]
-                return *this;
+            VGI_IF_UNLIKELY(this == &other) { return *this; }
             std::destroy_at(this);
             std::construct_at(this, std::move(other));
             return *this;

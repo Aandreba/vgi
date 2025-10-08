@@ -5,6 +5,12 @@
 #include <iterator>
 #include <syncstream>
 
+// If the compiler doesn't support synchronized ostream, use a global mutex instead
+#ifndef __cpp_lib_syncbuf
+#include <mutex>
+constinit std::mutex log_lock;
+#endif
+
 #ifdef VGI_LOG_BUF_SIZE
 constexpr static inline const size_t log_buf_size = VGI_LOG_BUF_SIZE;
 #else
@@ -22,8 +28,13 @@ namespace vgi {
     template<size_t N>
     static std::string_view format(char (&log_buf)[N], std::string_view fmt,
                                    std::format_args args) {
+        // Some compilers (looking at you clang) still don't support calendars & time zones
+#if __cpp_lib_chrono >= 201907L
         std::chrono::zoned_time current_time{std::chrono::current_zone(),
                                              std::chrono::system_clock::now()};
+#else
+        std::chrono::sys_time current_time = std::chrono::system_clock::now();
+#endif
 
         std::format_to_n_result result =
                 std::format_to_n(log_buf, std::size(log_buf), "[{0:%x} {0:%T} {0:%Ez}] {1}\n",
@@ -37,7 +48,13 @@ namespace vgi {
         if (level < max_log_level) return;
         try {
             char log_buf[log_buf_size];
+#ifdef __cpp_lib_syncbuf
             std::osyncstream(std::cerr) << format(log_buf, fmt, args);
+#else
+            std::string_view msg = format(log_buf, fmt, args);
+            std::lock_guard log_guard{log_lock};
+            std::cerr << msg;
+#endif
         } catch (...) {
             // Ignore exceptions here
         }

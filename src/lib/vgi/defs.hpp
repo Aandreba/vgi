@@ -44,3 +44,14 @@
 #define VGI_FORCEINLINE inline
 #endif
 #endif
+
+/// @brief Tells the compiler that the code is unlikely to take this branch, helping it optimize
+#ifndef VGI_IF_UNLIKELY
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(unlikely)
+#define VGI_IF_UNLIKELY(cond) if (cond) [[unlikely]]
+#elif VGI_HAS_BUILTIN(__builtin_expect)
+#define VGI_IF_UNLIKELY(cond) if (__builtin_expect(static_cast<bool>(cond), 0))
+#else
+#define VGI_IF_UNLIKELY(cond) if (cond)
+#endif
+#endif

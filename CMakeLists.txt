@@ -125,7 +125,7 @@ endif()
 
 # (macOS only) Copy the Vulkan library into SDL's target directory
 if(APPLE AND DEFINED Vulkan_LIBRARY)
-    add_custom_command(TARGET slot_example POST_BUILD
+    add_custom_command(TARGET vgi_exe POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy "${Vulkan_LIBRARY}" $<TARGET_FILE_DIR:SDL3::SDL3-shared>
         COMMAND_EXPAND_LISTS
     )
