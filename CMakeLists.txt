@@ -143,13 +143,14 @@ if (VGI_DOXYGEN)
         set(DOXYGEN_GENERATE_HTML          YES)
         set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
         set(DOXYGEN_BUILTIN_STL_SUPPORT    YES)
-        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")  # requires a README.md in /myproject/
+        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")
         if(GRAPHVIZ_FOUND)
             set(DOXYGEN_HAVE_DOT           YES)
         endif()
+        cmake_path(ABSOLUTE_PATH DOXYGEN_USE_MDFILE_AS_MAINPAGE OUTPUT_VARIABLE DOXYGEN_USE_MDFILE_AS_MAINPAGE)
         
         doxygen_add_docs(vgi_docs
-            "src/lib/vgi"
+            "src/lib/vgi" ${DOXYGEN_USE_MDFILE_AS_MAINPAGE}
             ALL  # does not seem to work
             COMMENT "Generate HTML documentation"
         )
