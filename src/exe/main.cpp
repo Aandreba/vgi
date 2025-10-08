@@ -16,7 +16,21 @@ int run() {
         vgi::log("{}", device.name());
     }
 
-    std::this_thread::sleep_for(5s);
+    while (true) {
+        SDL_Event event;
+        // while (SDL_PollEvent(&event)) {
+        while (SDL_WaitEvent(&event)) {
+            switch (event.type) {
+                case SDL_EVENT_QUIT:
+                    return 0;
+                default:
+                    break;
+            }
+        }
+
+        // TODO Render loop
+    }
+
     return 0;
 }
 

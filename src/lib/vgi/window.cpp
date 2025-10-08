@@ -145,13 +145,14 @@ namespace vgi {
                     return this->logical.getSwapchainImagesKHR(this->swapchain, count, ptr);
                 });
 
-        unique_span<vk::ImageView> new_swapchain_views =
-                make_unique_span_with(new_swapchain_images.size(), [&](size_t i) { return 1; });
+        // unique_span<vk::ImageView> new_swapchain_views =
+        //         make_unique_span_with(new_swapchain_images.size(), [&](size_t i) { return 1; });
 
         // If an existing swap chain is re-created, destroy the old swap chain and the ressources
         // owned by the application (image views, images are owned by the swa
         if (this->swapchain) {
-            for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
+            for (vk::ImageView view: std::exchange(this->swapchain_views, {}))
+                this->logical.destroyImageView(view);
             this->logical.destroySwapchainKHR(std::exchange(this->swapchain, nullptr));
         }
     }

@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "defs.hpp"
+#include "math.hpp"
 
 namespace vgi {
     /// A simple host buffer with constant size, usefull as an unresizable 'std::vector'
