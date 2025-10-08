@@ -9,7 +9,7 @@
 using namespace std::literals;
 
 int run() {
-    vgi::window win{u8"Hello world!", 900, 600};
+    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
 
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {

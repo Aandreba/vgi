@@ -88,5 +88,7 @@ namespace vgi {
         device(vk::PhysicalDevice handle);
         std::optional<uint32_t> select_queue_family(vk::SurfaceKHR surface,
                                                     vk::SurfaceFormatKHR format, bool vsync) const;
+
+        friend struct window;
     };
 }  // namespace vgi

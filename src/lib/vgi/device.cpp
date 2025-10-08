@@ -22,14 +22,6 @@ namespace vgi {
     std::optional<uint32_t> device::select_queue_family(vk::SurfaceKHR surface,
                                                         vk::SurfaceFormatKHR format,
                                                         bool vsync) const {
-        // Check if device supports our Vulkan version
-        if (this->props().apiVersion < VK_API_VERSION_1_3) {
-            log_warn("Device '{}' only supports up to Vulkan {}.{}", this->name(),
-                     VK_API_VERSION_MAJOR(this->props().apiVersion),
-                     VK_API_VERSION_MINOR(this->props().apiVersion));
-            return std::nullopt;
-        }
-
         // Check if the desired format is supported by this device-surface combination
         auto formats = this->handle.getSurfaceFormatsKHR(surface);
         if (std::ranges::find(formats, format) == formats.end()) {
@@ -75,7 +67,13 @@ namespace vgi {
             std::vector<vk::PhysicalDevice> logicals = instance.enumeratePhysicalDevices();
             all_devices.reserve(logicals.size());
             for (vk::PhysicalDevice logical: logicals) {
-                all_devices.push_back(device{logical});
+                device& info = all_devices.emplace_back(device{logical});
+                if (info.props().apiVersion < VK_API_VERSION_1_3) {
+                    log_warn("Device '{}' only supports up to Vulkan {}.{}", info.name(),
+                             VK_API_VERSION_MAJOR(info.props().apiVersion),
+                             VK_API_VERSION_MINOR(info.props().apiVersion));
+                    all_devices.pop_back();
+                }
             }
             all_devices.shrink_to_fit();
         }

@@ -16,6 +16,33 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #endif
 
 extern "C" {
+void SDLCALL sdl_log_callback(void *userdata, int category, SDL_LogPriority priority,
+                              const char *message) {
+    vgi::log_level level;
+    switch (priority) {
+        case SDL_LOG_PRIORITY_CRITICAL:
+        case SDL_LOG_PRIORITY_ERROR:
+            level = vgi::log_level::error;
+            break;
+        case SDL_LOG_PRIORITY_WARN:
+            level = vgi::log_level::warn;
+            break;
+        case SDL_LOG_PRIORITY_INFO:
+            level = vgi::log_level::info;
+            break;
+        case SDL_LOG_PRIORITY_DEBUG:
+            level = vgi::log_level::debug;
+            break;
+        case SDL_LOG_PRIORITY_VERBOSE:
+        case SDL_LOG_PRIORITY_TRACE:
+        default:
+            level = vgi::log_level::verbose;
+            break;
+    }
+
+    vgi::log_msg(level, "{}", message);
+}
+
 VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
         vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT types,
         const vk::DebugUtilsMessengerCallbackDataEXT *data, void *userdata) {
@@ -214,6 +241,8 @@ namespace vgi {
         // Initialize SDL
         sdl::tri(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD));
         try {
+            // Setup SDL log functions
+            SDL_SetLogOutputFunction(sdl_log_callback, nullptr);
             // Setup the global locale
             setup_locale();
             // Load the Vulkan driver
