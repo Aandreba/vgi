@@ -26,6 +26,7 @@ endif()
 
 # Define compile options
 option(VGI_SHARED "Utilitza la versió dinamica de la llibreria per defecte" OFF)
+option(VGI_DOXYGEN "Generar documentacio Doxygen" OFF)
 
 # Define library options
 set(GLM_ENABLE_CXX_20 ON)
@@ -147,26 +148,31 @@ if (WIN32 AND $<TARGET_RUNTIME_DLLS:vgi_exe>)
 endif()
 
 # Generate Doxygen docs (if enabled)
-option(VGI_DOXYGEN "Generar documentacio Doxygen" ON)
-if (VGI_DOXYGEN)
-    find_package(Doxygen)
-    if(Doxygen_FOUND)
-        set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
-        set(DOXYGEN_GENERATE_HTML          YES)
-        set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
-        set(DOXYGEN_BUILTIN_STL_SUPPORT    YES)
-        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")
-        if(GRAPHVIZ_FOUND)
-            set(DOXYGEN_HAVE_DOT           YES)
-        endif()
-        cmake_path(ABSOLUTE_PATH DOXYGEN_USE_MDFILE_AS_MAINPAGE OUTPUT_VARIABLE DOXYGEN_USE_MDFILE_AS_MAINPAGE)
-        
-        doxygen_add_docs(vgi_docs
-            "src/lib/vgi" ${DOXYGEN_USE_MDFILE_AS_MAINPAGE}
-            ALL  # does not seem to work
-            COMMENT "Generate HTML documentation"
-        )
-    else()
-        message(WARNING "Doxygen not found. Documentation will not be generated")
+find_package(Doxygen)
+if(Doxygen_FOUND)
+    set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
+    set(DOXYGEN_GENERATE_HTML          YES)
+    set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
+    set(DOXYGEN_BUILTIN_STL_SUPPORT    YES)
+    set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")
+    if(GRAPHVIZ_FOUND)
+        set(DOXYGEN_HAVE_DOT           YES)
     endif()
+    cmake_path(ABSOLUTE_PATH DOXYGEN_USE_MDFILE_AS_MAINPAGE OUTPUT_VARIABLE DOXYGEN_USE_MDFILE_AS_MAINPAGE)
+    
+    doxygen_add_docs(vgi_docs
+        "src/lib/vgi" ${DOXYGEN_USE_MDFILE_AS_MAINPAGE}
+        COMMENT "Generate HTML documentation"
+    )
+    
+    # Only build the docs when requested, no need to waste time
+    if (VGI_DOXYGEN)
+        if (VGI_SHARED)
+            add_dependencies(vgi_shared vgi_docs)
+        else()
+            add_dependencies(vgi_static vgi_docs)
+        endif()
+    endif()
+elseif(VGI_DOXYGEN)
+    message(WARNING "Doxygen not found. Documentation will not be generated")
 endif()

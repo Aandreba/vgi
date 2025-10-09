@@ -245,8 +245,8 @@ namespace vgi {
         vkn::allocateCommandBuffers(this->logical,
                                     vk::CommandBufferAllocateInfo{
                                             .commandPool = this->cmdpool,
-                                            .commandBufferCount = max_frames_in_flight,
                                             .level = vk::CommandBufferLevel::ePrimary,
+                                            .commandBufferCount = max_frames_in_flight,
                                     },
                                     this->cmdbufs);
 
@@ -257,6 +257,16 @@ namespace vgi {
             this->image_available[i] = this->logical.createSemaphore({});
             this->render_complete[i] = this->logical.createSemaphore({});
         }
+    }
+
+    std::pair<vk::Buffer, VmaAllocation VGI_RESTRICT> window::create_buffer(
+            const vk::BufferCreateInfo& create_info,
+            const VmaAllocationCreateInfo& alloc_create_info, VmaAllocationInfo* alloc_info) const {
+        std::pair<VkBuffer, VmaAllocation> result;
+        VMA_CHECK(vmaCreateBuffer(this->allocator,
+                                  static_cast<const VkBufferCreateInfo*>(create_info),
+                                  &alloc_create_info, &result.first, &result.second, alloc_info));
+        return result;
     }
 
     window::~window() noexcept {

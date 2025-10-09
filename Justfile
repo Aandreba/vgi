@@ -6,26 +6,26 @@ set dotenv-load
 
 DOCS_URL := "file://" + justfile_directory() + "/build/docs/index.html"
 
-build build_type="Debug":
+build build_type="Debug" docs="OFF" *ARGS="":
     cmake -E make_directory build
-    cmake -DCMAKE_BUILD_TYPE={{build_type}} -S . -B build
+    cmake -DCMAKE_BUILD_TYPE={{build_type}} -DVGI_DOXYGEN={{docs}} {{ARGS}} -S . -B build
     cmake --build build -j {{num_cpus()}}
 
-clean build_type="Debug":
-    cmake --build build -t clean
-
 [unix]
-run build_type="Debug" *ARGS="": (build build_type)
+run build_type="Debug" *ARGS="": (build build_type "OFF")
     ./build/vgi_exe {{ARGS}}
 
 [windows]
-run build_type="Debug" *ARGS="": (build build_type)
+run build_type="Debug" *ARGS="": (build build_type "OFF")
     Start-Process -NoNewWindow -FilePath "build\{{build_type}}\vgi_exe.exe" {{ARGS}}
 
 [windows]
-docs: build
+docs: (build "Debug" "ON")
     Start-Process "{{DOCS_URL}}"
 
 [unix]
-docs: build
+docs: (build "Debug" "ON")
     open "{{DOCS_URL}}"
+
+clean:
+    cmake --build build -t clean

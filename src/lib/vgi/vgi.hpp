@@ -62,6 +62,7 @@ namespace vgi {
             return buf;
         }
 
+        /// @brief A
         VGI_FORCEINLINE void allocateCommandBuffers(vk::Device device,
                                                     const vk::CommandBufferAllocateInfo& alloc_info,
                                                     vk::CommandBuffer* cmdbufs) {

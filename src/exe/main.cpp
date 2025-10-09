@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vgi/buffer/vertex.hpp>
 #include <vgi/device.hpp>
 #include <vgi/log.hpp>
 #include <vgi/vgi.hpp>
@@ -9,12 +10,13 @@
 using namespace std::literals;
 
 int run() {
-    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
-
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
         vgi::log("{}", device.name());
     }
+
+    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
+    vgi::vertex_buffer_guard vbo{win, 3};
 
     while (true) {
         SDL_Event event;

@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <cstdint>
+#include <tuple>
 #include <utility>
 
 #include "device.hpp"
@@ -75,6 +76,19 @@ namespace vgi {
         constexpr operator vk::Device() const noexcept { return this->logical; }
         /// @brief Casts `window` to it's underlying `VkDevice`
         constexpr operator VkDevice() const noexcept { return this->logical; }
+        /// @brief Casts `window` to it's underlying `VmaAllocator`
+        constexpr operator VmaAllocator() const noexcept { return this->allocator; }
+
+        /// @brief Creates a new buffer
+        /// @param create_info Creation information for the `vk::Buffer`
+        /// @param alloc_create_info Creation information fo the `VmaAllocation`
+        /// @param alloc_info Information about allocated memory. It can be later fetched using
+        /// function `vmaGetAllocationInfo`.
+        /// @return The created `vk::Buffer` and it's associated `VmaAllocation`
+        std::pair<vk::Buffer, VmaAllocation VGI_RESTRICT> create_buffer(
+                const vk::BufferCreateInfo& create_info,
+                const VmaAllocationCreateInfo& alloc_create_info,
+                VmaAllocationInfo* alloc_info = nullptr) const;
 
         ~window() noexcept;
 
