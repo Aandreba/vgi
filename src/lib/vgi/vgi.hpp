@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <stdexcept>
 
+#include "defs.hpp"
 #include "memory.hpp"
 #include "vulkan.hpp"
 
@@ -24,7 +25,7 @@ namespace vgi {
         /// @brief Helper function that parses an SDL result
         /// @param res The result of an SDL function
         /// @throws `sdl_error` if `res == false`
-        inline void tri(bool res) {
+        constexpr VGI_FORCEINLINE void tri(bool res) {
             if (!res) [[unlikely]]
                 throw sdl_error{};
         }
@@ -33,7 +34,7 @@ namespace vgi {
         /// @param res The result of an SDL function
         /// @throws `sdl_error` if `res == nullptr`
         template<class T>
-        inline T* tri(T* res) {
+        constexpr VGI_FORCEINLINE T* tri(T* res) {
             if (!res) [[unlikely]]
                 throw sdl_error{};
             return res;

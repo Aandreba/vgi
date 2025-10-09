@@ -32,7 +32,7 @@ namespace vgi {
 
     static vk::Device create_logical_device(const device& physical, uint32_t queue_family) {
         std::vector<std::string> available_exts = enumerate_device_exts(physical);
-        std::vector<const char*> extensions{{VK_KHR_SWAPCHAIN_EXTENSION_NAME}};
+        std::vector<const char*> extensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 
         // Check that all enabled extensions are available
         for (const char* ext: extensions) {
@@ -142,19 +142,40 @@ namespace vgi {
 
         unique_span<vk::Image> new_swapchain_images =
                 vkn::enumerate<vk::Image>([&](uint32_t* count, vk::Image* ptr) {
-                    return this->logical.getSwapchainImagesKHR(this->swapchain, count, ptr);
+                    return this->logical.getSwapchainImagesKHR(new_swapchain.get(), count, ptr);
                 });
 
-        // unique_span<vk::ImageView> new_swapchain_views =
-        //         make_unique_span_with(new_swapchain_images.size(), [&](size_t i) { return 1; });
+        unique_span<vk::ImageView> new_swapchain_views = make_unique_span_with_destruct(
+                new_swapchain_images.size(),
+                [&](size_t i) {
+                    return logical.createImageView(vk::ImageViewCreateInfo{
+                            .image = new_swapchain_images[i],
+                            .viewType = vk::ImageViewType::e2D,
+                            .format = swapchain_format.format,
+                            .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
+                                           vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
+                            .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                 .baseMipLevel = 0,
+                                                 .levelCount = 1,
+                                                 .baseArrayLayer = 0,
+                                                 .layerCount = 1},
+                    });
+                },
+                [&](vk::ImageView&& view) noexcept { logical.destroyImageView(view); });
 
         // If an existing swap chain is re-created, destroy the old swap chain and the ressources
         // owned by the application (image views, images are owned by the swa
         if (this->swapchain) {
-            for (vk::ImageView view: std::exchange(this->swapchain_views, {}))
+            for (vk::ImageView view:
+                 std::exchange(this->swapchain_views, std::move(new_swapchain_views)))
                 this->logical.destroyImageView(view);
-            this->logical.destroySwapchainKHR(std::exchange(this->swapchain, nullptr));
+            this->logical.destroySwapchainKHR(
+                    std::exchange(this->swapchain, new_swapchain.release()));
+        } else {
+            this->swapchain_views = std::move(new_swapchain_views);
+            this->swapchain = new_swapchain.release();
         }
+        this->swapchain_images = std::move(new_swapchain_images);
     }
 
     window::window(const device& device, const char8_t* title, int width, int height,
@@ -184,6 +205,13 @@ namespace vgi {
                 .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                 .queueFamilyIndex = queue_family.value(),
         });
+
+        int pixel_w, pixel_h;
+        sdl::tri(SDL_GetWindowSizeInPixels(this->handle, &pixel_w, &pixel_h));
+        VGI_ASSERT(pixel_w >= 0 && pixel_h >= 0);
+        uint32_t pixel_width = pixel_w;
+        uint32_t pixel_height = pixel_h;
+        this->create_swapchain(pixel_width, pixel_height, vsync, hdr10);
     }
 
     window::~window() noexcept {
@@ -192,6 +220,7 @@ namespace vgi {
             // finish everything it's working on.
             this->logical.waitIdle();
             if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
+            for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
             if (this->swapchain) this->logical.destroySwapchainKHR(this->swapchain);
             this->logical.destroy();
         }

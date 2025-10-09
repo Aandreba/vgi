@@ -30,8 +30,6 @@ int run() {
 
         // TODO Render loop
     }
-
-    return 0;
 }
 
 static void show_error_box(const char* msg) noexcept {

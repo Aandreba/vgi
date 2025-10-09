@@ -208,6 +208,13 @@ namespace vgi {
         return unique_span<T>{ptr, n};
     }
 
+    /// @brief Creates a `unique_span` by building it up to `n` element.
+    /// @tparam R Function return type
+    /// @tparam F Function type
+    /// @tparam T Element type
+    /// @param n Number of elements to create
+    /// @param f Constructor function
+    /// @return The container with the generated elements
     template<class R, class F, class T = R>
         requires(std::is_invocable_r_v<R, const F&, size_t> && std::convertible_to<R, T> &&
                  std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
@@ -221,8 +228,7 @@ namespace vgi {
         size_t i = 0;
         try {
             for (; i < n; ++i) {
-                std::construct_at(std::addressof(
-                        data[i], static_cast<T>(std::invoke<const F&, size_t>(f, i))));
+                std::construct_at(std::addressof(data[i]), static_cast<T>(f(i)));
             }
         } catch (...) {
             std::destroy_n(data, i);
@@ -233,12 +239,73 @@ namespace vgi {
         return unique_span<R>{data, n};
     }
 
+    /// @brief Creates a `unique_span` by building it up to `n` element.
+    /// @tparam R Function return type
+    /// @tparam F Function type
+    /// @tparam T Element type
+    /// @tparam D Destructor function type
+    /// @param n Number of elements to create
+    /// @param f Constructor function
+    /// @param d Destructor function
+    /// @return The container with the generated elements
+    template<class R, class F, class T = R, class D>
+        requires(std::is_invocable_r_v<R, const F&, size_t> &&
+                 std::is_nothrow_invocable_r_v<void, const D&, T &&> && std::convertible_to<R, T> &&
+                 std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
+    inline unique_span<T> make_unique_span_with_destruct_r(size_t n, const F& f, const D& d) {
+        std::optional<size_t> byte_size = math::check_mul(n, sizeof(T));
+        if (!byte_size) throw std::bad_alloc{};
+        constexpr std::align_val_t alignment = static_cast<std::align_val_t>(alignof(T));
+        T* VGI_RESTRICT data = static_cast<T*>(::operator new(byte_size.value(), alignment));
+        VGI_ASSERT(data != nullptr);
+
+        size_t i = 0;
+        try {
+            for (; i < n; ++i) {
+                std::construct_at(std::addressof(data[i]), static_cast<T>(f(i)));
+            }
+        } catch (...) {
+            for (size_t j = 0; j < i; ++j) {
+                d(std::move(data[j]));
+                std::destroy_at(std::addressof(data[j]));
+            }
+            ::operator delete(data, byte_size.value(), alignment);
+            throw;
+        }
+
+        return unique_span<R>{data, n};
+    }
+
+    /// @brief Creates a `unique_span` by building it up to `n` element.
+    /// @tparam F Function type
+    /// @tparam T Element type
+    /// @param n Number of elements to create
+    /// @param f Constructor function
+    /// @return The container with the generated elements
     template<class F, class T = std::invoke_result_t<const F&, size_t>>
         requires(std::is_invocable_v<const F&, size_t> &&
                  std::convertible_to<std::invoke_result_t<const F&, size_t>, T> &&
                  std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
     inline unique_span<T> make_unique_span_with(size_t n, const F& f) {
         return make_unique_span_with_r<std::invoke_result_t<const F&, size_t>, F, T>(n, f);
+    }
+
+    /// @brief Creates a `unique_span` by building it up to `n` element.
+    /// @tparam F Function type
+    /// @tparam T Element type
+    /// @tparam D Destructor function type
+    /// @param n Number of elements to create
+    /// @param f Constructor function
+    /// @param d Destructor function
+    /// @return The container with the generated elements
+    template<class F, class T = std::invoke_result_t<const F&, size_t>, class D>
+        requires(std::is_invocable_v<const F&, size_t> &&
+                 std::is_nothrow_invocable_r_v<void, const D&, T &&> &&
+                 std::convertible_to<std::invoke_result_t<const F&, size_t>, T> &&
+                 std::is_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
+    inline unique_span<T> make_unique_span_with_destruct(size_t n, const F& f, const D& d) {
+        return make_unique_span_with_destruct_r<std::invoke_result_t<const F&, size_t>, F, T, D>(
+                n, f, d);
     }
 
     /// @brief Specializes the `std::swap` algorithm for `vgi::unique_span`. Swaps the contents of

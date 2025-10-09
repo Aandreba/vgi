@@ -16,10 +16,9 @@ namespace vgi {
         /// @param title The title of the window, in UTF-8 encoding
         /// @param width The width of the window
         /// @param height The height of the window
+        /// @param flags The flags that determine the properties and behaviour of the window
         /// @param vsync Specifies whether we want to limit the frame rate to follow the rate at
         /// which the monitor can present frames
-        /// @param flags The flags that determine the properties and behaviour of the window
-        /// @param vsync Enables/Disables vertical blank synchronization
         /// @param hdr10 Enables/Disables high-definition 10-bit display format
         window(const device& device, const char8_t* title, int width, int height,
                SDL_WindowFlags flags = 0, bool vsync = true, bool hdr10 = false);

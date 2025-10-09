@@ -24,6 +24,9 @@ if(EXISTS ${CMAKE_HOME_DIRECTORY}/.env)
     endforeach()
 endif()
 
+# Define compile options
+option(VGI_SHARED "Utilitza la versió dinamica de la llibreria per defecte" OFF)
+
 # Define library options
 set(GLM_ENABLE_CXX_20 ON)
 set(GLM_ENABLE_FAST_MATH ON)
@@ -53,6 +56,15 @@ add_library(vgi_vma STATIC "src/vma.cpp")
 file(GLOB_RECURSE vgi_lib_sources CONFIGURE_DEPENDS "src/lib/vgi/*.cpp")
 add_library(vgi_static STATIC ${vgi_lib_sources})
 add_library(vgi_shared SHARED ${vgi_lib_sources})
+
+# Don't build the libraries that will not be used, either explicitly or implicitly
+if (VGI_SHARED)
+    add_library(vgi::vgi ALIAS vgi_shared)
+    set_target_properties(vgi_static PROPERTIES EXCLUDE_FROM_ALL)
+else()
+    add_library(vgi::vgi ALIAS vgi_static)
+    set_target_properties(vgi_shared PROPERTIES EXCLUDE_FROM_ALL ON)
+endif()
 
 # Force libraries (and dependants) to use UTF-8 string literals
 target_literal_utf8(vgi_static)
@@ -114,7 +126,7 @@ endif()
 # Create the executable
 file(GLOB_RECURSE vgi_exe_sources CONFIGURE_DEPENDS "src/exe/*.cpp")
 add_executable(vgi_exe ${vgi_exe_sources})
-target_link_libraries(vgi_exe PRIVATE vgi_static)
+target_link_libraries(vgi_exe PRIVATE vgi::vgi)
 
 # Compile the shaders before compiling the executable
 file(GLOB_RECURSE vgi_exe_shaders CONFIGURE_DEPENDS "src/exe/*.vert" "src/exe/*.frag")
@@ -124,14 +136,6 @@ add_shaders(vgi_exe ${vgi_exe_shaders})
 if (WIN32 AND $<TARGET_RUNTIME_DLLS:vgi_exe>)
     add_custom_command(TARGET vgi_exe POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:vgi_exe> $<TARGET_FILE_DIR:vgi_exe>
-        COMMAND_EXPAND_LISTS
-    )
-endif()
-
-# (macOS only) Copy the Vulkan library into SDL's target directory
-if(APPLE AND DEFINED Vulkan_LIBRARY)
-    add_custom_command(TARGET vgi_exe POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy "${Vulkan_LIBRARY}" $<TARGET_FILE_DIR:SDL3::SDL3-shared>
         COMMAND_EXPAND_LISTS
     )
 endif()
