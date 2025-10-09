@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/device.hpp>
 #include <vgi/log.hpp>
@@ -8,6 +9,10 @@
 #include <vgi/window.hpp>
 
 using namespace std::literals;
+
+struct uniform {
+    vgi::std140<glm::mat4> mvp;
+};
 
 int run() {
     vgi::log("Detected devices ({}):", vgi::device::all().size());
@@ -17,6 +22,8 @@ int run() {
 
     vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
     vgi::vertex_buffer_guard vbo{win, 3};
+    vgi::uniform_buffer_guard<uniform> ubo{win};
+    ubo.write(win, uniform{.mvp = glm::mat4(1.0f)});
 
     while (true) {
         SDL_Event event;
