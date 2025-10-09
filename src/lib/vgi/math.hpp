@@ -27,7 +27,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return `std::nullopt` if the operation overflows or underflows, `lhs + rhs` otherwise
     template<integral T>
-    constexpr std::optional<T> check_add(const T& lhs, const T& rhs) noexcept {
+    constexpr std::optional<T> check_add(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         if (!std::is_constant_evaluated()) {
@@ -56,7 +56,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return `std::nullopt` if the operation overflows or underflows, `lhs - rhs` otherwise
     template<integral T>
-    constexpr std::optional<T> check_sub(const T& lhs, const T& rhs) noexcept {
+    constexpr std::optional<T> check_sub(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         if (!std::is_constant_evaluated()) {
@@ -85,7 +85,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return `std::nullopt` if the operation overflows or underflows, `lhs * rhs` otherwise
     template<integral T>
-    constexpr std::optional<T> check_mul(const T& lhs, const T& rhs) noexcept {
+    constexpr std::optional<T> check_mul(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         if (!std::is_constant_evaluated()) {
@@ -128,10 +128,10 @@ namespace vgi::math {
     /// @tparam T integral type
     /// @param lhs integer value
     /// @param rhs integer value
-    /// @return `std::nullopt` if the operation overflows, underflows, or `rhs == 0`. `lhs + rhs`
+    /// @return `std::nullopt` if the operation overflows, underflows, or `rhs == 0`. `lhs / rhs`
     /// otherwise
     template<integral T>
-    constexpr std::optional<T> check_div(const T& lhs, const T& rhs) noexcept {
+    constexpr std::optional<T> check_div(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         if (rhs == 0) [[unlikely]]
@@ -146,6 +146,28 @@ namespace vgi::math {
         return std::make_optional<T>(lhs / rhs);  // always safe (b != 0)
     }
 
+    /// @brief Checked integer remainder.
+    /// @tparam T integral type
+    /// @param lhs integer value
+    /// @param rhs integer value
+    /// @return `std::nullopt` if the operation overflows, underflows, or `rhs == 0`. `lhs % rhs`
+    /// otherwise
+    template<integral T>
+    constexpr std::optional<T> check_rem(T lhs, T rhs) noexcept {
+        using L = std::numeric_limits<T>;
+
+        if (rhs == 0) [[unlikely]]
+            return std::nullopt;  // divide by zero
+
+        if constexpr (signed_integral<T>) {
+            // only overflow case for two's-complement: min / -1
+            if (lhs == L::min() && rhs == static_cast<T>(-1)) [[unlikely]]
+                return std::nullopt;
+        }
+
+        return std::make_optional<T>(lhs % rhs);  // always safe (b != 0)
+    }
+
     /// @brief Checked integer conversion.
     /// @tparam U destination integral type
     /// @tparam T source integral type
@@ -153,7 +175,7 @@ namespace vgi::math {
     /// @return `std::nullopt` if `lhs` doesn't fit inside the bounds of `U`, `static_cast<U>(lhs)`
     /// otherwise
     template<integral U, integral T>
-    constexpr std::optional<U> check_cast(const T& lhs) noexcept {
+    constexpr std::optional<U> check_cast(T lhs) noexcept {
         using LT = std::numeric_limits<T>;
         using LU = std::numeric_limits<U>;
 
@@ -191,7 +213,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return Saturated `lhs + rhs`
     template<integral T>
-    constexpr T sat_add(const T& lhs, const T& rhs) noexcept {
+    constexpr T sat_add(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         std::optional<T> check = check_add<T>(lhs, rhs);
@@ -214,7 +236,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return Saturated `lhs - rhs`
     template<integral T>
-    constexpr T sat_sub(const T& lhs, const T& rhs) noexcept {
+    constexpr T sat_sub(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         std::optional<T> check = check_sub<T>(lhs, rhs);
@@ -237,7 +259,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return Saturated `lhs * rhs`
     template<integral T>
-    constexpr T sat_mul(const T& lhs, const T& rhs) noexcept {
+    constexpr T sat_mul(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         std::optional<T> check = check_mul<T>(lhs, rhs);
@@ -260,7 +282,7 @@ namespace vgi::math {
     /// @param rhs integer value
     /// @return Saturated `lhs / rhs`
     template<integral T>
-    constexpr T sat_div(const T& lhs, const T& rhs) noexcept {
+    constexpr T sat_div(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
         MATHPP_ASSERT(rhs != 0);
@@ -279,7 +301,7 @@ namespace vgi::math {
     /// @return `static_cast<U>(lhs)` if `lhs` fits inside the bounds of `U`, or either the largest
     /// or smallest representable value of type `T`, whichever is closer to the value of `lhs`.
     template<integral U, integral T>
-    constexpr U sat_cast(const T& lhs) noexcept {
+    constexpr U sat_cast(T lhs) noexcept {
         using LT = std::numeric_limits<T>;
         using LU = std::numeric_limits<U>;
 
@@ -310,6 +332,22 @@ namespace vgi::math {
 
         return static_cast<U>(lhs);
     }
+
+    template<unsigned_integral T>
+    constexpr std::optional<T> offset_to_next_multiple_of(T lhs, T rhs) noexcept {
+        std::optional<T> r = check_rem<T>(lhs, rhs);
+        if (!r) return std::nullopt;
+        return std::make_optional<T>(r.value() == 0 ? 0 : (rhs - r.value()));
+    }
+
+    template<unsigned_integral T>
+    constexpr std::optional<T> next_multiple_of(T lhs, T rhs) noexcept {
+        std::optional<T> r = check_rem<T>(lhs, rhs);
+        if (!r) return std::nullopt;
+        if (r.value() == 0) return std::make_optional<T>(lhs);
+        return check_add<T>(lhs, rhs - r.value());
+    }
+
 
     namespace chrono {
         template<class T>

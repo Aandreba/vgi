@@ -27,7 +27,7 @@ namespace vgi {
         std::vector<std::string> result;
         result.reserve(props.size());
         for (const vk::ExtensionProperties& prop: props) {
-            result.emplace_back(prop.extensionName);
+            result.push_back(prop.extensionName);
         }
         return result;
     }
@@ -264,7 +264,7 @@ namespace vgi {
             const VmaAllocationCreateInfo& alloc_create_info, VmaAllocationInfo* alloc_info) const {
         std::pair<VkBuffer, VmaAllocation> result;
         VMA_CHECK(vmaCreateBuffer(this->allocator,
-                                  static_cast<const VkBufferCreateInfo*>(create_info),
+                                  reinterpret_cast<const VkBufferCreateInfo*>(&create_info),
                                   &alloc_create_info, &result.first, &result.second, alloc_info));
         return result;
     }

@@ -71,11 +71,11 @@ namespace vgi {
         /// @brief Casts `window` to it's underlying `vk::SurfaceKHR`
         constexpr operator vk::SurfaceKHR() const noexcept { return this->surface; }
         /// @brief Casts `window` to it's underlying `VkSurfaceKHR`
-        constexpr operator VkSurfaceKHR() const noexcept { return this->surface; }
+        inline operator VkSurfaceKHR() const noexcept { return this->surface; }
         /// @brief Casts `window` to it's underlying `vk::Device`
         constexpr operator vk::Device() const noexcept { return this->logical; }
         /// @brief Casts `window` to it's underlying `VkDevice`
-        constexpr operator VkDevice() const noexcept { return this->logical; }
+        inline operator VkDevice() const noexcept { return this->logical; }
         /// @brief Casts `window` to it's underlying `VmaAllocator`
         constexpr operator VmaAllocator() const noexcept { return this->allocator; }
 

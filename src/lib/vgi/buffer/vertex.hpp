@@ -55,7 +55,7 @@ namespace vgi {
         /// @brief Casts to the underlying `vk::Buffer`
         constexpr operator vk::Buffer() const noexcept { return this->buffer; }
         /// @brief Casts to the underlying `VkBuffer`
-        constexpr operator VkBuffer() const noexcept { return this->buffer; }
+        inline operator VkBuffer() const noexcept { return this->buffer; }
         /// @brief Casts to the underlying `VmaAllocation`
         constexpr operator VmaAllocation() const noexcept { return this->allocation; }
 

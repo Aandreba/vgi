@@ -49,8 +49,7 @@ namespace vgi {
             std::align_val_t alignment = static_cast<std::align_val_t>(alignof(T));
             if (size == 0) return;
 
-            pointer VGI_RESTRICT data =
-                    static_cast<pointer VGI_RESTRICT>(::operator new(byte_size, alignment));
+            T* VGI_RESTRICT data = static_cast<pointer>(::operator new(byte_size, alignment));
 
             try {
                 std::uninitialized_move(other.begin(), other.end(), data);
