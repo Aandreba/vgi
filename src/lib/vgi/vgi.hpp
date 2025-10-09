@@ -61,5 +61,12 @@ namespace vgi {
             VGI_ASSERT(res == vk::Result::eSuccess);
             return buf;
         }
+
+        VGI_FORCEINLINE void allocateCommandBuffers(vk::Device device,
+                                                    const vk::CommandBufferAllocateInfo& alloc_info,
+                                                    vk::CommandBuffer* cmdbufs) {
+            vk::detail::resultCheck(device.allocateCommandBuffers(&alloc_info, cmdbufs),
+                                    VULKAN_HPP_NAMESPACE_STRING "::Device::allocateCommandBuffers");
+        }
     }  // namespace vkn
 }  // namespace vgi

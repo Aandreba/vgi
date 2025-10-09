@@ -98,9 +98,15 @@ target_compile_definitions(vgi_shared PUBLIC ${vgi_definitions})
 # Find Vulkan SDK
 if (DEFINED ENV{VULKAN_SDK})
     set(Vulkan_Include "$ENV{VULKAN_SDK}/include")
-    set(Vulkan_LIBRARY "$ENV{VULKAN_SDK}/lib/libvulkan.dylib")
+    # The Vulkan SDK on Apple devices is actually the MoltenVK library,
+    # a translation layer that transforms Vulkan functions into their equivalent Metal ones. Hence, it's better
+    # to statically link the SDK, because there is no guarantee that the user running the final executable has MoltenVK
+    # installed on their device.
+    # More (and better) information at:
+    # - https://vulkan.lunarg.com/doc/view/latest/mac/getting_started.html
+    # - https://wiki.libsdl.org/SDL3/SDL_Vulkan_LoadLibrary
     if (APPLE)
-        list(APPEND vgi_libraries ${Vulkan_LIBRARY})
+        list(APPEND vgi_libraries "$ENV{VULKAN_SDK}/lib/libvulkan.dylib")
     endif()
     target_include_directories(vgi_vma PUBLIC ${Vulkan_Include})
     target_include_directories(vgi_static PUBLIC ${Vulkan_Include})
@@ -117,7 +123,7 @@ endif()
 target_link_libraries(vgi_static PUBLIC ${vgi_libraries} ${vgi_static_libraries})
 target_link_libraries(vgi_shared PUBLIC ${vgi_libraries} ${vgi_shared_libraries})
 
-# (Windows only) Enable preprocessor conformance mode
+# (Windows) Enable preprocessor conformance mode
 if (MSVC)
     target_compile_options(vgi_static PUBLIC /Zc:preprocessor)
     target_compile_options(vgi_shared PUBLIC /Zc:preprocessor)
@@ -132,7 +138,7 @@ target_link_libraries(vgi_exe PRIVATE vgi::vgi)
 file(GLOB_RECURSE vgi_exe_shaders CONFIGURE_DEPENDS "src/exe/*.vert" "src/exe/*.frag")
 add_shaders(vgi_exe ${vgi_exe_shaders})
 
-# (Windows only) Copy shared libraries into executable's directory
+# (Windows) Copy shared libraries into executable's directory
 if (WIN32 AND $<TARGET_RUNTIME_DLLS:vgi_exe>)
     add_custom_command(TARGET vgi_exe POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:vgi_exe> $<TARGET_FILE_DIR:vgi_exe>

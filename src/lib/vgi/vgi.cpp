@@ -15,6 +15,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #error "This project requires dynamic Vulkan library"
 #endif
 
+// Log callback functions
 extern "C" {
 void SDLCALL sdl_log_callback(void *userdata, int category, SDL_LogPriority priority,
                               const char *message) {

@@ -68,21 +68,21 @@ namespace vgi {
         });
     }
 
-    void window::create_swapchain(uint32_t& width, uint32_t& height, bool vsync, bool hdr10) {
+    void window::create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10) {
         VGI_ASSERT(this->logical);
         vk::SurfaceCapabilitiesKHR surface_caps = physical->getSurfaceCapabilitiesKHR(surface);
 
-        vk::Extent2D swapchain_extent;
+        vk::Extent2D new_swapchain_extent;
         // If width and height equals the special value 0xFFFFFFFF, the size of the surface will
         // be set by the swapchain
         if (surface_caps.currentExtent.width == UINT32_MAX &&
             surface_caps.currentExtent.height == UINT32_MAX) {
             // If the surface size is undefined, the size is set to the size of the images requested
-            swapchain_extent.width = width;
-            swapchain_extent.height = height;
+            new_swapchain_extent.width = width;
+            new_swapchain_extent.height = height;
         } else {
             // If the surface size is defined, the swap chain size must match
-            swapchain_extent = surface_caps.currentExtent;
+            new_swapchain_extent = surface_caps.currentExtent;
             width = surface_caps.currentExtent.width;
             height = surface_caps.currentExtent.height;
         }
@@ -119,7 +119,7 @@ namespace vgi {
                         .minImageCount = swapchain_image_count,
                         .imageFormat = swapchain_format.format,
                         .imageColorSpace = swapchain_format.colorSpace,
-                        .imageExtent = swapchain_extent,
+                        .imageExtent = new_swapchain_extent,
                         .imageArrayLayers = 1,
                         .imageUsage = vk::ImageUsageFlagBits::eColorAttachment |
                                       (surface_caps.supportedUsageFlags &
@@ -176,6 +176,17 @@ namespace vgi {
             this->swapchain = new_swapchain.release();
         }
         this->swapchain_images = std::move(new_swapchain_images);
+        this->swapchain_extent = new_swapchain_extent;
+    }
+
+    void window::create_swapchain(bool vsync, bool hdr10) {
+        VGI_ASSERT(this->handle);
+        int w, h;
+        sdl::tri(SDL_GetWindowSizeInPixels(this->handle, &w, &h));
+        std::optional<uint32_t> width = math::check_cast<uint32_t>(w);
+        std::optional<uint32_t> height = math::check_cast<uint32_t>(h);
+        if (!w || !h) throw std::runtime_error{"invalid window size"};
+        return create_swapchain(width.value(), height.value(), vsync, hdr10);
     }
 
     window::window(const device& device, const char8_t* title, int width, int height,
@@ -205,13 +216,24 @@ namespace vgi {
                 .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                 .queueFamilyIndex = queue_family.value(),
         });
+        this->create_swapchain(vsync, hdr10);
 
-        int pixel_w, pixel_h;
-        sdl::tri(SDL_GetWindowSizeInPixels(this->handle, &pixel_w, &pixel_h));
-        VGI_ASSERT(pixel_w >= 0 && pixel_h >= 0);
-        uint32_t pixel_width = pixel_w;
-        uint32_t pixel_height = pixel_h;
-        this->create_swapchain(pixel_width, pixel_height, vsync, hdr10);
+        // Command Buffers
+        vkn::allocateCommandBuffers(this->logical,
+                                    vk::CommandBufferAllocateInfo{
+                                            .commandPool = this->cmdpool,
+                                            .commandBufferCount = max_frames_in_flight,
+                                            .level = vk::CommandBufferLevel::ePrimary,
+                                    },
+                                    this->cmdbufs);
+
+        // Synchronization objects
+        for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+            this->in_flight[i] = this->logical.createFence(
+                    vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
+            this->image_available[i] = this->logical.createSemaphore({});
+            this->render_complete[i] = this->logical.createSemaphore({});
+        }
     }
 
     window::~window() noexcept {
@@ -219,8 +241,16 @@ namespace vgi {
             // We cannot destroy stuff being used by the device, so we must first wait for it to
             // finish everything it's working on.
             this->logical.waitIdle();
-            if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
+
             for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
+            this->logical.freeCommandBuffers(this->cmdpool, this->cmdbufs);
+            for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+                this->logical.destroyFence(this->in_flight[i]);
+                this->logical.destroySemaphore(this->image_available[i]);
+                this->logical.destroySemaphore(this->render_complete[i]);
+            }
+
+            if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
             if (this->swapchain) this->logical.destroySwapchainKHR(this->swapchain);
             this->logical.destroy();
         }

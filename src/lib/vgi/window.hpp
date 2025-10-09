@@ -11,6 +11,16 @@
 namespace vgi {
     /// @brief Handle to a presentable window
     struct window {
+        /// @brief Maximum number of frames that can waiting to be presented at the same time.
+#ifdef VGI_MAX_FRAMES_IN_FLIGHT
+#if VGI_MAX_FRAMES_IN_FLIGHT <= 0
+#error "Max number of frames in flight must be a positive integer greater than zero"
+#endif
+        constexpr static inline const uint32_t max_frames_in_flight = VGI_MAX_FRAMES_IN_FLIGHT;
+#else
+        constexpr static inline const uint32_t max_frames_in_flight = 2;
+#endif
+
         /// @brief Create a window with the specified properties
         /// @param device Device to be used for hardware acceleration
         /// @param title The title of the window, in UTF-8 encoding
@@ -76,12 +86,18 @@ namespace vgi {
         vk::Queue queue;
         vk::CommandPool cmdpool;
         vk::SwapchainKHR swapchain;
+        vk::Extent2D swapchain_extent;
         unique_span<vk::Image> swapchain_images;
         unique_span<vk::ImageView> swapchain_views;
+        vk::CommandBuffer cmdbufs[max_frames_in_flight];
+        vk::Fence in_flight[max_frames_in_flight];
+        vk::Semaphore image_available[max_frames_in_flight];
+        vk::Semaphore render_complete[max_frames_in_flight];
         bool has_mailbox;
         bool has_hdr10;
 
-        void create_swapchain(uint32_t& width, uint32_t& height, bool vsync, bool hdr10);
+        void create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10);
+        void create_swapchain(bool vsync, bool hdr10);
     };
 
 }  // namespace vgi
