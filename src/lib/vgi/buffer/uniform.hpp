@@ -16,6 +16,7 @@ namespace vgi {
     template<class T>
     concept uniform = std::is_trivially_copyable_v<T> && std::is_trivially_destructible_v<T>;
 
+    /// @brief A buffer used to store uniform objects
     template<uniform T>
     struct uniform_buffer {
         /// @brief Creates a new uniform buffer
@@ -120,6 +121,7 @@ namespace vgi {
     template<uniform T>
     using uniform_buffer_guard = resource_guard<uniform_buffer<T>>;
 
+    /// @brief Helper class to properly align the values of a uniform buffer object.
     /// @details Vulkan uniform buffers follow the [`std140` memory
     /// layout](https://ptgmedia.pearsoncmg.com/images/9780321552624/downloads/0321552628_AppL.pdf),
     /// which has some weird alignment rules. To help with programebility, this struct can be used

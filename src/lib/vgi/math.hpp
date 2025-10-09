@@ -333,6 +333,11 @@ namespace vgi::math {
         return static_cast<U>(lhs);
     }
 
+    /// @brief Calculates the distance to the next multiple of `rhs`
+    /// @tparam T Integer type
+    /// @param lhs Integer value
+    /// @param rhs Integer value
+    /// @return Distance to the next multiple of `rhs`
     template<unsigned_integral T>
     constexpr std::optional<T> offset_to_next_multiple_of(T lhs, T rhs) noexcept {
         std::optional<T> r = check_rem<T>(lhs, rhs);
@@ -340,6 +345,11 @@ namespace vgi::math {
         return std::make_optional<T>(r.value() == 0 ? 0 : (rhs - r.value()));
     }
 
+    /// @brief Calculates the next multiple of `rhs`
+    /// @tparam T Integer type
+    /// @param lhs Integer value
+    /// @param rhs Integer value
+    /// @return From `lhs`, the next multiple of `rhs`
     template<unsigned_integral T>
     constexpr std::optional<T> next_multiple_of(T lhs, T rhs) noexcept {
         std::optional<T> r = check_rem<T>(lhs, rhs);
@@ -347,7 +357,6 @@ namespace vgi::math {
         if (r.value() == 0) return std::make_optional<T>(lhs);
         return check_add<T>(lhs, rhs - r.value());
     }
-
 
     namespace chrono {
         template<class T>

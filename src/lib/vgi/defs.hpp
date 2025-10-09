@@ -58,15 +58,16 @@
 #endif
 
 namespace vgi {
+    //! @cond Doxygen_Suppress
     template<class T, class A, class... Args>
     struct is_same_as_any : is_same_as_any<T, Args...> {};
     template<class T, std::same_as<T> A, class... Args>
     struct is_same_as_any<T, A, Args...> : std::true_type {};
     template<class T, class A>
     struct is_same_as_any<T, A> : std::bool_constant<std::same_as<T, A>> {};
-
     template<class T, class A, class... Args>
     constexpr inline const bool is_same_as_any_v = is_same_as_any<T, A, Args...>::value;
     template<class T, class A, class... Args>
     concept same_as_any = is_same_as_any_v<T, A, Args...>;
+    //! @endcond
 }  // namespace vgi
