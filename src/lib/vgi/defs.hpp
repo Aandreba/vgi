@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#ifndef VGI_HAS_BUILTI
+#ifndef VGI_HAS_BUILTIN
 /// @brief Checks whether the compiler has support for the specified builtin.
 #ifdef __has_builtin
 #define VGI_HAS_BUILTIN(x) __has_builtin(x)

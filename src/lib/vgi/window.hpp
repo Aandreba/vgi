@@ -83,6 +83,7 @@ namespace vgi {
         vk::SurfaceKHR surface;
         const device& physical;
         vk::Device logical;
+        VmaAllocator VGI_RESTRICT allocator;
         vk::Queue queue;
         vk::CommandPool cmdpool;
         vk::SwapchainKHR swapchain;

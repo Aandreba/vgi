@@ -2,14 +2,13 @@
 
 #include <fstream>
 
-#define DECLARE_READ_FILE(__T)                          \
-    template vgi::unique_span<__T> vgi::read_file<__T>( \
-            const std::filesystem::path::value_type* VGI_RESTRICT)
+#define DECLARE_READ_FILE(__T) \
+    template vgi::unique_span<__T> vgi::read_file<__T>(const std::filesystem::path::value_type*)
 
 namespace vgi {
     template<class T>
         requires(std::is_trivially_copy_constructible_v<T> && std::is_trivially_destructible_v<T>)
-    unique_span<T> read_file(const std::filesystem::path::value_type* VGI_RESTRICT path) {
+    unique_span<T> read_file(const std::filesystem::path::value_type* path) {
         std::ifstream file;
         file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         file.open(path, std::ios_base::in | std::ios_base::binary | std::ios_base::ate);

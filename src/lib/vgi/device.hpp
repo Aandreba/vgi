@@ -68,6 +68,8 @@ namespace vgi {
 
         /// @brief Casts the device into it's underlying `vk::PhysicalDevice`
         inline operator vk::PhysicalDevice() const noexcept { return this->handle; }
+        /// @brief Casts the device into it's underlying `VkPhysicalDevice`
+        inline operator VkPhysicalDevice() const noexcept { return this->handle; }
         //! @cond Doxygen_Suppress
         inline const vk::PhysicalDevice* operator->() const noexcept { return &this->handle; }
         inline vk::PhysicalDevice* operator->() noexcept { return &this->handle; }

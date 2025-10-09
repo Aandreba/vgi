@@ -7,6 +7,8 @@
 #include "math.hpp"
 #include "vgi.hpp"
 
+#define VMA_CHECK(expr) ::vk::detail::resultCheck(static_cast<::vk::Result>(expr), __FUNCTION__)
+
 // Make sure we only setup the window to use Vulkan.
 constexpr static inline const SDL_WindowFlags EXCLUDED_FLAGS = SDL_WINDOW_OPENGL | SDL_WINDOW_METAL;
 constexpr static inline const SDL_WindowFlags REQUIRED_FLAGS = SDL_WINDOW_VULKAN;
@@ -66,6 +68,26 @@ namespace vgi {
                 .enabledExtensionCount = extension_count.value(),
                 .ppEnabledExtensionNames = extensions.data(),
         });
+    }
+
+    static VmaAllocator create_allocator(const device& physical, vk::Device logical) {
+        VmaVulkanFunctions vk_fns{
+                .vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr,
+                .vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr,
+        };
+
+        VmaAllocatorCreateInfo create_info{
+                .physicalDevice = physical,
+                .device = logical,
+                .pVulkanFunctions = &vk_fns,
+                .instance = instance,
+                .vulkanApiVersion = VK_API_VERSION_1_3,
+        };
+
+        VmaAllocator allocator = VK_NULL_HANDLE;
+        VMA_CHECK(vmaCreateAllocator(&create_info, &allocator));
+        VGI_ASSERT(allocator != VK_NULL_HANDLE);
+        return allocator;
     }
 
     void window::create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10) {
@@ -211,6 +233,7 @@ namespace vgi {
                                                 std::views::single(HDR10_FORMAT));
 
         this->logical = create_logical_device(device, queue_family.value());
+        this->allocator = create_allocator(device, this->logical);
         this->queue = this->logical.getQueue(queue_family.value(), 0);
         this->cmdpool = this->logical.createCommandPool(vk::CommandPoolCreateInfo{
                 .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
@@ -252,6 +275,7 @@ namespace vgi {
 
             if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
             if (this->swapchain) this->logical.destroySwapchainKHR(this->swapchain);
+            if (this->allocator) vmaDestroyAllocator(this->allocator);
             this->logical.destroy();
         }
 
