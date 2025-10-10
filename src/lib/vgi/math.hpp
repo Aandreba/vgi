@@ -285,7 +285,7 @@ namespace vgi::math {
     constexpr T sat_div(T lhs, T rhs) noexcept {
         using L = std::numeric_limits<T>;
 
-        MATHPP_ASSERT(rhs != 0);
+        VGI_ASSERT(rhs != 0);
         if constexpr (signed_integral<T>) {
             if (lhs == L::min() && rhs == static_cast<T>(-1)) [[unlikely]] {
                 return L::max();

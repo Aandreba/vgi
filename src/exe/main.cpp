@@ -4,11 +4,12 @@
 #include <vgi/buffer/transfer.hpp>
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
+#include <vgi/cmdbuf.hpp>
 #include <vgi/device.hpp>
+#include <vgi/frame.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
 #include <vgi/pipeline.hpp>
-#include <vgi/tray.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
 
@@ -27,11 +28,19 @@ static int run() {
         vgi::log("{}", device.name());
     }
 
-    vgi::transfer_buffer_guard transfer{
-            win, std::initializer_list<vgi::vertex>{
-                         {.origin = {1.0f, 1.0f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
-                         {.origin = {-1.0f, 1.0f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
-                         {.origin = {0.0f, -1.0f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+    // Upload vertex buffer
+    vgi::vertex_buffer_guard vertices{win, 3};
+    {
+        vgi::transfer_buffer_guard transfer{
+                win, std::initializer_list<vgi::vertex>{
+                             {.origin = {1.0f, 1.0f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                             {.origin = {-1.0f, 1.0f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                             {.origin = {0.0f, -1.0f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+
+        vgi::command_buffer cmdbuf{win};
+        cmdbuf->copyBuffer(transfer, vertices, vk::BufferCopy{.size = transfer->size()});
+        std::move(cmdbuf).submit_and_wait();
+    }
 
     vgi::graphics_pipeline_guard pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
@@ -62,6 +71,8 @@ static int run() {
         }
 
         // TODO Render loop
+        vgi::frame frame{win};
+        vgi::log("{} FPS", 1.0f / frame.delta);
     }
 }
 

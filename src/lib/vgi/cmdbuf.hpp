@@ -17,15 +17,28 @@ namespace vgi {
         command_buffer(const command_buffer&) = delete;
         command_buffer& operator=(const command_buffer&) = delete;
 
+        /// @brief Casts to the underlying `vk::CommandBuffer`
         constexpr operator vk::CommandBuffer() const noexcept { return this->cmdbuf; }
+        /// @brief Casts to the underlying `VkCommandBuffer`
         inline operator VkCommandBuffer() const noexcept { return this->cmdbuf; }
+        /// @brief Dereferences the underlying `vk::CommandBuffer`
         constexpr const vk::CommandBuffer* operator->() const noexcept { return &this->cmdbuf; }
+        /// @brief Dereferences the underlying `vk::CommandBuffer`
         constexpr const vk::CommandBuffer& operator*() const noexcept { return this->cmdbuf; }
 
+        /// @brief Submits the command buffer to the device, begining execution of the commands
+        /// @param signal_semaphores List of semaphores to be notified whenever the command buffer
+        /// has completed
         void submit(std::span<const vk::Semaphore> signal_semaphores = {}) &&;
 
+        /// @brief Submits the command buffer to the device, begining execution of the commands and
+        /// waiting until they are completed.
         void submit_and_wait() &&;
 
+        /// @brief Submits the command buffer to the device, begining execution of the commands and
+        /// waiting until they are completed or the timeout is reached.
+        /// @param d Timeout of the wait.
+        /// @return `true` if the command buffer completed before the timeout, `false` otherwise
         template<class rep, class period>
         [[nodiscard]] bool submit_and_wait(const std::chrono::duration<rep, period>& d) && {
             std::chrono::duration<uint64_t, std::nano> timeout;
@@ -34,7 +47,7 @@ namespace vgi {
             } else {
                 timeout = std::chrono::duration_cast<decltype(timeout)>(d);
             }
-            return submit_and_wait<uint64_t, std::nano>(timeout);
+            return std::move(*this).submit_and_wait(timeout);
         }
 
         ~command_buffer();
@@ -45,5 +58,6 @@ namespace vgi {
         vk::Fence fence;
 
         void raw_submit(std::span<const vk::Semaphore> signal_semaphores = {});
+        bool submit_and_wait(const std::chrono::duration<uint64_t, std::nano>& d) &&;
     };
 }  // namespace vgi

@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include <SDL3/SDL_vulkan.h>
+#include <iterator>
 #include <ranges>
 
 #include "log.hpp"
@@ -18,6 +19,14 @@ constexpr static inline const vk::SurfaceFormatKHR SRGB_FORMAT{vk::Format::eB8G8
 // High definition, 10-bit color format.
 constexpr static inline const vk::SurfaceFormatKHR HDR10_FORMAT{vk::Format::eA2B10G10R10UnormPack32,
                                                                 vk::ColorSpaceKHR::eHdr10St2084EXT};
+
+template<std::ranges::input_range R, class T, class Proj = std::identity>
+    requires std::indirect_binary_predicate<
+            std::ranges::equal_to, std::projected<std::ranges::iterator_t<R>, Proj>, const T*>
+constexpr static bool contains(R&& r, const T& value, Proj proj = {}) {
+    const auto end = std::ranges::end(r);
+    return std::ranges::find(std::ranges::begin(r), end, value, std::ref(proj)) == end;
+}
 
 namespace vgi {
     extern vk::Instance instance;
@@ -237,10 +246,9 @@ namespace vgi {
         if (!queue_family) throw std::runtime_error{"No valid queue family found"};
 
         // Properties
-        this->has_mailbox = std::ranges::includes(device->getSurfacePresentModesKHR(this->surface),
-                                                  std::views::single(vk::PresentModeKHR::eMailbox));
-        this->has_hdr10 = std::ranges::includes(device->getSurfaceFormatsKHR(this->surface),
-                                                std::views::single(HDR10_FORMAT));
+        this->has_hdr10 = contains(device->getSurfaceFormatsKHR(this->surface), HDR10_FORMAT);
+        this->has_mailbox = contains(device->getSurfacePresentModesKHR(this->surface),
+                                     vk::PresentModeKHR::eMailbox);
 
         this->logical = create_logical_device(device, queue_family.value());
         this->allocator = create_allocator(device, this->logical);

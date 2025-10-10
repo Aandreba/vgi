@@ -95,9 +95,7 @@ namespace vgi {
         }
     }
 
-    template<>
-    bool command_buffer::submit_and_wait<uint64_t, std::nano>(
-            const std::chrono::duration<uint64_t, std::nano>& d) && {
+    bool command_buffer::submit_and_wait(const std::chrono::duration<uint64_t, std::nano>& d) && {
         this->raw_submit();
         try {
             switch (this->parent->waitForFences(this->fence, vk::True, d.count())) {

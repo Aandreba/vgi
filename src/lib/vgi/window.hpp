@@ -121,6 +121,9 @@ namespace vgi {
         vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];
         vk::Semaphore image_available[MAX_FRAMES_IN_FLIGHT];
         vk::Semaphore render_complete[MAX_FRAMES_IN_FLIGHT];
+        uint32_t current_frame = 0;
+        std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
+        std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
         bool has_mailbox;
         bool has_hdr10;
 
@@ -128,6 +131,7 @@ namespace vgi {
         void create_swapchain(bool vsync, bool hdr10);
 
         friend struct command_buffer;
+        friend struct frame;
     };
 
 }  // namespace vgi

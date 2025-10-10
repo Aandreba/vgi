@@ -65,12 +65,6 @@ namespace vgi {
         /// @param src Values to write
         /// @param byte_offset Buffer offset, in bytes
         /// @return The offset right after the copied memory, in bytes
-        size_t write_at(std::span<const std::byte> src, size_t byte_offset);
-
-        /// @brief Write to the buffer
-        /// @param src Values to write
-        /// @param byte_offset Buffer offset, in bytes
-        /// @return The offset right after the copied memory, in bytes
         template<class T>
             requires(std::is_trivially_copy_constructible_v<T> &&
                      std::is_trivially_destructible_v<T>)
@@ -142,6 +136,8 @@ namespace vgi {
         vk::Buffer buffer;
         VmaAllocation allocation = VK_NULL_HANDLE;
         std::span<std::byte> bytes;
+
+        size_t write_at(std::span<const std::byte> src, size_t byte_offset);
     };
 
     /// @brief A guard that destroys the transfer buffer when dropped.
