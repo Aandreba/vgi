@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vgi/buffer/transfer.hpp>
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/device.hpp>
@@ -20,12 +21,18 @@ struct uniform {
 };
 
 static int run() {
+    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
         vgi::log("{}", device.name());
     }
 
-    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
+    vgi::transfer_buffer_guard transfer{
+            win, std::initializer_list<vgi::vertex>{
+                         {.origin = {1.0f, 1.0f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                         {.origin = {-1.0f, 1.0f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                         {.origin = {0.0f, -1.0f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+
     vgi::graphics_pipeline_guard pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
             vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},

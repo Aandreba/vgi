@@ -84,7 +84,7 @@ namespace vgi {
 
         /// @brief Download uniform objects from the GPU
         /// @param parent Window used to create the buffer
-        /// @param dest Host memory where data will be written
+        /// @param src Host memory where data will be written
         /// @param offset Offset within the buffer where to read copied data
         inline void read(const window& parent, T& src, vk::DeviceSize offset = 0) {
             return read(parent, std::span<T>(std::addressof(src), 1), offset);
@@ -118,6 +118,7 @@ namespace vgi {
         VmaAllocation allocation = VK_NULL_HANDLE;
     };
 
+    /// @brief A guard that destroys the uniform buffer when dropped.
     template<uniform T>
     using uniform_buffer_guard = resource_guard<uniform_buffer<T>>;
 

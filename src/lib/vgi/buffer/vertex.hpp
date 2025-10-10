@@ -20,6 +20,7 @@ namespace vgi {
         /// @brief Normal vector
         glm::vec3 normal;
 
+        //! @cond Doxygen_Supress
         constexpr static vk::VertexInputBindingDescription input_binding(
                 uint32_t binding = 0,
                 vk::VertexInputRate input_rate = vk::VertexInputRate::eVertex) noexcept {
@@ -58,6 +59,7 @@ namespace vgi {
                      }}};
         }
     };
+    //! @endcond
 
     /// @brief A buffer used to store the vertices of a mesh
     struct vertex_buffer {
@@ -97,10 +99,11 @@ namespace vgi {
         /// @brief Casts to the underlying `VmaAllocation`
         constexpr operator VmaAllocation() const noexcept { return this->allocation; }
 
-    protected:
+    private:
         vk::Buffer buffer;
         VmaAllocation allocation = VK_NULL_HANDLE;
     };
 
+    /// @brief A guard that destroys the vertex buffer when dropped.
     using vertex_buffer_guard = resource_guard<vertex_buffer>;
 }  // namespace vgi

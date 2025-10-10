@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <concepts>
+#include <utility>
 
 #ifndef VGI_HAS_BUILTIN
 /// @brief Checks whether the compiler has support for the specified builtin.
@@ -21,6 +22,18 @@
 #define VGI_ASSERT(cond) assert(cond)
 #else
 #define VGI_ASSERT(cond) [[assume(cond)]]
+#endif
+#endif
+
+#ifndef VGI_UNREACHABLE
+/// @brief Invokes detectable illegal behavior when the code is reached
+#ifndef NDEBUG
+#define VGI_UNREACHABLE                          \
+    do {                                         \
+        assert("Unreachable code reached" && 0); \
+    } while (true)
+#else
+#define VGI_UNREACHABLE ::std::unreachable()
 #endif
 #endif
 
@@ -45,6 +58,7 @@
 #define VGI_FORCEINLINE inline
 #endif
 #endif
+
 
 namespace vgi {
     //! @cond Doxygen_Suppress

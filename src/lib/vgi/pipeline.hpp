@@ -67,19 +67,33 @@ namespace vgi {
         vk::DescriptorSet sets[window::MAX_FRAMES_IN_FLIGHT];
     };
 
+    /// @brief Information used to create a graphics pipeline
     struct graphics_pipeline_options {
+        /// @brief Binding where the vertex information is located
         uint32_t vertex_binding = 0;
+        /// @brief The topology of the vertex data
         vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+        /// @brief The triangle rendering mode.
         vk::PolygonMode polygon_mode = vk::PolygonMode::eFill;
+        /// @brief The triangle facing direction used for primitive culling
         vk::CullModeFlagBits cull_mode = vk::CullModeFlagBits::eNone;
+        /// @brief Specifies the front-facing triangle orientation to be used for culling.
         vk::FrontFace fron_face = vk::FrontFace::eCounterClockwise;
+        /// @brief Specifies the comparison operator to use in the depth testing
         vk::CompareOp depth_compare_op = vk::CompareOp::eNever;
+        /// @warning Reserved for future use
         vk::ColorComponentFlags color_blend_mask = {};
+        /// @brief The bindings used throughout the pipeline
         std::span<const vk::DescriptorSetLayoutBinding> bindings = {};
     };
 
     /// @brief A graphics pipeline, mainly used to rasterize images.
     struct graphics_pipeline : public pipeline {
+        /// @brief Creates a graphics pipeline
+        /// @param parent Window that will create the pipeline
+        /// @param vertex Vertex shader
+        /// @param fragment Fragment shader
+        /// @param options Options used to create the pipeline
         graphics_pipeline(const window& parent, const shader_stage& vertex,
                           const shader_stage& fragment,
                           const graphics_pipeline_options& options = {});

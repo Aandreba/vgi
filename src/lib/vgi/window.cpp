@@ -287,6 +287,11 @@ namespace vgi {
             // finish everything it's working on.
             this->logical.waitIdle();
 
+            for (flying_command_buffer& flying: this->flying_cmdbufs) {
+                this->logical.freeCommandBuffers(this->cmdpool, flying.cmdbuf);
+                this->logical.destroyFence(flying.fence);
+            }
+
             for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
             this->logical.freeCommandBuffers(this->cmdpool, this->cmdbufs);
             for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {

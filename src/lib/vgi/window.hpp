@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <cstdint>
+#include <deque>
 #include <tuple>
 #include <utility>
 
@@ -99,6 +100,11 @@ namespace vgi {
         ~window() noexcept;
 
     private:
+        struct flying_command_buffer {
+            vk::CommandBuffer cmdbuf;
+            vk::Fence fence;
+        };
+
         SDL_Window* VGI_RESTRICT handle;
         vk::SurfaceKHR surface;
         const device& physical;
@@ -110,6 +116,7 @@ namespace vgi {
         vk::SwapchainCreateInfoKHR swapchain_info;
         unique_span<vk::Image> swapchain_images;
         unique_span<vk::ImageView> swapchain_views;
+        std::deque<flying_command_buffer> flying_cmdbufs;
         vk::CommandBuffer cmdbufs[MAX_FRAMES_IN_FLIGHT];
         vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];
         vk::Semaphore image_available[MAX_FRAMES_IN_FLIGHT];
@@ -119,6 +126,8 @@ namespace vgi {
 
         void create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10);
         void create_swapchain(bool vsync, bool hdr10);
+
+        friend struct command_buffer;
     };
 
 }  // namespace vgi
