@@ -91,6 +91,7 @@ namespace vgi {
                 const VmaAllocationCreateInfo& alloc_create_info,
                 VmaAllocationInfo* alloc_info = nullptr) const;
 
+        void close() &&;
         ~window() noexcept;
 
     private:

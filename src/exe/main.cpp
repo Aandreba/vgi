@@ -4,7 +4,9 @@
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/device.hpp>
+#include <vgi/fs.hpp>
 #include <vgi/log.hpp>
+#include <vgi/pipeline/shader.hpp>
 #include <vgi/tray.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
@@ -12,19 +14,25 @@
 using namespace std::literals;
 
 struct uniform {
-    vgi::std140<glm::mat4> mvp;
+    vgi::std140<glm::mat4> projection;
+    vgi::std140<glm::mat4> view;
+    vgi::std140<glm::mat4> model;
 };
 
-int run() {
+static vk::GraphicsPipelineCreateInfo pipeline_create_info(const vgi::window& win) {
+    vgi::shader_module vertex{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"};
+    vgi::shader_module fragment{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"};
+
+    return vk::GraphicsPipelineCreateInfo{};
+}
+
+static int run() {
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
         vgi::log("{}", device.name());
     }
 
     vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
-    vgi::vertex_buffer_guard vbo{win, 3};
-    vgi::uniform_buffer_guard<uniform> ubo{win};
-    ubo.write(win, uniform{.mvp = glm::mat4(1.0f)});
 
     while (true) {
         SDL_Event event;

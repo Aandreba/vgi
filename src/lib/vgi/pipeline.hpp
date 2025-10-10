@@ -63,6 +63,8 @@ namespace vgi {
         vk::DescriptorSet sets[window::max_frames_in_flight];
     };
 
+    struct graphics_pipeline_options {};
+
     /// @brief A graphics pipeline, mainly used to rasterize images.
     struct graphics_pipeline : public pipeline {
         /// @brief Creates a new graphics pipeline with the provided bindings
