@@ -14,9 +14,10 @@ function(add_shaders TARGET_NAME)
         set(SHADER_TARGET_NAME "${TARGET_NAME}_${SHADER_NAME}")
         add_custom_target(${SHADER_TARGET_NAME}
                 COMMENT "Compiling shader '${SHADER_NAME}' [${TARGET_NAME}]"
-                COMMAND "${GLSLC_PATH}" "${SHADER_SOURCE}" "-o" "$<TARGET_FILE_DIR:${TARGET_NAME}>/${SHADER_NAME}.spv"
+                COMMAND "${CMAKE_COMMAND}" "-E" "make_directory" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders"
+                COMMAND "${GLSLC_PATH}" "${SHADER_SOURCE}" "-o" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders/${SHADER_NAME}.spv"
                 DEPENDS ${SHADER_SOURCE}
-                BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${SHADER_NAME}.spv"
+                BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_NAME}.spv"
         )
         add_dependencies(${TARGET_NAME} ${SHADER_TARGET_NAME})
     endforeach()

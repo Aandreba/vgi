@@ -62,12 +62,18 @@ namespace vgi {
             return buf;
         }
 
-        /// @brief A
         VGI_FORCEINLINE void allocateCommandBuffers(vk::Device device,
                                                     const vk::CommandBufferAllocateInfo& alloc_info,
                                                     vk::CommandBuffer* cmdbufs) {
             vk::detail::resultCheck(device.allocateCommandBuffers(&alloc_info, cmdbufs),
                                     VULKAN_HPP_NAMESPACE_STRING "::Device::allocateCommandBuffers");
+        }
+
+        VGI_FORCEINLINE void allocateDescriptorSets(vk::Device device,
+                                                    const vk::DescriptorSetAllocateInfo& alloc_info,
+                                                    vk::DescriptorSet* cmdbufs) {
+            vk::detail::resultCheck(device.allocateDescriptorSets(&alloc_info, cmdbufs),
+                                    VULKAN_HPP_NAMESPACE_STRING "::Device::allocateDescriptorSets");
         }
     }  // namespace vkn
 }  // namespace vgi

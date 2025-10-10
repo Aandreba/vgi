@@ -2,10 +2,14 @@
 
 #include <fstream>
 
+#include "vgi.hpp"
+
 #define DECLARE_READ_FILE(__T) \
     template vgi::unique_span<__T> vgi::read_file<__T>(const std::filesystem::path::value_type*)
 
 namespace vgi {
+    std::filesystem::path base_path = reinterpret_cast<const char8_t*>(sdl::tri(SDL_GetBasePath()));
+
     template<class T>
         requires(std::is_trivially_copy_constructible_v<T> && std::is_trivially_destructible_v<T>)
     unique_span<T> read_file(const std::filesystem::path::value_type* path) {

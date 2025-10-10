@@ -9,6 +9,10 @@
 #include "memory.hpp"
 
 namespace vgi {
+    /// @brief Directory where the executable was run from.
+    /// @sa [`SDL_GetBasePath`](https://wiki.libsdl.org/SDL3/SDL_GetBasePath)
+    extern std::filesystem::path base_path;
+
     /// @brief Reads a file into a memory buffer
     /// @tparam T Elements to be read from the file
     /// @param path Path to the target file
