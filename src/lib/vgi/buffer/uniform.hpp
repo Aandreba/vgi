@@ -25,7 +25,7 @@ namespace vgi {
         explicit uniform_buffer(const window& parent, vk::DeviceSize size = 1) {
             std::optional<vk::DeviceSize> byte_size =
                     math::check_mul<vk::DeviceSize>(sizeof(T), size);
-            if (!byte_size) throw std::runtime_error{"too many uniforms"};
+            if (!byte_size) throw std::runtime_error{"too many uniform objects"};
 
             auto [buffer, allocation] = parent.create_buffer(
                     vk::BufferCreateInfo{
@@ -128,7 +128,6 @@ namespace vgi {
     /// to automatically align the fields of a struct to the alignment and size that would be used
     /// with the std140 layout.
     template<class T>
-        requires(std::is_trivially_copyable_v<T>)
     struct std140;
 
     //! @cond Doxygen_Suppress
@@ -235,7 +234,7 @@ namespace vgi {
             data(std::bit_cast<storage_type>(value)) {}
 
         constexpr std140& operator=(const value_type& other) noexcept {
-            this->bytes = std::bit_cast<value_type>(other);
+            this->data = std::bit_cast<value_type>(other);
             return *this;
         }
 

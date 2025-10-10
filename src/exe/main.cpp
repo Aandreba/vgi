@@ -5,6 +5,7 @@
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/device.hpp>
 #include <vgi/log.hpp>
+#include <vgi/tray.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
 
@@ -32,6 +33,10 @@ int run() {
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                     return 0;
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
+                    if (event.window.windowID == win) return 0;
+                    break;
+                }
                 default:
                     break;
             }

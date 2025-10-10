@@ -105,6 +105,7 @@
         "__hash_table": "cpp",
         "__tree": "cpp",
         "print": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "__bit_reference": "cpp"
     }
 }
