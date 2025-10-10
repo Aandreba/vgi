@@ -1,6 +1,8 @@
 #include "device.hpp"
 
 #include "log.hpp"
+#include "math.hpp"
+#include "window.hpp"
 
 namespace vgi {
     extern vk::Instance instance;
@@ -19,9 +21,27 @@ namespace vgi {
         this->queue_family_chains.shrink_to_fit();
     }
 
+    bool device::is_supported() const noexcept {
+        // Check that all required features are supported
+        const auto& feats_1_3 = this->feats_chain.get<vk::PhysicalDeviceVulkan13Features>();
+
+        if (!feats_1_3.dynamicRendering) {
+            log_warn("Device '{}' does not support the feature 'dynamicRendering'", this->name());
+            return false;
+        } else if (!feats_1_3.synchronization2) {
+            log_warn("Device '{}' does not support the feature 'synchronization2'", this->name());
+            return false;
+        }
+
+        return true;
+    }
+
     std::optional<uint32_t> device::select_queue_family(vk::SurfaceKHR surface,
                                                         vk::SurfaceFormatKHR format,
                                                         bool vsync) const {
+        // Check the device supports all the features we require
+        if (!this->is_supported()) return std::nullopt;
+
         // Check if the desired format is supported by this device-surface combination
         auto formats = this->handle.getSurfaceFormatsKHR(surface);
         if (std::ranges::find(formats, format) == formats.end()) {

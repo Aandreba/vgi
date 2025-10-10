@@ -74,7 +74,7 @@ namespace vgi {
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_verbose(std::format_string<Args...> fmt, Args&&... args) noexcept {
-        vlog_msg<log_level::verbose>(fmt.get(), std::make_format_args(args...));
+        log_msg<log_level::verbose>(fmt, std::forward<Args>(args)...);
     }
 
     /// @brief Logs the debug message by formatting the arguments according to the format string.
@@ -82,7 +82,7 @@ namespace vgi {
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_dbg(std::format_string<Args...> fmt, Args&&... args) noexcept {
-        vlog_msg<log_level::debug>(fmt.get(), std::make_format_args(args...));
+        log_msg<log_level::debug>(fmt, std::forward<Args>(args)...);
     }
 
     /// @brief Logs the information message by formatting the arguments according to the format
@@ -91,7 +91,7 @@ namespace vgi {
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log(std::format_string<Args...> fmt, Args&&... args) noexcept {
-        vlog_msg<log_level::info>(fmt.get(), std::make_format_args(args...));
+        log_msg<log_level::info>(fmt, std::forward<Args>(args)...);
     }
 
     /// @brief Logs the warning message by formatting the arguments according to the format string.
@@ -99,7 +99,7 @@ namespace vgi {
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_warn(std::format_string<Args...> fmt, Args&&... args) noexcept {
-        vlog_msg<log_level::warn>(fmt.get(), std::make_format_args(args...));
+        log_msg<log_level::warn>(fmt, std::forward<Args>(args)...);
     }
 
     /// @brief Logs the error message by formatting the arguments according to the format string.
@@ -107,6 +107,6 @@ namespace vgi {
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_err(std::format_string<Args...> fmt, Args&&... args) noexcept {
-        vlog_msg<log_level::error>(fmt.get(), std::make_format_args(args...));
+        log_msg<log_level::error>(fmt, std::forward<Args>(args)...);
     }
 }  // namespace vgi

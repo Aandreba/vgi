@@ -19,6 +19,44 @@ namespace vgi {
         glm::vec2 tex;
         /// @brief Normal vector
         glm::vec3 normal;
+
+        constexpr static vk::VertexInputBindingDescription input_binding(
+                uint32_t binding = 0,
+                vk::VertexInputRate input_rate = vk::VertexInputRate::eVertex) noexcept {
+            return vk::VertexInputBindingDescription{
+                    .binding = binding,
+                    .stride = sizeof(vertex),
+                    .inputRate = input_rate,
+            };
+        }
+
+        constexpr static std::array<vk::VertexInputAttributeDescription, 4> input_attributes(
+                uint32_t binding = 0) noexcept {
+            return {{{
+                             .location = 0,
+                             .binding = binding,
+                             .format = vk::Format::eR32G32B32Sfloat,
+                             .offset = offsetof(vertex, origin),
+                     },
+                     {
+                             .location = 1,
+                             .binding = binding,
+                             .format = vk::Format::eR32G32B32A32Sfloat,
+                             .offset = offsetof(vertex, color),
+                     },
+                     {
+                             .location = 2,
+                             .binding = binding,
+                             .format = vk::Format::eR32G32Sfloat,
+                             .offset = offsetof(vertex, tex),
+                     },
+                     {
+                             .location = 3,
+                             .binding = binding,
+                             .format = vk::Format::eR32G32B32Sfloat,
+                             .offset = offsetof(vertex, normal),
+                     }}};
+        }
     };
 
     /// @brief A buffer used to store the vertices of a mesh

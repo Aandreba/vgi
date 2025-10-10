@@ -17,9 +17,9 @@ namespace vgi {
 #if VGI_MAX_FRAMES_IN_FLIGHT <= 0
 #error "Max number of frames in flight must be a positive integer greater than zero"
 #endif
-        constexpr static inline const uint32_t max_frames_in_flight = VGI_MAX_FRAMES_IN_FLIGHT;
+        constexpr static inline const uint32_t MAX_FRAMES_IN_FLIGHT = VGI_MAX_FRAMES_IN_FLIGHT;
 #else
-        constexpr static inline const uint32_t max_frames_in_flight = 2;
+        constexpr static inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 #endif
 
         /// @brief Create a window with the specified properties
@@ -54,6 +54,9 @@ namespace vgi {
             std::construct_at(this, std::move(other));
             return *this;
         }
+
+        /// @brief Color format used by the window to present images
+        inline vk::Format format() const noexcept { return this->swapchain_info.imageFormat; }
 
         /// @brief Checks whether the windows has the provided identifier
         /// @details This is necessary to map window events to a specific `window` object.
@@ -91,6 +94,7 @@ namespace vgi {
                 const VmaAllocationCreateInfo& alloc_create_info,
                 VmaAllocationInfo* alloc_info = nullptr) const;
 
+        /// @brief Closes the window, releasing all it's resources
         void close() &&;
         ~window() noexcept;
 
@@ -103,13 +107,13 @@ namespace vgi {
         vk::Queue queue;
         vk::CommandPool cmdpool;
         vk::SwapchainKHR swapchain;
-        vk::Extent2D swapchain_extent;
+        vk::SwapchainCreateInfoKHR swapchain_info;
         unique_span<vk::Image> swapchain_images;
         unique_span<vk::ImageView> swapchain_views;
-        vk::CommandBuffer cmdbufs[max_frames_in_flight];
-        vk::Fence in_flight[max_frames_in_flight];
-        vk::Semaphore image_available[max_frames_in_flight];
-        vk::Semaphore render_complete[max_frames_in_flight];
+        vk::CommandBuffer cmdbufs[MAX_FRAMES_IN_FLIGHT];
+        vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];
+        vk::Semaphore image_available[MAX_FRAMES_IN_FLIGHT];
+        vk::Semaphore render_complete[MAX_FRAMES_IN_FLIGHT];
         bool has_mailbox;
         bool has_hdr10;
 

@@ -6,7 +6,7 @@
 #include <vgi/device.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
-#include <vgi/pipeline/shader.hpp>
+#include <vgi/pipeline.hpp>
 #include <vgi/tray.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
@@ -19,13 +19,6 @@ struct uniform {
     vgi::std140<glm::mat4> model;
 };
 
-static vk::GraphicsPipelineCreateInfo pipeline_create_info(const vgi::window& win) {
-    vgi::shader_module vertex{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"};
-    vgi::shader_module fragment{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"};
-
-    return vk::GraphicsPipelineCreateInfo{};
-}
-
 static int run() {
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
@@ -33,6 +26,17 @@ static int run() {
     }
 
     vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
+    vgi::graphics_pipeline_guard pipeline{
+            win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
+            vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},
+            vgi::graphics_pipeline_options{
+                    .bindings = {{vk::DescriptorSetLayoutBinding{
+                            .binding = 0,
+                            .descriptorType = vk::DescriptorType::eUniformBuffer,
+                            .descriptorCount = 1,
+                            .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                    }}},
+            }};
 
     while (true) {
         SDL_Event event;

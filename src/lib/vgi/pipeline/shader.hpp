@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <span>
+#include <type_traits>
 #include <variant>
 #include <vgi/vulkan.hpp>
 #include <vgi/window.hpp>
@@ -58,6 +59,7 @@ namespace vgi {
 
     /// @brief Helper struct that associates a shader module with one of it's entrypoints
     struct shader_stage {
+        /// @brief Name of the function that will be used as the entrypoint by default
         constexpr static inline const char8_t* const DEFAULT_ENTRYPOINT = u8"main";
 
         /// @brief Create a shader stage from a pointer to a shader module
@@ -67,11 +69,22 @@ namespace vgi {
             VGI_ASSERT(shader != nullptr);
         }
 
-        /// @brief Create a shader stage from a shader_module
-        shader_stage(shader_module&& shader,
-                     const char8_t* entrypoint = DEFAULT_ENTRYPOINT) noexcept :
+        /// @brief Create a shader stage from a shader module
+        /// @param shader Shader to be executed
+        /// @param entrypoint Function that will be called when runing the shader
+        shader_stage(shader_module&& shader, const char8_t* entrypoint) noexcept :
             shader(std::move(shader)), entrypoint(entrypoint) {}
 
+        /// @brief Create a shader stage from a shader module
+        /// @param args Arguments used to construct the shader module
+        template<class... Args>
+            requires(std::is_constructible_v<shader_module, Args...>)
+        shader_stage(Args&&... args) noexcept :
+            shader(std::in_place_type<shader_module>, std::forward<Args>(args)...),
+            entrypoint(DEFAULT_ENTRYPOINT) {}
+
+        /// @brief Provides the information required to create a graphics' pipeline stage
+        /// @param stage Stage at which the shader will be executed
         inline vk::PipelineShaderStageCreateInfo stage_info(
                 vk::ShaderStageFlagBits stage) const noexcept {
             const shader_module* shader = this->operator->();

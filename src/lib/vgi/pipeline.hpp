@@ -1,8 +1,11 @@
 #pragma once
 
 #include <initializer_list>
+#include <optional>
 #include <span>
 
+#include "pipeline/shader.hpp"
+#include "resource.hpp"
 #include "vulkan.hpp"
 #include "window.hpp"
 
@@ -20,7 +23,7 @@ namespace vgi {
             handle(std::move(other.handle)), pool(std::move(other.pool)),
             set_layout(std::move(other.set_layout)),
             pipeline_layout(std::move(other.pipeline_layout)) {
-            for (uint32_t i = 0; i < window::max_frames_in_flight; ++i) {
+            for (uint32_t i = 0; i < window::MAX_FRAMES_IN_FLIGHT; ++i) {
                 this->sets[i] = std::move(other.sets[i]);
             }
         }
@@ -44,8 +47,6 @@ namespace vgi {
         /// @param parent Window used to create the pipeline
         void destroy(const window& parent) &&;
 
-        ~pipeline() noexcept;
-
     protected:
         /// @brief Handle to the underlying `vk::Pipeline`
         vk::Pipeline handle = nullptr;
@@ -56,22 +57,33 @@ namespace vgi {
         pipeline(const window& parent,
                  std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
 
+        /// @brief Layout of the pipeline's bindings
+        constexpr vk::PipelineLayout layout() const noexcept { return this->pipeline_layout; }
+
     private:
         vk::DescriptorPool pool;
         vk::DescriptorSetLayout set_layout;
         vk::PipelineLayout pipeline_layout;
-        vk::DescriptorSet sets[window::max_frames_in_flight];
+        vk::DescriptorSet sets[window::MAX_FRAMES_IN_FLIGHT];
     };
 
-    struct graphics_pipeline_options {};
+    struct graphics_pipeline_options {
+        uint32_t vertex_binding = 0;
+        vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+        vk::PolygonMode polygon_mode = vk::PolygonMode::eFill;
+        vk::CullModeFlagBits cull_mode = vk::CullModeFlagBits::eNone;
+        vk::FrontFace fron_face = vk::FrontFace::eCounterClockwise;
+        vk::CompareOp depth_compare_op = vk::CompareOp::eNever;
+        vk::ColorComponentFlags color_blend_mask = {};
+        std::span<const vk::DescriptorSetLayoutBinding> bindings = {};
+    };
 
     /// @brief A graphics pipeline, mainly used to rasterize images.
     struct graphics_pipeline : public pipeline {
-        /// @brief Creates a new graphics pipeline with the provided bindings
-        /// @param parent Window that will create the pipeline
-        /// @param create_info Information about the properties and capabilities of the pipeline
-        /// @param bindings Bindings that will be used througout the pipeline
-        graphics_pipeline(const window& parent, const vk::GraphicsPipelineCreateInfo& create_info,
-                          std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
+        graphics_pipeline(const window& parent, const shader_stage& vertex,
+                          const shader_stage& fragment,
+                          const graphics_pipeline_options& options = {});
     };
+
+    using graphics_pipeline_guard = resource_guard<graphics_pipeline>;
 }  // namespace vgi

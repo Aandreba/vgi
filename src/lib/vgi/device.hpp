@@ -89,6 +89,8 @@ namespace vgi {
         std::vector<queue_family_type> queue_family_chains;
 
         device(vk::PhysicalDevice handle);
+
+        bool is_supported() const noexcept;
         std::optional<uint32_t> select_queue_family(vk::SurfaceKHR surface,
                                                     vk::SurfaceFormatKHR format, bool vsync) const;
 

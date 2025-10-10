@@ -52,6 +52,16 @@ namespace vgi {
         }
 #endif
 
+        // Enable all required features
+        vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+                           vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
+                features;
+
+        features.get<vk::PhysicalDeviceVulkan13Features>() = {
+                .synchronization2 = vk::True,
+                .dynamicRendering = vk::True,
+        };
+
         constexpr const float priority = 1.0f;
         vk::DeviceQueueCreateInfo queue_info{
                 .queueFamilyIndex = queue_family,
@@ -63,6 +73,7 @@ namespace vgi {
         if (!extension_count) throw std::runtime_error{"too many device extensions"};
 
         return physical->createDevice(vk::DeviceCreateInfo{
+                .pNext = &features.get<vk::PhysicalDeviceFeatures2>(),
                 .queueCreateInfoCount = 1,
                 .pQueueCreateInfos = &queue_info,
                 .enabledExtensionCount = extension_count.value(),
@@ -135,33 +146,32 @@ namespace vgi {
         }
 
         vk::SurfaceFormatKHR swapchain_format = hdr10 ? HDR10_FORMAT : SRGB_FORMAT;
-        vk::UniqueSwapchainKHR new_swapchain =
-                logical.createSwapchainKHRUnique(vk::SwapchainCreateInfoKHR{
-                        .surface = surface,
-                        .minImageCount = swapchain_image_count,
-                        .imageFormat = swapchain_format.format,
-                        .imageColorSpace = swapchain_format.colorSpace,
-                        .imageExtent = new_swapchain_extent,
-                        .imageArrayLayers = 1,
-                        .imageUsage = vk::ImageUsageFlagBits::eColorAttachment |
-                                      (surface_caps.supportedUsageFlags &
-                                       (vk::ImageUsageFlagBits::eTransferSrc |
-                                        vk::ImageUsageFlagBits::eTransferDst)),
-                        .imageSharingMode = vk::SharingMode::eExclusive,
-                        .queueFamilyIndexCount = 0,
-                        .preTransform = swapchain_transform,
-                        .compositeAlpha = swapchain_composite_alpha,
-                        .presentMode =
-                                vsync ? vk::PresentModeKHR::eFifo : vk::PresentModeKHR::eMailbox,
-                        // Setting clipped to vk::True allows the implementation to discard
-                        // rendering outside of the surface area
-                        .clipped = vk::True,
-                        // Setting oldSwapChain to the saved handle of the previous swapchain aids
-                        // in resource reuse and makes sure that we can still present already
-                        // acquired images
-                        .oldSwapchain = this->swapchain,
-                });
+        const vk::SwapchainCreateInfoKHR new_swapchain_info{
+                .surface = surface,
+                .minImageCount = swapchain_image_count,
+                .imageFormat = swapchain_format.format,
+                .imageColorSpace = swapchain_format.colorSpace,
+                .imageExtent = new_swapchain_extent,
+                .imageArrayLayers = 1,
+                .imageUsage =
+                        vk::ImageUsageFlagBits::eColorAttachment |
+                        (surface_caps.supportedUsageFlags & (vk::ImageUsageFlagBits::eTransferSrc |
+                                                             vk::ImageUsageFlagBits::eTransferDst)),
+                .imageSharingMode = vk::SharingMode::eExclusive,
+                .queueFamilyIndexCount = 0,
+                .preTransform = swapchain_transform,
+                .compositeAlpha = swapchain_composite_alpha,
+                .presentMode = vsync ? vk::PresentModeKHR::eFifo : vk::PresentModeKHR::eMailbox,
+                // Setting clipped to vk::True allows the implementation to discard
+                // rendering outside of the surface area
+                .clipped = vk::True,
+                // Setting oldSwapChain to the saved handle of the previous swapchain aids
+                // in resource reuse and makes sure that we can still present already
+                // acquired images
+                .oldSwapchain = this->swapchain,
+        };
 
+        vk::UniqueSwapchainKHR new_swapchain = logical.createSwapchainKHRUnique(new_swapchain_info);
         unique_span<vk::Image> new_swapchain_images =
                 vkn::enumerate<vk::Image>([&](uint32_t* count, vk::Image* ptr) {
                     return this->logical.getSwapchainImagesKHR(new_swapchain.get(), count, ptr);
@@ -198,7 +208,7 @@ namespace vgi {
             this->swapchain = new_swapchain.release();
         }
         this->swapchain_images = std::move(new_swapchain_images);
-        this->swapchain_extent = new_swapchain_extent;
+        this->swapchain_info = new_swapchain_info;
     }
 
     void window::create_swapchain(bool vsync, bool hdr10) {
@@ -246,12 +256,12 @@ namespace vgi {
                                     vk::CommandBufferAllocateInfo{
                                             .commandPool = this->cmdpool,
                                             .level = vk::CommandBufferLevel::ePrimary,
-                                            .commandBufferCount = max_frames_in_flight,
+                                            .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
                                     },
                                     this->cmdbufs);
 
         // Synchronization objects
-        for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             this->in_flight[i] = this->logical.createFence(
                     vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
             this->image_available[i] = this->logical.createSemaphore({});
@@ -279,7 +289,7 @@ namespace vgi {
 
             for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
             this->logical.freeCommandBuffers(this->cmdpool, this->cmdbufs);
-            for (uint32_t i = 0; i < max_frames_in_flight; ++i) {
+            for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                 this->logical.destroyFence(this->in_flight[i]);
                 this->logical.destroySemaphore(this->image_available[i]);
                 this->logical.destroySemaphore(this->render_complete[i]);
