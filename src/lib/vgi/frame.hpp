@@ -56,7 +56,7 @@ namespace vgi {
             return parent.cmdbufs[parent.current_frame];
         }
 
-        ~frame();
+        ~frame() noexcept(false);
 
     private:
         window& parent;

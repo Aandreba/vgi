@@ -8,7 +8,16 @@
 #include <limits>
 #include <optional>
 
+#include "arch.hpp"
 #include "defs.hpp"
+
+#ifdef VGI_ARCH_FAMILY_X86
+#include <immintrin.h>
+#endif
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 namespace vgi::math {
     /// @brief Specifies that a type is an integral type
@@ -36,6 +45,37 @@ namespace vgi::math {
             if (__builtin_add_overflow(lhs, rhs, &res)) [[unlikely]]
                 return std::nullopt;
             return std::make_optional<T>(std::move(res));
+#elif VGI_ARCH_FAMILY_X86
+            if constexpr (unsigned_integral<T>) {
+                if constexpr (L::digits == 8) {
+                    unsigned __int64 res;
+                    if (_addcarry_u64(0, static_cast<unsigned __int64>(lhs),
+                                      static_cast<unsigned __int64>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                } else if constexpr (L::digits == 4) {
+                    unsigned int res;
+                    if (_addcarry_u32(0, static_cast<unsigned int>(lhs),
+                                      static_cast<unsigned int>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                }
+#ifdef _MSC_VER
+                if constexpr (L::digits == 2) {
+                    unsigned short res;
+                    if (_addcarry_u16(0, static_cast<unsigned short>(lhs),
+                                      static_cast<unsigned short>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                } else if constexpr (L::digits == 1) {
+                    unsigned char res;
+                    if (_addcarry_u8(0, static_cast<unsigned char>(lhs),
+                                     static_cast<unsigned char>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                }
+#endif
+            }
 #endif
         }
 
@@ -65,6 +105,37 @@ namespace vgi::math {
             if (__builtin_sub_overflow(lhs, rhs, &res)) [[unlikely]]
                 return std::nullopt;
             return std::make_optional<T>(std::move(res));
+#elif VGI_ARCH_FAMILY_X86
+            if constexpr (unsigned_integral<T>) {
+                if constexpr (L::digits == 8) {
+                    unsigned __int64 res;
+                    if (_subborrow_u64(0, static_cast<unsigned __int64>(lhs),
+                                       static_cast<unsigned __int64>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                } else if constexpr (L::digits == 4) {
+                    unsigned int res;
+                    if (_subborrow_u32(0, static_cast<unsigned int>(lhs),
+                                       static_cast<unsigned int>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                }
+#ifdef _MSC_VER
+                if constexpr (L::digits == 2) {
+                    unsigned short res;
+                    if (_subborrow_u16(0, static_cast<unsigned short>(lhs),
+                                       static_cast<unsigned short>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                } else if constexpr (L::digits == 1) {
+                    unsigned char res;
+                    if (_subborrow_u8(0, static_cast<unsigned char>(lhs),
+                                      static_cast<unsigned char>(rhs), &res)) [[unlikely]]
+                        return std::nullopt;
+                    return std::make_optional<T>(static_cast<T>(res));
+                }
+#endif
+            }
 #endif
         }
 

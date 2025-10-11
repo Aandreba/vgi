@@ -57,7 +57,7 @@ namespace vgi {
 
     timings:
         parent.cmdbufs[parent.current_frame].reset();
-        parent.cmdbufs[parent.current_frame].begin({});
+        parent.cmdbufs[parent.current_frame].begin(vk::CommandBufferBeginInfo{});
 
         this->time_point = std::chrono::steady_clock::now();
         if (!parent.first_frame) {
@@ -76,7 +76,7 @@ namespace vgi {
         parent.last_frame = this->time_point;
     }
 
-    frame::~frame() {
+    frame::~frame() noexcept(false) {
         const vk::CommandBuffer& cmdbuf = **this;
         cmdbuf.end();
 
@@ -91,17 +91,32 @@ namespace vgi {
                 },
                 parent.in_flight[parent.current_frame]);
 
-        parent.current_frame = math::check_add<uint32_t>(parent.current_frame, 1).value_or(0) %
-                               window::MAX_FRAMES_IN_FLIGHT;
-
-        // TODO
         try {
-            parent.queue.presentKHR(vk::PresentInfoKHR{});
+            switch (parent.queue.presentKHR(vk::PresentInfoKHR{
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &parent.render_complete[parent.current_frame],
+                    .swapchainCount = 1,
+                    .pSwapchains = &parent.swapchain,
+                    .pImageIndices = &this->current_image,
+            })) {
+                case vk::Result::eSuccess:
+                    break;
+                case vk::Result::eSuboptimalKHR: {
+                    log_warn("Window resizing is not yet implemented");
+                    break;
+                }
+                default:
+                    VGI_UNREACHABLE;
+                    break;
+            }
         } catch (const vk::OutOfDateKHRError&) {
             log_err("Window resizing not yet implemented");
             throw;
         } catch (...) {
             throw;
         }
+
+        parent.current_frame = math::check_add<uint32_t>(parent.current_frame, 1).value_or(0) %
+                               window::MAX_FRAMES_IN_FLIGHT;
     }
 }  // namespace vgi
