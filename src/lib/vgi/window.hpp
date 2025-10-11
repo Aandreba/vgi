@@ -58,6 +58,8 @@ namespace vgi {
 
         /// @brief Color format used by the window to present images
         inline vk::Format format() const noexcept { return this->swapchain_info.imageFormat; }
+        /// @brief Size of the rendering surface, in pixels
+        inline vk::Extent2D draw_size() const noexcept { return this->swapchain_info.imageExtent; }
 
         /// @brief Checks whether the windows has the provided identifier
         /// @details This is necessary to map window events to a specific `window` object.

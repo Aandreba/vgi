@@ -17,8 +17,8 @@ using namespace std::literals;
 
 struct uniform {
     vgi::std140<glm::mat4> projection;
-    vgi::std140<glm::mat4> view;
-    vgi::std140<glm::mat4> model;
+    vgi::std140<glm::mat4> view = glm::mat4{1};
+    vgi::std140<glm::mat4> model = glm::mat4{1};
 };
 
 static int run() {
@@ -53,6 +53,7 @@ static int run() {
                             .stageFlags = vk::ShaderStageFlagBits::eVertex,
                     }}},
             }};
+    vgi::descriptor_pool_guard desc_pool{win, pipeline};
 
     while (true) {
         SDL_Event event;
@@ -73,6 +74,19 @@ static int run() {
         vgi::frame frame{win};
         vgi::log("{} FPS", 1.0f / frame.delta);
         frame.beginRendering(0.0f, 0.2f, 0.0f);
+
+        frame->setViewport(0, vk::Viewport{
+                                      .width = static_cast<float>(win.draw_size().width),
+                                      .height = static_cast<float>(win.draw_size().height),
+                                      .maxDepth = 1.0f,
+                              });
+        frame->setScissor(0, vk::Rect2D{.extent = win.draw_size()});
+
+        // Draw triangle
+        frame.bindDescriptorSet(pipeline, desc_pool);
+        frame->bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+        frame->bindVertexBuffers(0, {vertices}, {0});
+        frame->draw(3, 1, 0, 0);
         frame->endRendering();
     }
 }

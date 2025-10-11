@@ -95,6 +95,11 @@ namespace vgi {
         });
     }
 
+    void frame::bindDescriptorSet(const pipeline& pipeline, const descriptor_pool& pool) {
+        (*this)->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, 0,
+                                    pool[this->parent.current_frame], {});
+    }
+
     frame::~frame() noexcept(false) {
         const vk::CommandBuffer& cmdbuf = **this;
         cmdbuf.end();

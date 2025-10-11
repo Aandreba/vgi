@@ -22,39 +22,23 @@ namespace vgi {
                     .descriptorCount = count.value(),
             });
         }
-
-        this->pool = parent->createDescriptorPool(vk::DescriptorPoolCreateInfo{
-                .maxSets = window::MAX_FRAMES_IN_FLIGHT,
-                .poolSizeCount = binding_count.value(),
-                .pPoolSizes = pool_sizes.data(),
-        });
+        this->pool_sizes = std::move(pool_sizes);
 
         this->set_layout = parent->createDescriptorSetLayout(vk::DescriptorSetLayoutCreateInfo{
                 .bindingCount = binding_count.value(),
                 .pBindings = bindings.data(),
         });
 
-        this->pipeline_layout = parent->createPipelineLayout(vk::PipelineLayoutCreateInfo{
+        this->layout = parent->createPipelineLayout(vk::PipelineLayoutCreateInfo{
                 .setLayoutCount = 1,
                 .pSetLayouts = &this->set_layout,
         });
-
-        const vk::DescriptorSetAllocateInfo alloc_info{
-                .descriptorPool = this->pool,
-                .descriptorSetCount = 1,
-                .pSetLayouts = &this->set_layout,
-        };
-
-        for (uint32_t i = 0; i < window::MAX_FRAMES_IN_FLIGHT; ++i) {
-            vkn::allocateDescriptorSets(parent, alloc_info, &this->sets[i]);
-        }
     }
 
     void pipeline::destroy(const window& parent) && {
         if (this->handle) parent->destroyPipeline(this->handle);
-        if (this->pipeline_layout) parent->destroyPipelineLayout(this->pipeline_layout);
+        if (this->layout) parent->destroyPipelineLayout(this->layout);
         if (this->set_layout) parent->destroyDescriptorSetLayout(this->set_layout);
-        if (this->pool) parent->destroyDescriptorPool(this->pool);
     }
 
     graphics_pipeline::graphics_pipeline(const window& parent, const shader_stage& vertex,
@@ -153,9 +137,32 @@ namespace vgi {
                 .pDepthStencilState = &depth_stencil_state,
                 .pColorBlendState = &color_blend_state,
                 .pDynamicState = &dynamic_state_info,
-                .layout = this->layout(),
+                .layout = *this,
         };
 
         this->handle = parent->createGraphicsPipeline(nullptr, create_info).value;
+    }
+
+    descriptor_pool::descriptor_pool(const window& parent, const pipeline& pipeline) {
+        VGI_ASSERT(pipeline.pool_sizes.size() <= UINT32_MAX);
+        this->pool = parent->createDescriptorPool(vk::DescriptorPoolCreateInfo{
+                .maxSets = window::MAX_FRAMES_IN_FLIGHT,
+                .poolSizeCount = static_cast<uint32_t>(pipeline.pool_sizes.size()),
+                .pPoolSizes = pipeline.pool_sizes.data(),
+        });
+
+        const vk::DescriptorSetAllocateInfo alloc_info{
+                .descriptorPool = this->pool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &pipeline.set_layout,
+        };
+
+        for (uint32_t i = 0; i < window::MAX_FRAMES_IN_FLIGHT; ++i) {
+            vkn::allocateDescriptorSets(parent, alloc_info, &this->sets[i]);
+        }
+    }
+
+    void descriptor_pool::destroy(const window& parent) && {
+        if (this->pool) parent->destroyDescriptorPool(this->pool);
     }
 }  // namespace vgi

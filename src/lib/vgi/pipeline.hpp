@@ -4,6 +4,7 @@
 #include <optional>
 #include <span>
 
+#include "memory.hpp"
 #include "pipeline/shader.hpp"
 #include "resource.hpp"
 #include "vulkan.hpp"
@@ -20,13 +21,8 @@ namespace vgi {
         /// @brief Move constructor
         /// @param other Object to be moved
         pipeline(pipeline&& other) noexcept :
-            handle(std::move(other.handle)), pool(std::move(other.pool)),
-            set_layout(std::move(other.set_layout)),
-            pipeline_layout(std::move(other.pipeline_layout)) {
-            for (uint32_t i = 0; i < window::MAX_FRAMES_IN_FLIGHT; ++i) {
-                this->sets[i] = std::move(other.sets[i]);
-            }
-        }
+            handle(std::move(other.handle)), set_layout(std::move(other.set_layout)),
+            layout(std::move(other.layout)), pool_sizes(std::move(other.pool_sizes)) {}
 
         /// @brief Move assignment
         /// @param other Object to be moved
@@ -42,6 +38,14 @@ namespace vgi {
         constexpr operator vk::Pipeline() const noexcept { return this->handle; }
         /// @brief Casts to the undelying `VkPipeline`
         inline operator VkPipeline() const noexcept { return this->handle; }
+        /// @brief Casts to the undelying `vk::PipelineLayout`
+        constexpr operator vk::PipelineLayout() const noexcept { return this->layout; }
+        /// @brief Casts to the undelying `VkPipelineLayout`
+        inline operator VkPipelineLayout() const noexcept { return this->layout; }
+        /// @brief Casts to the undelying `vk::DescriptorSetLayout`
+        constexpr operator vk::DescriptorSetLayout() const noexcept { return this->set_layout; }
+        /// @brief Casts to the undelying `VkDescriptorSetLayout`
+        inline operator VkDescriptorSetLayout() const noexcept { return this->set_layout; }
 
         /// @brief Destroys the pipeline
         /// @param parent Window used to create the pipeline
@@ -57,14 +61,53 @@ namespace vgi {
         pipeline(const window& parent,
                  std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
 
-        /// @brief Layout of the pipeline's bindings
-        constexpr vk::PipelineLayout layout() const noexcept { return this->pipeline_layout; }
+    private:
+        vk::DescriptorSetLayout set_layout;
+        vk::PipelineLayout layout;
+        unique_span<vk::DescriptorPoolSize> pool_sizes;
+
+        friend struct descriptor_pool;
+    };
+
+    /// @brief A pool of descriptor sets
+    struct descriptor_pool {
+        descriptor_pool(const window& parent, const pipeline& pipeline);
+
+        /// @brief Move constructor
+        /// @param other Object to be moved
+        descriptor_pool(descriptor_pool&& other) noexcept :
+            pool(std::move(other.pool)), sets(std::move(other.sets)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to be moved
+        descriptor_pool& operator=(descriptor_pool&& other) noexcept {
+            if (this == &other) [[unlikely]]
+                return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
+        /// @brief Access specified descriptor set
+        /// @param n Index of the descriptor set
+        /// @return A reference to a `vk::DescriptorSet`
+        const vk::DescriptorSet& operator[](uint32_t n) const noexcept {
+            VGI_ASSERT(n < this->sets.size());
+            return this->sets[n];
+        }
+
+        /// @brief Casts to the undelying `vk::DescriptorPool`
+        constexpr operator vk::DescriptorPool() const noexcept { return this->pool; }
+        /// @brief Casts to the undelying `VkDescriptorPool`
+        inline operator VkDescriptorPool() const noexcept { return this->pool; }
+
+        /// @brief Destroys the descriptor pool
+        /// @param parent Window used to create the descriptor pool
+        void destroy(const window& parent) &&;
 
     private:
         vk::DescriptorPool pool;
-        vk::DescriptorSetLayout set_layout;
-        vk::PipelineLayout pipeline_layout;
-        vk::DescriptorSet sets[window::MAX_FRAMES_IN_FLIGHT];
+        std::array<vk::DescriptorSet, window::MAX_FRAMES_IN_FLIGHT> sets;
     };
 
     /// @brief Information used to create a graphics pipeline
@@ -100,4 +143,5 @@ namespace vgi {
     };
 
     using graphics_pipeline_guard = resource_guard<graphics_pipeline>;
+    using descriptor_pool_guard = resource_guard<descriptor_pool>;
 }  // namespace vgi

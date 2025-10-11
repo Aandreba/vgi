@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "pipeline.hpp"
 #include "window.hpp"
 
 namespace vgi {
@@ -33,6 +34,8 @@ namespace vgi {
         /// @param clear_a Alpha channel of the color used to clear the screen
         void beginRendering(float clear_r = 0.0f, float clear_g = 0.0f, float clear_b = 0.0f,
                             float clear_a = 1.0f) const;
+
+        void bindDescriptorSet(const pipeline& pipeline, const descriptor_pool& pool);
 
         /// @brief Casts to the `vk::CommandBuffer` being used
         constexpr operator vk::CommandBuffer() const noexcept {

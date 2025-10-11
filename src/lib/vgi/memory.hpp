@@ -77,6 +77,11 @@ namespace vgi {
             std::construct_at(this, std::move(other));
             return *this;
         }
+
+        constexpr unique_span& operator=(std::vector<value_type>&& other) {
+            std::ignore = std::exchange(*this, unique_span{std::move(other)});
+            return *this;
+        }
         //! @endcond
 
         /// @return The number of elements stored by the span

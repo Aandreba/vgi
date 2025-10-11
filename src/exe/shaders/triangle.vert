@@ -1,8 +1,10 @@
 #version 450
 
 layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec3 inColor;
-layout (location = 0) out vec3 outColor;
+layout (location = 1) in vec4 inColor;
+layout (location = 2) in vec2 inTex;
+layout (location = 3) in vec3 inNormal;
+layout (location = 0) out vec4 outColor;
 
 layout (binding = 0) uniform UBO 
 {
@@ -13,5 +15,6 @@ layout (binding = 0) uniform UBO
 
 void main()  {
 	outColor = inColor;
-	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
+    gl_Position = vec4(0.5 * inPos.xyz, 1.0);
+	// gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
 }
