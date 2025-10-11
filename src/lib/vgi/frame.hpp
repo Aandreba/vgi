@@ -5,6 +5,7 @@
 #include "window.hpp"
 
 namespace vgi {
+    /// @brief Structure that represents a frame that's being worked on by the host.
     struct frame {
         /// @brief Time point at which the frame started
         std::chrono::steady_clock::time_point time_point;
@@ -22,6 +23,16 @@ namespace vgi {
         /// @warning Do not create multiple frames at the same time, only a single frame per window
         /// should exist simultaneously.
         frame(window& parent);
+
+        /// @brief Helper method that calls
+        /// [`vkCmdBeginRendering`](https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdBeginRenderingKHR.html)
+        /// with the apropiate values for the current frame
+        /// @param clear_r Red channel of the color used to clear the screen
+        /// @param clear_g Green channel of the color used to clear the screen
+        /// @param clear_b Blue channel of the color used to clear the screen
+        /// @param clear_a Alpha channel of the color used to clear the screen
+        void beginRendering(float clear_r = 0.0f, float clear_g = 0.0f, float clear_b = 0.0f,
+                            float clear_a = 1.0f) const;
 
         /// @brief Casts to the `vk::CommandBuffer` being used
         constexpr operator vk::CommandBuffer() const noexcept {

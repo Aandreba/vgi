@@ -4,6 +4,24 @@
 
 #include "vgi.hpp"
 
+#ifdef _MSC_VER
+#include <windows.h>
+#include <winternl.h>
+
+static VGI_FORCEINLINE PTEB teb() {
+#ifdef _M_IX86
+    return reinterpret_cast<PTEB>(__readfsdword(0x18));
+#elif _M_AMD64
+    return reinterpret_cast<PTEB>(__readgsqword(0x30));
+#else
+#error "Unsupported platform"
+#endif
+}
+
+static VGI_FORCEINLINE PPEB peb() { return teb()->ProcessEnvironmentBlock; }
+
+#endif
+
 #define DECLARE_READ_FILE(__T) \
     template vgi::unique_span<__T> vgi::read_file<__T>(const std::filesystem::path::value_type*)
 
@@ -41,6 +59,33 @@ namespace vgi {
         file.close();
         return buffer;
     }
+
+
+#ifdef _MSC_VER
+    bool hasenv(const std::filesystem::path::value_type* name) noexcept {
+        DWORD len = GetEnvironmentVariableW(name, nullptr, 0);
+        return !(len == 0 && GetLastError() == ERROR_ENVVAR_NOT_FOUND);
+    }
+
+    std::optional<std::filesystem::path::string_type> getenv(
+            const std::filesystem::path::value_type* name) noexcept {
+        wchar_t buf[32'767];
+        DWORD len = GetEnvironmentVariableW(name, buf, std::size(buf));
+        if (len == 0 && GetLastError() == ERROR_ENVVAR_NOT_FOUND) return std::nullopt;
+        return std::make_optional<std::filesystem::path::string_type>(buf, len);
+    }
+#else
+    bool hasenv(const std::filesystem::path::value_type* name) noexcept {
+        return std::getenv(path) != nullptr;
+    }
+
+    std::optional<std::filesystem::path::string_type> getenv(
+            const std::filesystem::path::value_type* name) noexcept {
+        const char* env = std::getenv(path);
+        if (!env) return std::nullopt;
+        return std::make_optional<std::filesystem::path::string_type>(env);
+    }
+#endif
 
 }  // namespace vgi
 

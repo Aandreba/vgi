@@ -96,7 +96,7 @@ namespace vgi {
                 VmaAllocationInfo* alloc_info = nullptr) const;
 
         /// @brief Closes the window, releasing all it's resources
-        void close() &&;
+        VGI_FORCEINLINE void close() && { window tmp = std::move(*this); }
         ~window() noexcept;
 
     private:

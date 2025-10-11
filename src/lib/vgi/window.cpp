@@ -287,8 +287,6 @@ namespace vgi {
         return result;
     }
 
-    void window::close() && { window t{std::move(*this)}; }
-
     window::~window() noexcept {
         if (this->logical) {
             // We cannot destroy stuff being used by the device, so we must first wait for it to
@@ -319,4 +317,5 @@ namespace vgi {
             SDL_DestroyWindow(this->handle);
         }
     }
+
 }  // namespace vgi

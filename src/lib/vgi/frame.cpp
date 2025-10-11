@@ -76,6 +76,25 @@ namespace vgi {
         parent.last_frame = this->time_point;
     }
 
+    void frame::beginRendering(float r, float g, float b, float a) const {
+        vk::RenderingAttachmentInfo color_attachment{
+                .imageView = *this,
+                .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .loadOp = vk::AttachmentLoadOp::eClear,
+                .storeOp = vk::AttachmentStoreOp::eStore,
+                .clearValue = {.color = {.float32 = {{r, g, b, a}}}},
+        };
+
+        (*this)->beginRendering(vk::RenderingInfo{
+                .renderArea = {.extent = this->parent.swapchain_info.imageExtent},
+                .layerCount = 1,
+                .colorAttachmentCount = 1,
+                .pColorAttachments = &color_attachment,
+                .pDepthAttachment = nullptr,
+                .pStencilAttachment = nullptr,
+        });
+    }
+
     frame::~frame() noexcept(false) {
         const vk::CommandBuffer& cmdbuf = **this;
         cmdbuf.end();

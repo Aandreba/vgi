@@ -16,3 +16,8 @@ Other compilers **should** work, but have not been tested.
 
 - Visual Studio 17 2022
 - Apple Clang 17.0
+
+## Environment Variables
+
+- VGI_NO_VALIDATION_LAYER
+    - Disables the validation layer

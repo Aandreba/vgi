@@ -3,10 +3,19 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <type_traits>
 
 #include "defs.hpp"
 #include "memory.hpp"
+
+#ifdef _MSC_VER
+static_assert(std::is_same_v<wchar_t, std::filesystem::path::value_type>);
+#define VGI_OS(x) L##x
+#else
+static_assert(std::is_same_v<char, std::filesystem::path::value_type>);
+#define VGI_OS(x) x
+#endif
 
 namespace vgi {
     /// @brief Directory where the executable was run from.
@@ -37,4 +46,12 @@ namespace vgi {
         return read_file<T>(path.c_str());
     }
 
+    /// @brief Access to the list of environment variables
+    /// @sa [`std::getenv`](https://en.cppreference.com/w/cpp/utility/program/getenv.html)
+    [[nodiscard]] bool hasenv(const std::filesystem::path::value_type* name) noexcept;
+
+    /// @brief Access to the list of environment variables
+    /// @sa [`std::getenv`](https://en.cppreference.com/w/cpp/utility/program/getenv.html)
+    [[nodiscard]] std::optional<std::filesystem::path::string_type> getenv(
+            const std::filesystem::path::value_type* name) noexcept;
 }  // namespace vgi

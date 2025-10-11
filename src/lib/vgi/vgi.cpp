@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "defs.hpp"
+#include "fs.hpp"
 #include "log.hpp"
 #include "math.hpp"
 
@@ -204,13 +205,16 @@ namespace vgi {
 // The validation layer sits on top of every vulkan function to check whether the arguments passed
 // are valid and correct (by default, Vulkan assumes all arguments are valid and correct).
 #ifndef NDEBUG
-        const char *validation_layer_name =
-                reinterpret_cast<const char *>(u8"VK_LAYER_KHRONOS_validation");
+        if (!hasenv(VGI_OS("VGI_NO_VALIDATION_LAYER"))) {
+            const char *validation_layer_name =
+                    reinterpret_cast<const char *>(u8"VK_LAYER_KHRONOS_validation");
 
-        if (std::ranges::find(available_layers, validation_layer_name) != available_layers.end()) {
-            layers.push_back(validation_layer_name);
-        } else {
-            log_warn("The validation layer is not present, validation disabled");
+            if (std::ranges::find(available_layers, validation_layer_name) !=
+                available_layers.end()) {
+                layers.push_back(validation_layer_name);
+            } else {
+                log_warn("The validation layer is not present, validation disabled");
+            }
         }
 #endif
 

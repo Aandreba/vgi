@@ -57,7 +57,6 @@ static int run() {
     while (true) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            // while (SDL_WaitEvent(&event)) {
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                     return 0;
@@ -73,6 +72,8 @@ static int run() {
         // TODO Render loop
         vgi::frame frame{win};
         vgi::log("{} FPS", 1.0f / frame.delta);
+        frame.beginRendering(0.0f, 0.2f, 0.0f);
+        frame->endRendering();
     }
 }
 
