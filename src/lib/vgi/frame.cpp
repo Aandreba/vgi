@@ -29,7 +29,7 @@ namespace vgi {
             vk::ResultValue<uint32_t> result{{}, {}};
             try {
                 result = parent->acquireNextImageKHR(parent.swapchain, UINT64_MAX,
-                                                     parent.image_available[parent.current_frame]);
+                                                     parent.present_complete[parent.current_frame]);
             } catch (const vk::OutOfDateKHRError&) {
                 log_err("Window resizing not yet implemented");
                 throw;
@@ -121,7 +121,7 @@ namespace vgi {
         parent.queue.submit(
                 vk::SubmitInfo{
                         .waitSemaphoreCount = 1,
-                        .pWaitSemaphores = &parent.image_available[this->current_image],
+                        .pWaitSemaphores = &parent.present_complete[parent.current_frame],
                         .pWaitDstStageMask = waitStageMask,
                         .commandBufferCount = 1,
                         .pCommandBuffers = &cmdbuf,

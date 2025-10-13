@@ -53,7 +53,8 @@ namespace vgi {
             value_type* VGI_RESTRICT data =
                     static_cast<pointer>(::operator new(byte_size, alignment));
             try {
-                std::ranges::uninitialized_move(std::move(other), data);
+                std::ranges::uninitialized_move(std::ranges::begin(other), std::ranges::end(other),
+                                                data, data + size);
             } catch (...) {
                 ::operator delete(data, byte_size, alignment);
                 throw;

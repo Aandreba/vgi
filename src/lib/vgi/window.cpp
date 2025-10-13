@@ -188,8 +188,6 @@ namespace vgi {
 
         std::vector<vk::UniqueImageView> new_swapchain_views;
         new_swapchain_views.reserve(new_swapchain_images.size());
-        std::vector<vk::UniqueSemaphore> new_image_available;
-        new_image_available.reserve(new_swapchain_images.size());
         std::vector<vk::UniqueSemaphore> new_render_complete;
         new_render_complete.reserve(new_swapchain_images.size());
 
@@ -206,7 +204,6 @@ namespace vgi {
                                          .baseArrayLayer = 0,
                                          .layerCount = 1},
             }));
-            new_image_available.push_back(logical.createSemaphoreUnique({}));
             new_render_complete.push_back(logical.createSemaphoreUnique({}));
         }
 
@@ -215,9 +212,6 @@ namespace vgi {
         if (this->swapchain) {
             for (vk::ImageView view: this->swapchain_views) {
                 this->logical.destroyImageView(view);
-            }
-            for (vk::Semaphore sem: this->image_available) {
-                this->logical.destroySemaphore(sem);
             }
             for (vk::Semaphore sem: this->render_complete) {
                 this->logical.destroySemaphore(sem);
@@ -230,8 +224,6 @@ namespace vgi {
         this->swapchain_info = new_swapchain_info;
         this->swapchain_views = new_swapchain_views |
                                 std::views::transform(std::mem_fn(&vk::UniqueImageView::release));
-        this->image_available = new_image_available |
-                                std::views::transform(std::mem_fn(&vk::UniqueSemaphore::release));
         this->render_complete = new_render_complete |
                                 std::views::transform(std::mem_fn(&vk::UniqueSemaphore::release));
     }
@@ -288,8 +280,7 @@ namespace vgi {
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             this->in_flight[i] = this->logical.createFence(
                     vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
-            this->image_available[i] = this->logical.createSemaphore({});
-            this->render_complete[i] = this->logical.createSemaphore({});
+            this->present_complete[i] = this->logical.createSemaphore({});
         }
     }
 
@@ -313,13 +304,17 @@ namespace vgi {
                 this->logical.freeCommandBuffers(this->cmdpool, flying.cmdbuf);
                 this->logical.destroyFence(flying.fence);
             }
+            for (vk::ImageView view: this->swapchain_views) {
+                this->logical.destroyImageView(view);
+            }
+            for (vk::Semaphore sem: this->render_complete) {
+                this->logical.destroySemaphore(sem);
+            }
 
-            for (vk::ImageView view: this->swapchain_views) this->logical.destroyImageView(view);
             this->logical.freeCommandBuffers(this->cmdpool, this->cmdbufs);
             for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                 this->logical.destroyFence(this->in_flight[i]);
-                this->logical.destroySemaphore(this->image_available[i]);
-                this->logical.destroySemaphore(this->render_complete[i]);
+                this->logical.destroySemaphore(this->present_complete[i]);
             }
 
             if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
