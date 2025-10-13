@@ -76,12 +76,12 @@ namespace vgi {
     }
 #else
     bool hasenv(const std::filesystem::path::value_type* name) noexcept {
-        return std::getenv(path) != nullptr;
+        return std::getenv(name) != nullptr;
     }
 
     std::optional<std::filesystem::path::string_type> getenv(
             const std::filesystem::path::value_type* name) noexcept {
-        const char* env = std::getenv(path);
+        const char* env = std::getenv(name);
         if (!env) return std::nullopt;
         return std::make_optional<std::filesystem::path::string_type>(env);
     }

@@ -33,19 +33,24 @@ static int run() {
     {
         vgi::transfer_buffer_guard transfer{
                 win, std::initializer_list<vgi::vertex>{
-                             {.origin = {1.0f, 1.0f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
-                             {.origin = {-1.0f, 1.0f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
-                             {.origin = {0.0f, -1.0f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+                             {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                             {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                             {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
 
         vgi::command_buffer cmdbuf{win};
         cmdbuf->copyBuffer(transfer, vertices, vk::BufferCopy{.size = transfer->size()});
         std::move(cmdbuf).submit_and_wait();
     }
 
+    vgi::uniform_buffer_guard<uniform> uniforms{win};
+    uniforms.write(win, uniform{});
+
     vgi::graphics_pipeline_guard pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
             vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},
             vgi::graphics_pipeline_options{
+                    .cull_mode = vk::CullModeFlagBits::eNone,
+                    .fron_face = vk::FrontFace::eCounterClockwise,
                     .bindings = {{vk::DescriptorSetLayoutBinding{
                             .binding = 0,
                             .descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -53,7 +58,26 @@ static int run() {
                             .stageFlags = vk::ShaderStageFlagBits::eVertex,
                     }}},
             }};
+
+    // WARNING: Currently sharing the same uniform buffer for all frames.
     vgi::descriptor_pool_guard desc_pool{win, pipeline};
+    for (vk::DescriptorSet desc_set: desc_pool) {
+        const vk::DescriptorBufferInfo buf_info{
+                .buffer = uniforms,
+                .offset = 0,
+                .range = sizeof(uniform),
+        };
+
+        win->updateDescriptorSets(
+                vk::WriteDescriptorSet{
+                        .dstSet = desc_set,
+                        .dstBinding = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBuffer,
+                        .pBufferInfo = &buf_info,
+                },
+                {});
+    }
 
     while (true) {
         SDL_Event event;
@@ -73,7 +97,7 @@ static int run() {
         // TODO Render loop
         vgi::frame frame{win};
         vgi::log("{} FPS", 1.0f / frame.delta);
-        frame.beginRendering(0.0f, 0.2f, 0.0f);
+        frame.beginRendering(0.0f, 0.0f, 0.2f);
 
         frame->setViewport(0, vk::Viewport{
                                       .width = static_cast<float>(win.draw_size().width),

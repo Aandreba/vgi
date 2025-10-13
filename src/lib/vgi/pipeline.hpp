@@ -70,7 +70,10 @@ namespace vgi {
     };
 
     /// @brief A pool of descriptor sets
-    struct descriptor_pool {
+    class descriptor_pool {
+        using sets_type = std::array<vk::DescriptorSet, window::MAX_FRAMES_IN_FLIGHT>;
+
+    public:
         descriptor_pool(const window& parent, const pipeline& pipeline);
 
         /// @brief Move constructor
@@ -87,6 +90,9 @@ namespace vgi {
             std::construct_at(this, std::move(other));
             return *this;
         }
+
+        constexpr sets_type::const_iterator begin() const noexcept { return this->sets.cbegin(); }
+        constexpr sets_type::const_iterator end() const noexcept { return this->sets.cend(); }
 
         /// @brief Access specified descriptor set
         /// @param n Index of the descriptor set
@@ -107,7 +113,7 @@ namespace vgi {
 
     private:
         vk::DescriptorPool pool;
-        std::array<vk::DescriptorSet, window::MAX_FRAMES_IN_FLIGHT> sets;
+        sets_type sets;
     };
 
     /// @brief Information used to create a graphics pipeline

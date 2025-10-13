@@ -186,38 +186,54 @@ namespace vgi {
                     return this->logical.getSwapchainImagesKHR(new_swapchain.get(), count, ptr);
                 });
 
-        unique_span<vk::ImageView> new_swapchain_views = make_unique_span_with_destruct(
-                new_swapchain_images.size(),
-                [&](size_t i) {
-                    return logical.createImageView(vk::ImageViewCreateInfo{
-                            .image = new_swapchain_images[i],
-                            .viewType = vk::ImageViewType::e2D,
-                            .format = swapchain_format.format,
-                            .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
-                                           vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
-                            .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                 .baseMipLevel = 0,
-                                                 .levelCount = 1,
-                                                 .baseArrayLayer = 0,
-                                                 .layerCount = 1},
-                    });
-                },
-                [&](vk::ImageView&& view) noexcept { logical.destroyImageView(view); });
+        std::vector<vk::UniqueImageView> new_swapchain_views;
+        new_swapchain_views.reserve(new_swapchain_images.size());
+        std::vector<vk::UniqueSemaphore> new_image_available;
+        new_image_available.reserve(new_swapchain_images.size());
+        std::vector<vk::UniqueSemaphore> new_render_complete;
+        new_render_complete.reserve(new_swapchain_images.size());
+
+        for (size_t i = 0; i < new_swapchain_images.size(); ++i) {
+            new_swapchain_views.push_back(logical.createImageViewUnique(vk::ImageViewCreateInfo{
+                    .image = new_swapchain_images[i],
+                    .viewType = vk::ImageViewType::e2D,
+                    .format = swapchain_format.format,
+                    .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
+                                   vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
+                    .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                         .baseMipLevel = 0,
+                                         .levelCount = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount = 1},
+            }));
+            new_image_available.push_back(logical.createSemaphoreUnique({}));
+            new_render_complete.push_back(logical.createSemaphoreUnique({}));
+        }
 
         // If an existing swap chain is re-created, destroy the old swap chain and the ressources
         // owned by the application (image views, images are owned by the swa
         if (this->swapchain) {
-            for (vk::ImageView view:
-                 std::exchange(this->swapchain_views, std::move(new_swapchain_views)))
+            for (vk::ImageView view: this->swapchain_views) {
                 this->logical.destroyImageView(view);
-            this->logical.destroySwapchainKHR(
-                    std::exchange(this->swapchain, new_swapchain.release()));
+            }
+            for (vk::Semaphore sem: this->image_available) {
+                this->logical.destroySemaphore(sem);
+            }
+            for (vk::Semaphore sem: this->render_complete) {
+                this->logical.destroySemaphore(sem);
+            }
+            this->logical.destroySwapchainKHR(this->swapchain);
         } else {
-            this->swapchain_views = std::move(new_swapchain_views);
-            this->swapchain = new_swapchain.release();
         }
+        this->swapchain = new_swapchain.release();
         this->swapchain_images = std::move(new_swapchain_images);
         this->swapchain_info = new_swapchain_info;
+        this->swapchain_views = new_swapchain_views |
+                                std::views::transform(std::mem_fn(&vk::UniqueImageView::release));
+        this->image_available = new_image_available |
+                                std::views::transform(std::mem_fn(&vk::UniqueSemaphore::release));
+        this->render_complete = new_render_complete |
+                                std::views::transform(std::mem_fn(&vk::UniqueSemaphore::release));
     }
 
     void window::create_swapchain(bool vsync, bool hdr10) {

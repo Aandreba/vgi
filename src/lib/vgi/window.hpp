@@ -121,8 +121,8 @@ namespace vgi {
         std::deque<flying_command_buffer> flying_cmdbufs;
         vk::CommandBuffer cmdbufs[MAX_FRAMES_IN_FLIGHT];
         vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];
-        vk::Semaphore image_available[MAX_FRAMES_IN_FLIGHT];
-        vk::Semaphore render_complete[MAX_FRAMES_IN_FLIGHT];
+        unique_span<vk::Semaphore> image_available;
+        unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
         std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
         std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;

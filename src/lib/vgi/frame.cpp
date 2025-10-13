@@ -1,6 +1,7 @@
 #include "frame.hpp"
 
 #include "log.hpp"
+#include "texture.hpp"
 
 namespace vgi {
     frame::frame(window& parent) : parent(parent) {
@@ -56,8 +57,15 @@ namespace vgi {
         }
 
     timings:
-        parent.cmdbufs[parent.current_frame].reset();
-        parent.cmdbufs[parent.current_frame].begin(vk::CommandBufferBeginInfo{});
+        vk::CommandBuffer cmdbuf = parent.cmdbufs[parent.current_frame];
+        vk::Image img = parent.swapchain_images[this->current_image];
+
+        cmdbuf.reset();
+        cmdbuf.begin(vk::CommandBufferBeginInfo{});
+        change_layout(cmdbuf, img, vk::ImageLayout::eUndefined,
+                      vk::ImageLayout::eColorAttachmentOptimal,
+                      vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                      vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
         this->time_point = std::chrono::steady_clock::now();
         if (!parent.first_frame) {
@@ -102,23 +110,30 @@ namespace vgi {
 
     frame::~frame() noexcept(false) {
         const vk::CommandBuffer& cmdbuf = **this;
+        change_layout(*this, *this, vk::ImageLayout::eColorAttachmentOptimal,
+                      vk::ImageLayout::ePresentSrcKHR);
         cmdbuf.end();
+
+        constexpr vk::PipelineStageFlags waitStageMask[1] = {
+                vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        };
 
         parent.queue.submit(
                 vk::SubmitInfo{
                         .waitSemaphoreCount = 1,
-                        .pWaitSemaphores = &parent.image_available[parent.current_frame],
+                        .pWaitSemaphores = &parent.image_available[this->current_image],
+                        .pWaitDstStageMask = waitStageMask,
                         .commandBufferCount = 1,
                         .pCommandBuffers = &cmdbuf,
                         .signalSemaphoreCount = 1,
-                        .pSignalSemaphores = &parent.render_complete[parent.current_frame],
+                        .pSignalSemaphores = &parent.render_complete[this->current_image],
                 },
                 parent.in_flight[parent.current_frame]);
 
         try {
             switch (parent.queue.presentKHR(vk::PresentInfoKHR{
                     .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = &parent.render_complete[parent.current_frame],
+                    .pWaitSemaphores = &parent.render_complete[this->current_image],
                     .swapchainCount = 1,
                     .pSwapchains = &parent.swapchain,
                     .pImageIndices = &this->current_image,

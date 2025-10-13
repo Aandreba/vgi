@@ -113,6 +113,13 @@ namespace vgi {
             vmaDestroyBuffer(parent, this->buffer, this->allocation);
         }
 
+        /// @brief Casts to the underlying `vk::Buffer`
+        constexpr operator vk::Buffer() const noexcept { return this->buffer; }
+        /// @brief Casts to the underlying `VkBuffer`
+        inline operator VkBuffer() const noexcept { return this->buffer; }
+        /// @brief Casts to the underlying `VmaAllocation`
+        constexpr operator VmaAllocation() const noexcept { return this->allocation; }
+
     private:
         vk::Buffer buffer;
         VmaAllocation allocation = VK_NULL_HANDLE;
