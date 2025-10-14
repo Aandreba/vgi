@@ -5,12 +5,6 @@
 #include <iterator>
 #include <syncstream>
 
-// If the compiler doesn't support synchronized ostream, use a global mutex instead
-#ifndef __cpp_lib_syncbuf
-#include <mutex>
-constinit std::mutex log_lock;
-#endif
-
 #ifdef VGI_LOG_BUF_SIZE
 constexpr static inline const size_t log_buf_size = VGI_LOG_BUF_SIZE;
 #else
@@ -18,6 +12,8 @@ constexpr static inline const size_t log_buf_size = 4096;
 #endif
 
 namespace vgi {
+    std::vector<std::unique_ptr<logger>> loggers{std::make_unique<default_logger>()};
+
     //! @cond Doxygen_Suppress
     struct input_fmt {
         std::string_view fmt;
@@ -48,16 +44,27 @@ namespace vgi {
         if (level < max_log_level) return;
         try {
             char log_buf[log_buf_size];
-#ifdef __cpp_lib_syncbuf
-            std::osyncstream(std::cerr) << format(log_buf, fmt, args);
-#else
             std::string_view msg = format(log_buf, fmt, args);
-            std::lock_guard log_guard{log_lock};
-            std::cerr << msg;
-#endif
+
+            for (std::unique_ptr<logger>& logger: loggers) {
+                try {
+                    logger->log(msg);
+                } catch (...) {
+                    // Ignore exceptions here
+                }
+            }
         } catch (...) {
             // Ignore exceptions here
         }
+    }
+
+    void default_logger::log(std::string_view msg) {
+#ifdef __cpp_lib_syncbuf
+        std::osyncstream(std::cerr) << msg;
+#else
+        std::lock_guard log_guard{log_lock};
+        std::cerr << msg;
+#endif
     }
 }  // namespace vgi
 

@@ -79,6 +79,8 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
 
 namespace vgi {
     vk::Instance instance;
+    std::vector<std::unique_ptr<layer>> layers;
+    bool shutdown_requested = false;
 
     // Sets the C++ global locale to the user prefered one.
     static void setup_locale() {
@@ -205,7 +207,7 @@ namespace vgi {
 // The validation layer sits on top of every vulkan function to check whether the arguments passed
 // are valid and correct (by default, Vulkan assumes all arguments are valid and correct).
 #ifndef NDEBUG
-        if (!hasenv(VGI_OS("VGI_NO_VALIDATION_LAYER"))) {
+        if (!has_env(VGI_OS("VGI_NO_VALIDATION_LAYER"))) {
             const char *validation_layer_name =
                     reinterpret_cast<const char *>(u8"VK_LAYER_KHRONOS_validation");
 
@@ -225,7 +227,6 @@ namespace vgi {
         if (!layer_count) throw std::overflow_error{"too many instance layers"};
 
         vk::DebugUtilsMessengerCreateInfoEXT debug_create_info = setup_logger_info();
-
         vk::ApplicationInfo app_info{
                 .pApplicationName = reinterpret_cast<const char *>(app_name),
                 .pEngineName = reinterpret_cast<const char *>(u8"Entorn VGI"),
@@ -275,6 +276,35 @@ namespace vgi {
             throw;
         };
     }
+
+    void run() {
+        while (!shutdown_requested) {
+            /// Process all events that ocurred since last frame
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                shutdown_requested |= event.type == SDL_EVENT_QUIT;
+                for (std::unique_ptr<layer> &layer: layers) {
+                    layer->on_event(event);
+                }
+            }
+
+            /*
+            // Run all layer updates
+            for (std::unique_ptr<layer> &layer: layers) {
+                layer->on_update();
+            }
+
+            // Run all layer renders
+            for (const std::unique_ptr<layer> &layer: layers) {
+                layer->on_render();
+            }
+                */
+
+            // TODO Handle transitions
+        }
+    }
+
+    void shutdown() noexcept { shutdown_requested = true; }
 
     void quit() noexcept {
         instance.destroy();

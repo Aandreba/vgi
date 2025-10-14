@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "device.hpp"
+#include "vgi.hpp"
 #include "vulkan.hpp"
 
 namespace vgi {

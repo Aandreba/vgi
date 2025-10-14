@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <format>
+#include <mutex>
 #include <string_view>
 
 #include "defs.hpp"
@@ -32,6 +33,26 @@ namespace vgi {
 #else
     constexpr static inline const log_level max_log_level = log_level::error;
 #endif
+
+    /// @brief A type that provides a way to process logs
+    struct logger {
+        virtual void log(std::string_view msg) = 0;
+        virtual ~logger() = default;
+    };
+
+    /// @brief Initial, default logger used by the library
+    struct default_logger : public logger {
+        default_logger(const default_logger&) = delete;
+        default_logger& operator=(const default_logger&) = delete;
+
+        void log(std::string_view msg) override;
+
+    private:
+        // If the compiler doesn't support synchronized ostream, use a mutex instead
+#ifndef __cpp_lib_syncbuf
+        std::mutex lock{};
+#endif
+    };
 
     /// @brief Logs the message by formatting the arguments according to the format string.
     /// @param level Level of the logged message

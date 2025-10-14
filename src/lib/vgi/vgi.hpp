@@ -2,6 +2,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <optional>
 #include <stdexcept>
 
 #include "defs.hpp"
@@ -9,9 +10,18 @@
 #include "vulkan.hpp"
 
 namespace vgi {
+    struct window;
+    struct frame;
+
     /// @brief Initializes the environment context
     /// @param app_name Name of the application, in UTF-8
     void init(const char8_t* app_name);
+
+    /// @brief Starts running the main loop.
+    void run(const window& window);
+
+    /// @brief Requests the main loop runner to stop execution as soon as possible
+    void shutdown() noexcept;
 
     /// @brief Shuts down the environment context
     void quit() noexcept;
@@ -19,6 +29,26 @@ namespace vgi {
     /// @brief Exception class to report errors concurred by SDL
     struct sdl_error : public std::runtime_error {
         sdl_error() : std::runtime_error(SDL_GetError()) {}
+    };
+
+    struct layer {
+        virtual void on_event(const SDL_Event& event) {}
+        virtual ~layer() = default;
+
+        void transition_to(std::unique_ptr<layer>&& layer) noexcept {
+            this->transition_target.emplace(std::move(layer));
+        }
+
+        template<std::derived_from<layer> T, class... Args>
+            requires(std::is_constructible_v<T, Args...>)
+        inline void transition_to(Args&&... args) {
+            return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
+        }
+
+        void detach() noexcept { this->transition_to(nullptr); }
+
+    private:
+        std::optional<std::unique_ptr<layer>> transition_target = std::nullopt;
     };
 
     namespace sdl {
@@ -42,26 +72,6 @@ namespace vgi {
     }  // namespace sdl
 
     namespace vkn {
-        /// @brief Helper function that writes the contents of a Vulkan enumeration to a
-        /// `unique_span`
-        /// @tparam T Values returned by the Vulkan function
-        /// @tparam F Lambda that calls the underlying Vulkan function
-        /// @param f Lambda that calls the underlying Vulkan function
-        /// @return The values returned by the Vulkan function
-        template<class T, class F>
-            requires(std::is_invocable_r_v<vk::Result, const F&, uint32_t*, T*> &&
-                     std::is_trivially_copy_constructible_v<T> &&
-                     std::is_trivially_destructible_v<T>)
-        unique_span<T> enumerate(const F& f) {
-            uint32_t count;
-            vk::Result res = f(&count, nullptr);
-            VGI_ASSERT(res == vk::Result::eSuccess);
-            unique_span<T> buf = make_unique_span_for_overwrite<T>(count);
-            res = f(&count, buf.data());
-            VGI_ASSERT(res == vk::Result::eSuccess);
-            return buf;
-        }
-
         VGI_FORCEINLINE void allocateCommandBuffers(vk::Device device,
                                                     const vk::CommandBufferAllocateInfo& alloc_info,
                                                     vk::CommandBuffer* cmdbufs) {

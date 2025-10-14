@@ -11,9 +11,11 @@
 
 #ifdef _MSC_VER
 static_assert(std::is_same_v<wchar_t, std::filesystem::path::value_type>);
+/// @brief Turns a literal `const char*` into a literal `const std::filesystem::path::value_type*`
 #define VGI_OS(x) L##x
 #else
 static_assert(std::is_same_v<char, std::filesystem::path::value_type>);
+/// @brief Turns a literal `const char*` into a literal `const std::filesystem::path::value_type*`
 #define VGI_OS(x) x
 #endif
 
@@ -48,10 +50,10 @@ namespace vgi {
 
     /// @brief Access to the list of environment variables
     /// @sa [`std::getenv`](https://en.cppreference.com/w/cpp/utility/program/getenv.html)
-    [[nodiscard]] bool hasenv(const std::filesystem::path::value_type* name) noexcept;
+    [[nodiscard]] bool has_env(const std::filesystem::path::value_type* name) noexcept;
 
     /// @brief Access to the list of environment variables
     /// @sa [`std::getenv`](https://en.cppreference.com/w/cpp/utility/program/getenv.html)
-    [[nodiscard]] std::optional<std::filesystem::path::string_type> getenv(
+    [[nodiscard]] std::optional<std::filesystem::path::string_type> get_env(
             const std::filesystem::path::value_type* name) noexcept;
 }  // namespace vgi

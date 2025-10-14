@@ -28,7 +28,7 @@ static int run() {
         vgi::log("{}", device.name());
     }
 
-    // Upload vertex buffer
+    // Create vertex buffer
     vgi::vertex_buffer_guard vertices{win, 3};
     {
         vgi::transfer_buffer_guard transfer{
@@ -42,8 +42,10 @@ static int run() {
         std::move(cmdbuf).submit_and_wait();
     }
 
+    // Create uniform buffer
     vgi::uniform_buffer_guard<uniform> uniforms{win};
-    uniforms.write(win, uniform{});
+    uniforms.write(win, uniform{.projection = glm::perspective(glm::radians(60.0f), 900.0f / 600.0f,
+                                                               0.01f, 1000.0f)});
 
     vgi::graphics_pipeline_guard pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
@@ -94,7 +96,7 @@ static int run() {
             }
         }
 
-        // TODO Render loop
+        // Render loop
         vgi::frame frame{win};
         vgi::log("{} FPS", 1.0f / frame.delta);
         frame.beginRendering(0.0f, 0.0f, 0.2f);
