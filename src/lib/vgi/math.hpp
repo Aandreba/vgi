@@ -10,6 +10,7 @@
 
 #include "arch.hpp"
 #include "defs.hpp"
+#include "math/transf3d.hpp"
 
 #ifdef VGI_ARCH_FAMILY_X86
 #include <immintrin.h>
