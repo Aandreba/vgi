@@ -96,6 +96,12 @@ namespace vgi {
         // We need one blend attachment state per color attachment (even if blending is not used)
         const vk::PipelineColorBlendAttachmentState blend_attachment_states[] = {{
                 .blendEnable = options.color_blending,
+                .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                .colorBlendOp = vk::BlendOp::eAdd,
+                .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                .alphaBlendOp = vk::BlendOp::eAdd,
                 .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
                                   vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
         }};

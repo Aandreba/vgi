@@ -131,8 +131,7 @@ namespace vgi {
         /// @brief Specifies the comparison operator to use in the depth testing
         vk::CompareOp depth_compare_op = vk::CompareOp::eNever;
         /// @brief Enables/Disables color blending
-        /// @warning Color blending not yet implemented
-        bool color_blending = false;
+        bool color_blending = true;
         /// @brief The bindings used throughout the pipeline
         std::span<const vk::DescriptorSetLayoutBinding> bindings = {};
     };
