@@ -95,8 +95,9 @@ namespace vgi {
         // Color blend state describes how blend factors are calculated (if used)
         // We need one blend attachment state per color attachment (even if blending is not used)
         const vk::PipelineColorBlendAttachmentState blend_attachment_states[] = {{
-                .blendEnable = static_cast<bool>(options.color_blend_mask),
-                .colorWriteMask = options.color_blend_mask,
+                .blendEnable = options.color_blending,
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                                  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
         }};
         const vk::PipelineColorBlendStateCreateInfo color_blend_state{
                 .attachmentCount = std::size(blend_attachment_states),

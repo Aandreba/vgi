@@ -130,8 +130,9 @@ namespace vgi {
         vk::FrontFace fron_face = vk::FrontFace::eCounterClockwise;
         /// @brief Specifies the comparison operator to use in the depth testing
         vk::CompareOp depth_compare_op = vk::CompareOp::eNever;
-        /// @warning Reserved for future use
-        vk::ColorComponentFlags color_blend_mask = {};
+        /// @brief Enables/Disables color blending
+        /// @warning Color blending not yet implemented
+        bool color_blending = false;
         /// @brief The bindings used throughout the pipeline
         std::span<const vk::DescriptorSetLayoutBinding> bindings = {};
     };

@@ -13,12 +13,6 @@ layout (binding = 0) uniform UBO
 	mat4 viewMatrix;
 } ubo;
 
-vec2 positions[3] = vec2[](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
-
 void main()  {
 	outColor = inColor;
     gl_Position = vec4(inPos.xyz, 1.0);
