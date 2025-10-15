@@ -134,14 +134,6 @@ namespace vgi {
         friend struct command_buffer;
         friend struct frame;
     };
-
-    struct window_layer : public virtual layer_base {
-        virtual void on_event(const SDL_Event& event) {}
-        virtual void on_update(const frame& ts) {}
-        virtual void on_render(const frame& ts) {}
-        virtual ~window_layer() = default;
-    };
-
 }  // namespace vgi
 
 /// @brief Checks whether the windows has the provided identifier

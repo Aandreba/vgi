@@ -46,12 +46,16 @@ namespace vgi {
         timings();
     };
 
-    struct layer_base {
-        virtual ~layer_base() = default;
+    //! @cond Doxygen_Suppress
+    struct layer {
+        virtual void on_event(const SDL_Event& event) {}
+        virtual void on_update(const timings& ts) {}
+        virtual void on_render() {}
+        virtual ~layer() = default;
 
         /// @brief At the end of this frame, replace this layer with a new one
         /// @param layer Layer that will replace the current one
-        void transition_to(std::unique_ptr<layer_base>&& layer) noexcept {
+        void transition_to(std::unique_ptr<layer>&& layer) noexcept {
             this->transition_target.emplace(std::move(layer));
         }
 
@@ -59,7 +63,7 @@ namespace vgi {
         /// @tparam ...Args Argument types
         /// @tparam T Layer type
         /// @param ...args Arguments to create the new layer
-        template<std::derived_from<layer_base> T, class... Args>
+        template<std::derived_from<layer> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
         inline void transition_to(Args&&... args) {
             return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
@@ -68,25 +72,10 @@ namespace vgi {
         /// @brief At the end of this frame, detach the current layer
         void detach() noexcept { this->transition_to(nullptr); }
 
-    protected:
-        virtual void on_event(const SDL_Event& event) = 0;
-        virtual void on_update(const timings& ts) = 0;
-        virtual void on_render(const timings& ts) = 0;
-
     private:
-        std::optional<std::unique_ptr<layer_base>> transition_target = std::nullopt;
+        std::optional<std::unique_ptr<layer>> transition_target = std::nullopt;
     };
-
-    template<class T>
-    concept is_layer = true;
-
-    template<class Derived>
-    struct layer : public layer_base {
-        virtual void on_event(const SDL_Event& event) {}
-        virtual void on_update(const timings& ts) {}
-        virtual void on_render(const timings& ts) {}
-        virtual ~layer() = default;
-    };
+    //! @endcond
 
     namespace sdl {
         /// @brief Helper function that parses an SDL result
@@ -109,6 +98,11 @@ namespace vgi {
     }  // namespace sdl
 
     namespace vkn {
+        /// @brief Allocate command buffers from an existing command pool
+        /// @param device Logical device that owns the command pool
+        /// @param alloc_info Pointer to a structure describing parameters of the allocation
+        /// @param cmdbufs Pointer to an array of `vk::CommandBuffer` handles in which the resulting
+        /// command buffer objects are returned
         VGI_FORCEINLINE void allocateCommandBuffers(vk::Device device,
                                                     const vk::CommandBufferAllocateInfo& alloc_info,
                                                     vk::CommandBuffer* cmdbufs) {
@@ -116,6 +110,11 @@ namespace vgi {
                                     VULKAN_HPP_NAMESPACE_STRING "::Device::allocateCommandBuffers");
         }
 
+        /// @brief Allocate descriptor sets from an existing descriptor pool
+        /// @param device Logical device that owns the descriptor pool
+        /// @param alloc_info Pointer to a structure describing parameters of the allocation
+        /// @param cmdbufs Pointer to an array of `vk::DescriptorSet` handles in which the resulting
+        /// descriptor set objects are returned
         VGI_FORCEINLINE void allocateDescriptorSets(vk::Device device,
                                                     const vk::DescriptorSetAllocateInfo& alloc_info,
                                                     vk::DescriptorSet* cmdbufs) {
