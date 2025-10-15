@@ -47,6 +47,7 @@ namespace vgi {
         friend void run();
     };
 
+    /// @brief
     struct layer {
         virtual void on_event(const SDL_Event& event) {}
         virtual void on_update(const timings& ts) {}

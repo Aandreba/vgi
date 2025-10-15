@@ -102,8 +102,9 @@ namespace vgi {
         window(window&& other) noexcept :
             handle(std::exchange(other.handle, nullptr)), surface(std::move(other.surface)),
             physical(other.physical), logical(std::move(other.logical)),
+            allocator(std::move(other.allocator)),
             queue(std::move(other.queue)), cmdpool(std::move(other.cmdpool)),
-            swapchain(std::move(other.swapchain)) {}
+            swapchain(std::move(other.swapchain)), has_mailbox(other.has_mailbox), has_hdr10(other.has_hdr10) {}
 
         /// @brief Move assignment for `window`
         /// @param other Object to move
