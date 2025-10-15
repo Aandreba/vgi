@@ -86,8 +86,12 @@ struct triangle_scene : public vgi::scene {
         // TODO
     }
 
-    void on_render(vk::CommandBuffer cmdbuf) override {
-        // TODO
+    void on_render(vk::CommandBuffer cmdbuf, uint32_t current_frame) override {
+        cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
+                                  this->desc_pool[current_frame], {});
+        cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
+        cmdbuf.bindVertexBuffers(0, {this->vertices}, {});
+        cmdbuf.draw(3, 1, 0, 0);
     }
 
     void on_detach(vgi::window& win) override {

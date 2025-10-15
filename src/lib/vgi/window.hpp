@@ -19,7 +19,7 @@ namespace vgi {
         virtual void on_attach(window& w) {}
         virtual void on_event(const SDL_Event& event) {}
         virtual void on_update(vk::CommandBuffer cmdbuf, const timings& ts) {}
-        virtual void on_render(vk::CommandBuffer cmdbuf) {}
+        virtual void on_render(vk::CommandBuffer cmdbuf, uint32_t current_frame) {}
         virtual void on_detach(window& w) {}
         virtual ~scene() = default;
 

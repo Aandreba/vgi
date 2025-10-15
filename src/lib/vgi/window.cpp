@@ -403,7 +403,17 @@ namespace vgi {
                     .pStencilAttachment = nullptr,
             });
 
-            s->on_render(cmdbuf);
+            // TODO Per-scene viewport
+            cmdbuf.setViewport(0, vk::Viewport{
+                                          .width = static_cast<float>(this->draw_size().width),
+                                          .height = static_cast<float>(this->draw_size().height),
+                                          .maxDepth = 1.0f,
+                                  });
+
+            // TODO Per-scene scissor
+            cmdbuf.setScissor(0, vk::Rect2D{.extent = this->draw_size()});
+
+            s->on_render(cmdbuf, this->current_frame);
             cmdbuf.endRendering();
         }
 
