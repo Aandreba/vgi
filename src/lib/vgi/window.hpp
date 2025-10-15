@@ -161,9 +161,9 @@ namespace vgi {
             this->push_scene(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
-        /// @inheritDoc
+        //! @inheritDoc
         void on_event(const SDL_Event& event) override;
-        /// @inheritDoc
+        //! @inheritDoc
         void on_update(const timings& ts) override;
 
         /// @brief Creates a new buffer
