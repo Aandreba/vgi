@@ -50,7 +50,6 @@ namespace vgi {
     struct layer {
         virtual void on_event(const SDL_Event& event) {}
         virtual void on_update(const timings& ts) {}
-        virtual void on_render() {}
         virtual ~layer() = default;
 
         /// @brief At the end of this frame, replace this layer with a new one
@@ -77,9 +76,14 @@ namespace vgi {
         friend void run();
     };
 
-    /// @brief Adds a new layer to the window
+    /// @brief Adds a new layer
     /// @param layer Layer to be added
-    void add_layer(std::unique_ptr<layer>&& layer);
+    size_t add_layer(std::unique_ptr<layer>&& layer);
+
+    /// @brief Access a layer
+    /// @param key Key of the layer to access
+    /// @warning If you add a new layer, the returned reference may be invalidated.
+    layer& get_layer(size_t key);
 
     /// @brief Adds a new layer to the window
     /// @tparam ...Args Argument types
@@ -87,8 +91,19 @@ namespace vgi {
     /// @param ...args Arguments to create the layer
     template<std::derived_from<layer> T, class... Args>
         requires(std::is_constructible_v<T, Args...>)
-    void add_layer(Args&&... args) {
-        add_layer(std::make_unique<T>(std::forward<Args>(args)...));
+    size_t add_layer(Args&&... args) {
+        return add_layer(std::make_unique<T>(std::forward<Args>(args)...));
+    }
+
+    /// @brief Adds a new layer to the window
+    /// @tparam ...Args Argument types
+    /// @tparam T Layer type
+    /// @param ...args Arguments to create the layer
+    template<std::derived_from<layer> T, class... Args>
+        requires(std::is_constructible_v<T, Args...>)
+    T& emplace_layer(Args&&... args) {
+        const size_t key = add_layer<T, Args...>(std::forward<Args>(args)...);
+        return static_cast<T&>(get_layer(key));
     }
 
     namespace sdl {

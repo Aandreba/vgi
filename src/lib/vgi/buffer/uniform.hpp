@@ -19,6 +19,9 @@ namespace vgi {
     /// @brief A buffer used to store uniform objects
     template<uniform T>
     struct uniform_buffer {
+        /// @brief Default constructor.
+        uniform_buffer() = default;
+
         /// @brief Creates a new uniform buffer
         /// @param parent Window that creates the buffer
         /// @param size Number of uniform objects the buffer can store

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ranges>
 #include <vector>
+#include <vgi/slab.hpp>
 
 #include "defs.hpp"
 #include "fs.hpp"
@@ -78,8 +79,10 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
 }
 
 namespace vgi {
+    using namespace priv;
+
     vk::Instance instance;
-    std::vector<std::unique_ptr<layer>> layers;
+    slab<std::unique_ptr<layer>> layers;
     std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
     std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
     bool shutdown_requested = false;
@@ -287,15 +290,14 @@ namespace vgi {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 shutdown_requested |= event.type == SDL_EVENT_QUIT;
-                for (std::unique_ptr<layer> &layer: layers) {
-                    layer->on_event(event);
+                for (std::unique_ptr<layer> &l: layers.values()) {
+                    l->on_event(event);
                 }
             }
 
             // Handle transitions & run layer updates
             timings ts;
-            size_t i = 0;
-            while (i < layers.size()) {
+            for (size_t i: layers.keys()) {
                 if (layers[i]->transition_target.has_value()) {
                     std::unique_ptr<layer> target = std::move(layers[i]->transition_target.value());
                     if (target) {
@@ -303,17 +305,13 @@ namespace vgi {
                         layers[i] = std::move(target);
                     } else {
                         // Remove layer
-                        std::swap(layers[i], layers.back());
-                        layers.pop_back();
+                        layers.remove(i);
                         continue;
                     }
                 }
                 layers[i]->on_update(ts);
                 ++i;
             }
-
-            // Run all layer renders
-            for (std::unique_ptr<layer> &layer: layers) layer->on_render();
         }
     }
 
@@ -325,7 +323,8 @@ namespace vgi {
         SDL_Quit();
     }
 
-    void add_layer(std::unique_ptr<layer> &&layer) { layers.push_back(std::move(layer)); }
+    size_t add_layer(std::unique_ptr<layer> &&layer) { return layers.emplace(std::move(layer)); }
+    layer &get_layer(size_t key) { return *layers.at(key); }
 
     timings::timings() {
         this->time_point = std::chrono::steady_clock::now();

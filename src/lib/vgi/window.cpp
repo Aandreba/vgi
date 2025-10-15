@@ -311,6 +311,7 @@ namespace vgi {
         // Get the next swap chain image from the implementation
         // Note that the implementation is free to return the images in any order, so we must use
         // the acquire function and can't just cycle through the images/imageIndex on our own
+        uint32_t current_image;
         while (true) {
             vk::ResultValue<uint32_t> result{{}, {}};
             try {
@@ -325,7 +326,7 @@ namespace vgi {
 
             switch (result.result) {
                 case vk::Result::eSuccess: {
-                    this->current_image = result.value;
+                    current_image = result.value;
                     goto updates;
                 }
                 case vk::Result::eNotReady:
@@ -344,7 +345,8 @@ namespace vgi {
 
     updates:
         vk::CommandBuffer cmdbuf = this->cmdbufs[this->current_frame];
-        vk::Image img = this->swapchain_images[this->current_image];
+        vk::Image img = this->swapchain_images[current_image];
+        vk::ImageView view = this->swapchain_views[current_image];
 
         cmdbuf.reset();
         cmdbuf.begin(vk::CommandBufferBeginInfo{});
@@ -375,12 +377,6 @@ namespace vgi {
             this->scenes[i]->on_update(cmdbuf, ts);
             ++i;
         }
-    }
-
-    void window::on_render() {
-        vk::CommandBuffer cmdbuf = this->cmdbufs[this->current_frame];
-        vk::Image img = this->swapchain_images[this->current_image];
-        vk::ImageView view = this->swapchain_views[this->current_image];
 
         // Run scene renders
         for (std::unique_ptr<scene>& s: this->scenes) {
@@ -434,17 +430,17 @@ namespace vgi {
                         .commandBufferCount = 1,
                         .pCommandBuffers = &cmdbuf,
                         .signalSemaphoreCount = 1,
-                        .pSignalSemaphores = &this->render_complete[this->current_image],
+                        .pSignalSemaphores = &this->render_complete[current_image],
                 },
                 this->in_flight[this->current_frame]);
 
         try {
             switch (this->queue.presentKHR(vk::PresentInfoKHR{
                     .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = &this->render_complete[this->current_image],
+                    .pWaitSemaphores = &this->render_complete[current_image],
                     .swapchainCount = 1,
                     .pSwapchains = &this->swapchain,
-                    .pImageIndices = &this->current_image,
+                    .pImageIndices = &current_image,
             })) {
                 case vk::Result::eSuccess:
                     break;

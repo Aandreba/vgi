@@ -63,6 +63,8 @@ namespace vgi {
 
     /// @brief A buffer used to store the vertices of a mesh
     struct vertex_buffer {
+        /// @brief Default constructor.
+        vertex_buffer() = default;
         /// @brief Creates a vertex buffer of the specified size
         /// @param parent Window that creates the buffer
         /// @param size Number of vertices the buffer can store

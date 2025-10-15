@@ -77,8 +77,8 @@ set(vgi_static_libraries SDL3::SDL3-static)
 set(vgi_shared_libraries SDL3::SDL3-shared)
 
 # Declare the 'src/lib' directory as an include target.
-target_include_directories(vgi_static PUBLIC "src/lib")
-target_include_directories(vgi_shared PUBLIC "src/lib")
+target_include_directories(vgi_static PUBLIC "src/lib" PRIVATE "src/private")
+target_include_directories(vgi_shared PUBLIC "src/lib" PRIVATE "src/private")
 
 # Specify the macros to be added when compiling the source
 set(

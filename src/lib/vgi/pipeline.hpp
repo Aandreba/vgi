@@ -55,6 +55,9 @@ namespace vgi {
         /// @brief Handle to the underlying `vk::Pipeline`
         vk::Pipeline handle = nullptr;
 
+        /// @brief Default constructor
+        pipeline() = default;
+
         /// @brief Creates a new pipeline with the provided bindings
         /// @param parent Window that will create the pipeline
         /// @param bindings Bindings that will be used througout the pipeline
@@ -74,6 +77,8 @@ namespace vgi {
         using sets_type = std::array<vk::DescriptorSet, window::MAX_FRAMES_IN_FLIGHT>;
 
     public:
+        /// @brief Default constructor
+        descriptor_pool() = default;
         descriptor_pool(const window& parent, const pipeline& pipeline);
 
         /// @brief Move constructor
@@ -138,6 +143,9 @@ namespace vgi {
 
     /// @brief A graphics pipeline, mainly used to rasterize images.
     struct graphics_pipeline : public pipeline {
+        /// @brief Default constructor.
+        graphics_pipeline() = default;
+
         /// @brief Creates a graphics pipeline
         /// @param parent Window that will create the pipeline
         /// @param vertex Vertex shader

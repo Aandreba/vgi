@@ -90,7 +90,7 @@ struct triangle_scene : public vgi::scene {
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                                   this->desc_pool[current_frame], {});
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
-        cmdbuf.bindVertexBuffers(0, {this->vertices}, {});
+        cmdbuf.bindVertexBuffers(0, {this->vertices}, {0});
         cmdbuf.draw(3, 1, 0, 0);
     }
 
@@ -108,7 +108,9 @@ static int run() {
         vgi::log("{}", device.name());
     }
 
-    vgi::add_layer<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600);
+    vgi::emplace_layer<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
+            .add_scene<triangle_scene>();
+
     vgi::run();
     return 0;
 }
