@@ -80,6 +80,8 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
 namespace vgi {
     vk::Instance instance;
     std::vector<std::unique_ptr<layer>> layers;
+    std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
+    std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
     bool shutdown_requested = false;
 
     // Sets the C++ global locale to the user prefered one.
@@ -246,6 +248,8 @@ namespace vgi {
     }
 
     void init(const char8_t *app_name) {
+        // Setup default logger
+        add_logger<default_logger>();
         // Initialize SDL
         sdl::tri(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD));
         try {
@@ -310,5 +314,23 @@ namespace vgi {
         instance.destroy();
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
+    }
+
+    timings::timings() {
+        this->time_point = std::chrono::steady_clock::now();
+        if (!first_frame) {
+            VGI_ASSERT(!last_frame);
+            first_frame = last_frame = this->time_point;
+        }
+
+        this->start_time = this->time_point - first_frame.value();
+        this->start =
+                std::chrono::duration_cast<std::chrono::duration<float>>(this->start_time).count();
+
+        this->delta_time = this->time_point - last_frame.value();
+        this->delta =
+                std::chrono::duration_cast<std::chrono::duration<float>>(this->delta_time).count();
+
+        last_frame = this->time_point;
     }
 }  // namespace vgi

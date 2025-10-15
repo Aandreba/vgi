@@ -125,8 +125,6 @@ namespace vgi {
         vk::Semaphore present_complete[MAX_FRAMES_IN_FLIGHT];
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
-        std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
-        std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
         bool has_mailbox;
         bool has_hdr10;
 
@@ -135,6 +133,13 @@ namespace vgi {
 
         friend struct command_buffer;
         friend struct frame;
+    };
+
+    struct window_layer : public virtual layer_base {
+        virtual void on_event(const SDL_Event& event) {}
+        virtual void on_update(const frame& ts) {}
+        virtual void on_render(const frame& ts) {}
+        virtual ~window_layer() = default;
     };
 
 }  // namespace vgi

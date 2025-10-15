@@ -3,27 +3,18 @@
 #include <chrono>
 
 #include "pipeline.hpp"
+#include "vgi.hpp"
 #include "window.hpp"
 
 namespace vgi {
     /// @brief Structure that represents a frame that's being worked on by the host.
-    struct frame {
-        /// @brief Time point at which the frame started
-        std::chrono::steady_clock::time_point time_point;
-        /// @brief Time elapsed since the beginning of the first frame
-        std::chrono::steady_clock::duration start_time;
-        /// @brief Time elapsed since the beginning of the last frame
-        std::chrono::steady_clock::duration delta_time;
-        /// @brief Seconds elapsed since the beginning of the first frame
-        float start;
-        /// @brief Seconds elapsed since the beginning of the last frame
-        float delta;
-
+    struct frame : public timings {
         /// @brief Creates a new frame
         /// @param parent The window which will start the frame
+        /// @param ts The timings of the current update
         /// @warning Do not create multiple frames at the same time, only a single frame per window
         /// should exist simultaneously.
-        frame(window& parent);
+        frame(window& parent, const timings& ts);
 
         /// @brief Helper method that calls
         /// [`vkCmdBeginRendering`](https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdBeginRenderingKHR.html)

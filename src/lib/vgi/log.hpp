@@ -36,12 +36,15 @@ namespace vgi {
 
     /// @brief A type that provides a way to process logs
     struct logger {
+        /// @brief Prints the provided message to the desired destination
+        /// @param msg Message to be logged
         virtual void log(std::string_view msg) = 0;
         virtual ~logger() = default;
     };
 
     /// @brief Initial, default logger used by the library
     struct default_logger : public logger {
+        default_logger() = default;
         default_logger(const default_logger&) = delete;
         default_logger& operator=(const default_logger&) = delete;
 
@@ -53,6 +56,19 @@ namespace vgi {
         std::mutex lock{};
 #endif
     };
+
+    /// @brief Adds a new logger
+    void add_logger(std::unique_ptr<logger>&& logger);
+
+    /// @brief Adds a new logger
+    /// @tparam ...Args Argument types
+    /// @tparam T Logger type
+    /// @param ...args Arguments to construct the logger
+    template<std::derived_from<logger> T, class... Args>
+        requires(std::is_constructible_v<T, Args...>)
+    void add_logger(Args&&... args) {
+        return add_logger(std::make_unique<T>(std::forward<Args>(args)...));
+    }
 
     /// @brief Logs the message by formatting the arguments according to the format string.
     /// @param level Level of the logged message

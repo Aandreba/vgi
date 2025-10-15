@@ -4,7 +4,7 @@
 #include "texture.hpp"
 
 namespace vgi {
-    frame::frame(window& parent) : parent(parent) {
+    frame::frame(window& parent, const timings& ts) : timings(ts), parent(parent) {
         // Use a fence to wait until the command buffer has finished execution before using it again
         while (true) {
             switch (parent->waitForFences(parent.in_flight[parent.current_frame], vk::True,
@@ -66,22 +66,6 @@ namespace vgi {
                       vk::ImageLayout::eColorAttachmentOptimal,
                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
                       vk::PipelineStageFlagBits::eColorAttachmentOutput);
-
-        this->time_point = std::chrono::steady_clock::now();
-        if (!parent.first_frame) {
-            VGI_ASSERT(!parent.last_frame);
-            parent.first_frame = parent.last_frame = this->time_point;
-        }
-
-        this->start_time = this->time_point - parent.first_frame.value();
-        this->start =
-                std::chrono::duration_cast<std::chrono::duration<float>>(this->start_time).count();
-
-        this->delta_time = this->time_point - parent.last_frame.value();
-        this->delta =
-                std::chrono::duration_cast<std::chrono::duration<float>>(this->delta_time).count();
-
-        parent.last_frame = this->time_point;
     }
 
     void frame::beginRendering(float r, float g, float b, float a) const {

@@ -12,7 +12,7 @@ constexpr static inline const size_t log_buf_size = 4096;
 #endif
 
 namespace vgi {
-    std::vector<std::unique_ptr<logger>> loggers{std::make_unique<default_logger>()};
+    std::vector<std::unique_ptr<logger>> loggers;
 
     //! @cond Doxygen_Suppress
     struct input_fmt {
@@ -66,6 +66,8 @@ namespace vgi {
         std::cerr << msg;
 #endif
     }
+
+    void add_logger(std::unique_ptr<logger>&& logger) { loggers.push_back(std::move(logger)); }
 }  // namespace vgi
 
 //! @cond Doxygen_Suppress

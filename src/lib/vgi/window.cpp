@@ -181,10 +181,8 @@ namespace vgi {
         };
 
         vk::UniqueSwapchainKHR new_swapchain = logical.createSwapchainKHRUnique(new_swapchain_info);
-        unique_span<vk::Image> new_swapchain_images =
-                vkn::enumerate<vk::Image>([&](uint32_t* count, vk::Image* ptr) {
-                    return this->logical.getSwapchainImagesKHR(new_swapchain.get(), count, ptr);
-                });
+        std::vector<vk::Image> new_swapchain_images =
+                this->logical.getSwapchainImagesKHR(new_swapchain.get());
 
         std::vector<vk::UniqueImageView> new_swapchain_views;
         new_swapchain_views.reserve(new_swapchain_images.size());

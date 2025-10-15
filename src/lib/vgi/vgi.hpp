@@ -6,13 +6,11 @@
 #include <stdexcept>
 
 #include "defs.hpp"
+#include "forward.hpp"
 #include "memory.hpp"
 #include "vulkan.hpp"
 
 namespace vgi {
-    struct window;
-    struct frame;
-
     /// @brief Initializes the environment context
     /// @param app_name Name of the application, in UTF-8
     void init(const char8_t* app_name);
@@ -31,24 +29,63 @@ namespace vgi {
         sdl_error() : std::runtime_error(SDL_GetError()) {}
     };
 
-    struct layer {
-        virtual void on_event(const SDL_Event& event) {}
-        virtual ~layer() = default;
+    /// @brief Represents the time intervals of the current update iteration
+    struct timings {
+        /// @brief Time point at which the frame started
+        std::chrono::steady_clock::time_point time_point;
+        /// @brief Time elapsed since the beginning of the first frame
+        std::chrono::steady_clock::duration start_time;
+        /// @brief Time elapsed since the beginning of the last frame
+        std::chrono::steady_clock::duration delta_time;
+        /// @brief Seconds elapsed since the beginning of the first frame
+        float start;
+        /// @brief Seconds elapsed since the beginning of the last frame
+        float delta;
 
-        void transition_to(std::unique_ptr<layer>&& layer) noexcept {
+    private:
+        timings();
+    };
+
+    struct layer_base {
+        virtual ~layer_base() = default;
+
+        /// @brief At the end of this frame, replace this layer with a new one
+        /// @param layer Layer that will replace the current one
+        void transition_to(std::unique_ptr<layer_base>&& layer) noexcept {
             this->transition_target.emplace(std::move(layer));
         }
 
-        template<std::derived_from<layer> T, class... Args>
+        /// @brief At the end of this frame, replace this layer with a new one
+        /// @tparam ...Args Argument types
+        /// @tparam T Layer type
+        /// @param ...args Arguments to create the new layer
+        template<std::derived_from<layer_base> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
         inline void transition_to(Args&&... args) {
             return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
+        /// @brief At the end of this frame, detach the current layer
         void detach() noexcept { this->transition_to(nullptr); }
 
+    protected:
+        virtual void on_event(const SDL_Event& event) = 0;
+        virtual void on_update(const timings& ts) = 0;
+        virtual void on_render(const timings& ts) = 0;
+
     private:
-        std::optional<std::unique_ptr<layer>> transition_target = std::nullopt;
+        std::optional<std::unique_ptr<layer_base>> transition_target = std::nullopt;
+    };
+
+    template<class T>
+    concept is_layer = true;
+
+    template<class Derived>
+    struct layer : public layer_base {
+        virtual void on_event(const SDL_Event& event) {}
+        virtual void on_update(const timings& ts) {}
+        virtual void on_render(const timings& ts) {}
+        virtual ~layer() = default;
     };
 
     namespace sdl {
