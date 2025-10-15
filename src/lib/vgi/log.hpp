@@ -58,6 +58,7 @@ namespace vgi {
     };
 
     /// @brief Adds a new logger
+    /// @param logger Logger to be added
     void add_logger(std::unique_ptr<logger>&& logger);
 
     /// @brief Adds a new logger

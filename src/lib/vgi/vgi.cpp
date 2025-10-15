@@ -292,19 +292,28 @@ namespace vgi {
                 }
             }
 
-            /*
-            // Run all layer updates
-            for (std::unique_ptr<layer> &layer: layers) {
-                layer->on_update();
+            // Handle transitions & run layer updates
+            timings ts;
+            size_t i = 0;
+            while (i < layers.size()) {
+                if (layers[i]->transition_target.has_value()) {
+                    std::unique_ptr<layer> target = std::move(layers[i]->transition_target.value());
+                    if (target) {
+                        // Swap layer
+                        layers[i] = std::move(target);
+                    } else {
+                        // Remove layer
+                        std::swap(layers[i], layers.back());
+                        layers.pop_back();
+                        continue;
+                    }
+                }
+                layers[i]->on_update(ts);
+                ++i;
             }
 
             // Run all layer renders
-            for (const std::unique_ptr<layer> &layer: layers) {
-                layer->on_render();
-            }
-                */
-
-            // TODO Handle transitions
+            for (std::unique_ptr<layer> &layer: layers) layer->on_render();
         }
     }
 
@@ -315,6 +324,8 @@ namespace vgi {
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
     }
+
+    void add_layer(std::unique_ptr<layer> &&layer) { layers.push_back(std::move(layer)); }
 
     timings::timings() {
         this->time_point = std::chrono::steady_clock::now();

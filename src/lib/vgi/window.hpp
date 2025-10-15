@@ -4,16 +4,51 @@
 #include <SDL3/SDL.h>
 #include <cstdint>
 #include <deque>
+#include <memory>
+#include <optional>
 #include <tuple>
 #include <utility>
 
 #include "device.hpp"
+#include "forward.hpp"
 #include "vgi.hpp"
 #include "vulkan.hpp"
 
 namespace vgi {
+    struct scene {
+        virtual void on_attach(window& w) {}
+        virtual void on_event(const SDL_Event& event) {}
+        virtual void on_update(vk::CommandBuffer cmdbuf, const timings& ts) {}
+        virtual void on_render(vk::CommandBuffer cmdbuf) {}
+        virtual void on_detach(window& w) {}
+        virtual ~scene() = default;
+
+        /// @brief At the end of this frame, replace this scene with a new one
+        /// @param scene Scene that will replace the current one
+        void transition_to(std::unique_ptr<scene>&& scene) noexcept {
+            this->transition_target.emplace(std::move(scene));
+        }
+
+        /// @brief At the end of this frame, replace this scene with a new one
+        /// @tparam ...Args Argument types
+        /// @tparam T Scene type
+        /// @param ...args Arguments to create the new scene
+        template<std::derived_from<scene> T, class... Args>
+            requires(std::is_constructible_v<T, Args...>)
+        inline void transition_to(Args&&... args) {
+            return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
+        }
+
+        /// @brief At the end of this frame, detach the current scene
+        void detach() noexcept { this->transition_to(nullptr); }
+
+    private:
+        std::optional<std::unique_ptr<scene>> transition_target;
+        friend struct window;
+    };
+
     /// @brief Handle to a presentable window
-    struct window {
+    struct window : public layer {
         /// @brief Maximum number of frames that can waiting to be presented at the same time.
 #ifdef VGI_MAX_FRAMES_IN_FLIGHT
 #if VGI_MAX_FRAMES_IN_FLIGHT <= 0
@@ -87,6 +122,26 @@ namespace vgi {
         /// @brief Casts `window` to it's underlying `VmaAllocator`
         constexpr operator VmaAllocator() const noexcept { return this->allocator; }
 
+        /// @brief Adds a new scene to the window
+        /// @param scene Scene to be added
+        void add_scene(std::unique_ptr<scene>&& scene) {
+            this->scenes.emplace_back(std::move(scene))->on_attach(*this);
+        }
+
+        /// @brief Adds a new scene to the window
+        /// @tparam ...Args Argument types
+        /// @tparam T Scene type
+        /// @param ...args Arguments to create the scene
+        template<std::derived_from<scene> T, class... Args>
+            requires(std::is_constructible_v<T, Args...>)
+        void add_scene(Args&&... args) {
+            this->add_scene(std::make_unique<T>(std::forward<Args>(args)...));
+        }
+
+        void on_event(const SDL_Event& event) override;
+        void on_update(const timings& ts) override;
+        void on_render() override;
+
         /// @brief Creates a new buffer
         /// @param create_info Creation information for the `vk::Buffer`
         /// @param alloc_create_info Creation information fo the `VmaAllocation`
@@ -100,6 +155,7 @@ namespace vgi {
 
         /// @brief Closes the window, releasing all it's resources
         VGI_FORCEINLINE void close() && { window tmp = std::move(*this); }
+
         ~window() noexcept;
 
     private:
@@ -125,6 +181,8 @@ namespace vgi {
         vk::Semaphore present_complete[MAX_FRAMES_IN_FLIGHT];
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
+        uint32_t current_image;
+        std::vector<std::unique_ptr<scene>> scenes;
         bool has_mailbox;
         bool has_hdr10;
 

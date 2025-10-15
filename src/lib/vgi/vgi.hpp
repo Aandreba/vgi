@@ -16,7 +16,7 @@ namespace vgi {
     void init(const char8_t* app_name);
 
     /// @brief Starts running the main loop.
-    void run(const window& window);
+    void run();
 
     /// @brief Requests the main loop runner to stop execution as soon as possible
     void shutdown() noexcept;
@@ -44,9 +44,9 @@ namespace vgi {
 
     private:
         timings();
+        friend void run();
     };
 
-    //! @cond Doxygen_Suppress
     struct layer {
         virtual void on_event(const SDL_Event& event) {}
         virtual void on_update(const timings& ts) {}
@@ -74,8 +74,22 @@ namespace vgi {
 
     private:
         std::optional<std::unique_ptr<layer>> transition_target = std::nullopt;
+        friend void run();
     };
-    //! @endcond
+
+    /// @brief Adds a new layer to the window
+    /// @param layer Layer to be added
+    void add_layer(std::unique_ptr<layer>&& layer);
+
+    /// @brief Adds a new layer to the window
+    /// @tparam ...Args Argument types
+    /// @tparam T Layer type
+    /// @param ...args Arguments to create the layer
+    template<std::derived_from<layer> T, class... Args>
+        requires(std::is_constructible_v<T, Args...>)
+    void add_layer(Args&&... args) {
+        add_layer(std::make_unique<T>(std::forward<Args>(args)...));
+    }
 
     namespace sdl {
         /// @brief Helper function that parses an SDL result

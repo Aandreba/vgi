@@ -44,6 +44,20 @@ namespace vgi {
             this->allocation = allocation;
         }
 
+        uniform_buffer(const uniform_buffer&) = delete;
+        uniform_buffer& operator=(const uniform_buffer&) = delete;
+
+        uniform_buffer(uniform_buffer&& other) noexcept :
+            buffer(std::move(other.buffer)),
+            allocation(std::exchange(other.allocation, VK_NULL_HANDLE)) {}
+
+        uniform_buffer& operator=(uniform_buffer&& other) noexcept {
+            if (this == &other) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
         /// @brief Upload uniform objects to the GPU
         /// @param parent Window used to create the buffer
         /// @param src Elements to be uploaded

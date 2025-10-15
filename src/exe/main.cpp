@@ -6,7 +6,6 @@
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/cmdbuf.hpp>
 #include <vgi/device.hpp>
-#include <vgi/frame.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
 #include <vgi/pipeline.hpp>
@@ -21,100 +20,93 @@ struct uniform {
     vgi::std140<glm::mat4> model = glm::mat4{1};
 };
 
+struct triangle_scene : public vgi::scene {
+    vgi::vertex_buffer vertices;
+    vgi::uniform_buffer<uniform> uniforms;
+    vgi::graphics_pipeline pipeline;
+    vgi::descriptor_pool desc_pool;
+
+    void on_attach(vgi::window& win) override {
+        // Create vertex buffer
+        this->vertices = vgi::vertex_buffer{win, 3};
+        {
+            vgi::transfer_buffer_guard transfer{
+                    win,
+                    std::initializer_list<vgi::vertex>{
+                            {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                            {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                            {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+
+            vgi::command_buffer cmdbuf{win};
+            cmdbuf->copyBuffer(transfer, vertices, vk::BufferCopy{.size = transfer->size()});
+            std::move(cmdbuf).submit_and_wait();
+        }
+
+        // Create uniform buffer
+        this->uniforms = vgi::uniform_buffer<uniform>{win};
+        uniforms.write(win, uniform{.projection = glm::perspective(
+                                            glm::radians(60.0f), 900.0f / 600.0f, 0.01f, 1000.0f)});
+
+        this->pipeline = vgi::graphics_pipeline{
+                win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
+                vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},
+                vgi::graphics_pipeline_options{
+                        .cull_mode = vk::CullModeFlagBits::eNone,
+                        .fron_face = vk::FrontFace::eCounterClockwise,
+                        .bindings = {{vk::DescriptorSetLayoutBinding{
+                                .binding = 0,
+                                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                                .descriptorCount = 1,
+                                .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                        }}},
+                }};
+
+        // WARNING: Currently sharing the same uniform buffer for all frames.
+        this->desc_pool = vgi::descriptor_pool{win, this->pipeline};
+        for (vk::DescriptorSet desc_set: desc_pool) {
+            const vk::DescriptorBufferInfo buf_info{
+                    .buffer = uniforms,
+                    .offset = 0,
+                    .range = sizeof(uniform),
+            };
+
+            win->updateDescriptorSets(
+                    vk::WriteDescriptorSet{
+                            .dstSet = desc_set,
+                            .dstBinding = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eUniformBuffer,
+                            .pBufferInfo = &buf_info,
+                    },
+                    {});
+        }
+    }
+
+    void on_update(vk::CommandBuffer cmdbuf, const vgi::timings& ts) override {
+        // TODO
+    }
+
+    void on_render(vk::CommandBuffer cmdbuf) override {
+        // TODO
+    }
+
+    void on_detach(vgi::window& win) override {
+        std::move(this->vertices).destroy(win);
+        std::move(this->uniforms).destroy(win);
+        std::move(this->pipeline).destroy(win);
+        std::move(this->desc_pool).destroy(win);
+    }
+};
+
 static int run() {
-    vgi::window win{vgi::device::all().front(), u8"Hello world!", 900, 600};
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
         vgi::log("{}", device.name());
     }
 
-    // Create vertex buffer
-    vgi::vertex_buffer_guard vertices{win, 3};
-    {
-        vgi::transfer_buffer_guard transfer{
-                win, std::initializer_list<vgi::vertex>{
-                             {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
-                             {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
-                             {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
-
-        vgi::command_buffer cmdbuf{win};
-        cmdbuf->copyBuffer(transfer, vertices, vk::BufferCopy{.size = transfer->size()});
-        std::move(cmdbuf).submit_and_wait();
-    }
-
-    // Create uniform buffer
-    vgi::uniform_buffer_guard<uniform> uniforms{win};
-    uniforms.write(win, uniform{.projection = glm::perspective(glm::radians(60.0f), 900.0f / 600.0f,
-                                                               0.01f, 1000.0f)});
-
-    vgi::graphics_pipeline_guard pipeline{
-            win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
-            vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},
-            vgi::graphics_pipeline_options{
-                    .cull_mode = vk::CullModeFlagBits::eNone,
-                    .fron_face = vk::FrontFace::eCounterClockwise,
-                    .bindings = {{vk::DescriptorSetLayoutBinding{
-                            .binding = 0,
-                            .descriptorType = vk::DescriptorType::eUniformBuffer,
-                            .descriptorCount = 1,
-                            .stageFlags = vk::ShaderStageFlagBits::eVertex,
-                    }}},
-            }};
-
-    // WARNING: Currently sharing the same uniform buffer for all frames.
-    vgi::descriptor_pool_guard desc_pool{win, pipeline};
-    for (vk::DescriptorSet desc_set: desc_pool) {
-        const vk::DescriptorBufferInfo buf_info{
-                .buffer = uniforms,
-                .offset = 0,
-                .range = sizeof(uniform),
-        };
-
-        win->updateDescriptorSets(
-                vk::WriteDescriptorSet{
-                        .dstSet = desc_set,
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBuffer,
-                        .pBufferInfo = &buf_info,
-                },
-                {});
-    }
-
-    while (true) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_EVENT_QUIT:
-                    return 0;
-                case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
-                    if (event.window.windowID == win) return 0;
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-
-        // Render loop
-        vgi::frame frame{win};
-        vgi::log("{} FPS", 1.0f / frame.delta);
-        frame.beginRendering(0.0f, 0.0f, 0.2f);
-
-        frame->setViewport(0, vk::Viewport{
-                                      .width = static_cast<float>(win.draw_size().width),
-                                      .height = static_cast<float>(win.draw_size().height),
-                                      .maxDepth = 1.0f,
-                              });
-        frame->setScissor(0, vk::Rect2D{.extent = win.draw_size()});
-
-        // Draw triangle
-        frame.bindDescriptorSet(pipeline, desc_pool);
-        frame->bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-        frame->bindVertexBuffers(0, {vertices}, {0});
-        frame->draw(3, 1, 0, 0);
-        frame->endRendering();
-    }
+    vgi::add_layer<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600);
+    vgi::run();
+    return 0;
 }
 
 static void show_error_box(const char* msg) noexcept {

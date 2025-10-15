@@ -6,6 +6,7 @@
 
 #include "log.hpp"
 #include "math.hpp"
+#include "texture.hpp"
 #include "vgi.hpp"
 
 #define VMA_CHECK(expr) ::vk::detail::resultCheck(static_cast<::vk::Result>(expr), __FUNCTION__)
@@ -282,6 +283,180 @@ namespace vgi {
         }
     }
 
+    void window::on_event(const SDL_Event& event) {
+        SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
+        if (event_window == nullptr || event_window == this->handle) {
+            for (std::unique_ptr<scene>& s: this->scenes) s->on_event(event);
+        }
+    }
+
+    void window::on_update(const timings& ts) {
+        // Use a fence to wait until the command buffer has finished execution before using it again
+        while (true) {
+            switch ((*this)->waitForFences(this->in_flight[this->current_frame], vk::True,
+                                           UINT64_MAX)) {
+                case vk::Result::eSuccess: {
+                    (*this)->resetFences(this->in_flight[this->current_frame]);
+                    goto acquire_image;
+                }
+                case vk::Result::eTimeout:
+                    [[unlikely]] continue;
+                default:
+                    VGI_UNREACHABLE;
+                    break;
+            }
+        }
+
+    acquire_image:
+        // Get the next swap chain image from the implementation
+        // Note that the implementation is free to return the images in any order, so we must use
+        // the acquire function and can't just cycle through the images/imageIndex on our own
+        while (true) {
+            vk::ResultValue<uint32_t> result{{}, {}};
+            try {
+                result = (*this)->acquireNextImageKHR(this->swapchain, UINT64_MAX,
+                                                      this->present_complete[this->current_frame]);
+            } catch (const vk::OutOfDateKHRError&) {
+                log_err("Window resizing not yet implemented");
+                throw;
+            } catch (...) {
+                throw;
+            }
+
+            switch (result.result) {
+                case vk::Result::eSuccess: {
+                    this->current_image = result.value;
+                    goto updates;
+                }
+                case vk::Result::eNotReady:
+                case vk::Result::eTimeout: {
+                    continue;
+                }
+                case vk::Result::eSuboptimalKHR: {
+                    log_warn("Window resizing is not yet implemented");
+                    break;
+                }
+                default:
+                    VGI_UNREACHABLE;
+                    break;
+            }
+        }
+
+    updates:
+        vk::CommandBuffer cmdbuf = this->cmdbufs[this->current_frame];
+        vk::Image img = this->swapchain_images[this->current_image];
+
+        cmdbuf.reset();
+        cmdbuf.begin(vk::CommandBufferBeginInfo{});
+        change_layout(cmdbuf, img, vk::ImageLayout::eUndefined,
+                      vk::ImageLayout::eColorAttachmentOptimal,
+                      vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                      vk::PipelineStageFlagBits::eColorAttachmentOutput);
+
+        // Handle transitions & updates
+        size_t i = 0;
+        while (i < this->scenes.size()) {
+            if (this->scenes[i]->transition_target.has_value()) {
+                std::unique_ptr<scene> target =
+                        std::move(this->scenes[i]->transition_target.value());
+
+                this->scenes[i]->on_detach(*this);
+                if (target) {
+                    // Transition the layer
+                    target->on_attach(*this);
+                    this->scenes[i] = std::move(target);
+                } else {
+                    // Remove the layer
+                    std::swap(this->scenes[i], this->scenes.back());
+                    this->scenes.pop_back();
+                    continue;
+                }
+            }
+            this->scenes[i]->on_update(cmdbuf, ts);
+            ++i;
+        }
+    }
+
+    void window::on_render() {
+        vk::CommandBuffer cmdbuf = this->cmdbufs[this->current_frame];
+        vk::Image img = this->swapchain_images[this->current_image];
+        vk::ImageView view = this->swapchain_views[this->current_image];
+
+        // Run scene renders
+        for (std::unique_ptr<scene>& s: this->scenes) {
+            vk::RenderingAttachmentInfo color_attachment{
+                    .imageView = view,
+                    .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                    .loadOp = vk::AttachmentLoadOp::eClear,
+                    .storeOp = vk::AttachmentStoreOp::eStore,
+                    // TODO Per-scene clear color
+                    .clearValue = {.color = {.float32 = {{0.0f, 0.0f, 0.0f, 1.0f}}}},
+            };
+
+            cmdbuf.beginRendering(vk::RenderingInfo{
+                    // TODO Per-scene render area
+                    .renderArea = {.extent = this->swapchain_info.imageExtent},
+                    .layerCount = 1,
+                    .colorAttachmentCount = 1,
+                    .pColorAttachments = &color_attachment,
+                    .pDepthAttachment = nullptr,
+                    .pStencilAttachment = nullptr,
+            });
+
+            s->on_render(cmdbuf);
+            cmdbuf.endRendering();
+        }
+
+        // Present frame
+        change_layout(cmdbuf, img, vk::ImageLayout::eColorAttachmentOptimal,
+                      vk::ImageLayout::ePresentSrcKHR);
+        cmdbuf.end();
+
+        constexpr vk::PipelineStageFlags waitStageMask[1] = {
+                vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        };
+
+        this->queue.submit(
+                vk::SubmitInfo{
+                        .waitSemaphoreCount = 1,
+                        .pWaitSemaphores = &this->present_complete[this->current_frame],
+                        .pWaitDstStageMask = waitStageMask,
+                        .commandBufferCount = 1,
+                        .pCommandBuffers = &cmdbuf,
+                        .signalSemaphoreCount = 1,
+                        .pSignalSemaphores = &this->render_complete[this->current_image],
+                },
+                this->in_flight[this->current_frame]);
+
+        try {
+            switch (this->queue.presentKHR(vk::PresentInfoKHR{
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &this->render_complete[this->current_image],
+                    .swapchainCount = 1,
+                    .pSwapchains = &this->swapchain,
+                    .pImageIndices = &this->current_image,
+            })) {
+                case vk::Result::eSuccess:
+                    break;
+                case vk::Result::eSuboptimalKHR: {
+                    log_warn("Window resizing is not yet implemented");
+                    break;
+                }
+                default:
+                    VGI_UNREACHABLE;
+                    break;
+            }
+        } catch (const vk::OutOfDateKHRError&) {
+            log_err("Window resizing not yet implemented");
+            throw;
+        } catch (...) {
+            throw;
+        }
+
+        this->current_frame = math::check_add<uint32_t>(this->current_frame, 1).value_or(0) %
+                              window::MAX_FRAMES_IN_FLIGHT;
+    }
+
     std::pair<vk::Buffer, VmaAllocation VGI_RESTRICT> window::create_buffer(
             const vk::BufferCreateInfo& create_info,
             const VmaAllocationCreateInfo& alloc_create_info, VmaAllocationInfo* alloc_info) const {
@@ -298,6 +473,13 @@ namespace vgi {
             // finish everything it's working on.
             this->logical.waitIdle();
 
+            // Destroy scenes
+            while (!this->scenes.empty()) {
+                this->scenes.back()->on_detach(*this);
+                this->scenes.pop_back();
+            }
+
+            // Destroy internals
             for (flying_command_buffer& flying: this->flying_cmdbufs) {
                 this->logical.freeCommandBuffers(this->cmdpool, flying.cmdbuf);
                 this->logical.destroyFence(flying.fence);
