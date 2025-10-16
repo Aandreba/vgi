@@ -9,6 +9,8 @@
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
 #include <vgi/main.hpp>
+#include <vgi/math/camera.hpp>
+#include <vgi/math/transf3d.hpp>
 #include <vgi/pipeline.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
@@ -26,6 +28,7 @@ struct triangle_scene : public vgi::scene {
     vgi::uniform_buffer<uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;
+    vgi::math::camera camera;
 
     void on_attach(vgi::window& win) override {
         // Create vertex buffer
@@ -43,15 +46,7 @@ struct triangle_scene : public vgi::scene {
             std::move(cmdbuf).submit_and_wait();
         }
 
-        // Create uniform buffer
         this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
-        for (size_t i = 0; i < vgi::window::MAX_FRAMES_IN_FLIGHT; ++i) {
-            uniforms.write(win,
-                           uniform{.projection = glm::perspective(glm::radians(60.0f),
-                                                                  900.0f / 600.0f, 0.01f, 1000.0f)},
-                           i);
-        }
-
         this->pipeline = vgi::graphics_pipeline{
                 win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
                 vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.frag.spv"},
@@ -84,24 +79,27 @@ struct triangle_scene : public vgi::scene {
                     },
                     {});
         }
+
+        this->camera = vgi::math::camera{};
+        this->camera.translate(glm::vec3{0.0f, 0.0f, 2.5f});
     }
 
     void on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
                    const vgi::timings& ts) override {
-        glm::mat4 projection =
-                glm::perspective(glm::radians(60.0f), 900.0f / 600.0f, 0.01f, 1000.0f);
-        projection[1][1] *= -1.0f;
+        this->camera.rotate(ts.delta, glm::vec3(1.0f, 0.0f, 0.0f));
 
-        glm::mat4 view = glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+        /*
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                                      glm::vec3(0.0f, 1.0f, 0.0f));
+                                     */
 
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::rotate(model, ts.start, glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), 0.0f * ts.start * glm::radians(90.0f),
+                                      glm::vec3(0.0f, 0.0f, 1.0f));
 
         this->uniforms.write(win,
                              uniform{
-                                     .projection = projection,
-                                     .view = view,
+                                     .projection = this->camera.perspective(900.0f / 600.0f),
+                                     .view = this->camera.view(),
                                      .model = model,
                              },
                              current_frame);
