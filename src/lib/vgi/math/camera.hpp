@@ -4,8 +4,10 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <vgi/forward.hpp>
 
 namespace vgi::math {
+    /// @brief Helper structure that manages both the view and projection matrices
     struct camera {
         /// @brief Field of view (in radians)
         float fovy = glm::radians(60.0f);
