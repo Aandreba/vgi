@@ -62,7 +62,7 @@ namespace vgi {
 #ifdef __cpp_lib_syncbuf
         std::osyncstream(std::cerr) << msg;
 #else
-        std::lock_guard log_guard{log_lock};
+        std::lock_guard log_guard{this->lock};
         std::cerr << msg;
 #endif
     }
