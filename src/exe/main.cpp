@@ -125,8 +125,8 @@ int main() {
     vgi::init(u8"Entorn VGI");
 
     vgi::log("Arguments ({}):", vgi::argc());
-    for (const auto& arg: vgi::argv()) {
-        vgi::log("- {}", arg);
+    for (auto arg: vgi::argv()) {
+        vgi::log(VGI_OS("- {}"), arg);
     }
 
     vgi::log("Detected devices ({}):", vgi::device::all().size());

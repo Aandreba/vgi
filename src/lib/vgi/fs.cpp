@@ -12,7 +12,7 @@
 #define DECLARE_READ_FILE(__T) \
     template vgi::unique_span<__T> vgi::read_file<__T>(const std::filesystem::path::value_type*)
 
-std::vector<std::filesystem::path::string_type> __vgi_arguments_;
+std::span<const std::filesystem::path::value_type* const> __vgi_arguments_;
 namespace vgi {
     std::filesystem::path base_path = reinterpret_cast<const char8_t*>(sdl::tri(SDL_GetBasePath()));
     constexpr static inline const decltype(__vgi_arguments_)& arguments = __vgi_arguments_;
@@ -50,7 +50,7 @@ namespace vgi {
     }
 
     size_t argc() noexcept { return arguments.size(); }
-    std::span<const std::filesystem::path::string_type> argv() noexcept { return arguments; }
+    std::span<const std::filesystem::path::value_type* const> argv() noexcept { return arguments; }
 
 #ifdef _MSC_VER
     bool has_env(const std::filesystem::path::value_type* name) noexcept {

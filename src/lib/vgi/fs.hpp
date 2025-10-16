@@ -63,5 +63,5 @@ namespace vgi {
 
     /// @brief Returns a list with all the arguments passed
     /// @returns List with all the arguments passed
-    std::span<const std::filesystem::path::string_type> argv() noexcept;
+    std::span<const std::filesystem::path::value_type* const> argv() noexcept;
 }  // namespace vgi

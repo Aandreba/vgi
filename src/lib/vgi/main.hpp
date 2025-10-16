@@ -7,22 +7,39 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <filesystem>
+#include <span>
 #include <string>
-#include <vector>
+
+#ifdef _MSC_VER
+#include <windows.h>
+#endif
 
 #include "log.hpp"
 
-// TODO WinMain
 int main(int argc, char* argv[]) {
     extern int __vgi_main_();
-    extern std::vector<std::filesystem::path::string_type> __vgi_arguments_;
+    extern std::span<const std::filesystem::path::value_type* const> __vgi_arguments_;
+
+#ifdef _MSC_VER
+    const auto free_wargv = [](LPWSTR* ptr) noexcept { LocalFree(ptr); };
+    std::unique_ptr<LPWSTR, decltype(free_wargv)> wargv{nullptr, free_wargv};
+#endif
 
     int exit_code;
     try {
-        __vgi_arguments_.reserve(argc);
-        for (int i = 0; i < argc; ++i) {
-            __vgi_arguments_.emplace_back(argv[i]);
+        // Parse command arguments
+#ifdef _MSC_VER
+        wargv.reset(CommandLineToArgvW(GetCommandLineW(), &argc));
+        if (wargv == nullptr) {
+            __vgi_arguments_ = std::span<const wchar_t* const>{};
+        } else {
+            __vgi_arguments_ =
+                    std::span<const wchar_t* const>{wargv.get(), static_cast<size_t>(argc)};
         }
+#else
+        __vgi_arguments_ = std::span<const char* const>{static_cast<const char* const*>(argv),
+                                                        static_cast<size_t>(argc)};
+#endif
         exit_code = __vgi_main_();
     } catch (const std::exception& e) {
         vgi::log_err("{}", e.what());

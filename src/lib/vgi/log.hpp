@@ -39,6 +39,11 @@ namespace vgi {
         /// @brief Prints the provided message to the desired destination
         /// @param msg Message to be logged
         virtual void log(std::string_view msg) = 0;
+
+        /// @brief Prints the provided wide message to the desired destination
+        /// @param msg Wide message to be logged
+        virtual void log(std::wstring_view msg);
+
         virtual ~logger() = default;
     };
 
@@ -49,6 +54,7 @@ namespace vgi {
         default_logger& operator=(const default_logger&) = delete;
 
         void log(std::string_view msg) override;
+        void log(std::wstring_view msg) override;
 
     private:
         // If the compiler doesn't support synchronized ostream, use a mutex instead
@@ -81,10 +87,26 @@ namespace vgi {
     /// @param level Level of the logged message
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
+    void vlog_msg(log_level level, std::wstring_view fmt, std::wformat_args args) noexcept;
+
+    /// @brief Logs the message by formatting the arguments according to the format string.
+    /// @param level Level of the logged message
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_msg(log_level level, std::format_string<Args...> fmt,
                                  Args&&... args) noexcept {
         return vlog_msg(level, fmt.get(), std::make_format_args(args...));
+    }
+
+    /// @brief Logs the message by formatting the arguments according to the format string.
+    /// @param level Level of the logged message
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log_msg(log_level level, std::wformat_string<Args...> fmt,
+                                 Args&&... args) noexcept {
+        return vlog_msg(level, fmt.get(), std::make_wformat_args(args...));
     }
 
     /// @brief Logs the message by formatting the arguments according to the format string.
@@ -101,10 +123,30 @@ namespace vgi {
     /// @tparam level Level of the logged message
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
+    template<log_level level>
+    VGI_FORCEINLINE void vlog_msg(std::wstring_view fmt, std::wformat_args args) noexcept {
+        if constexpr (level < max_log_level) return;
+        vlog_msg(level, fmt, args);
+    }
+
+    /// @brief Logs the message by formatting the arguments according to the format string.
+    /// @tparam level Level of the logged message
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
     template<log_level level, class... Args>
     VGI_FORCEINLINE void log_msg(std::format_string<Args...> fmt, Args&&... args) noexcept {
         if constexpr (level < max_log_level) return;
         vlog_msg(level, fmt.get(), std::make_format_args(args...));
+    }
+
+    /// @brief Logs the message by formatting the arguments according to the format string.
+    /// @tparam level Level of the logged message
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<log_level level, class... Args>
+    VGI_FORCEINLINE void log_msg(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
+        if constexpr (level < max_log_level) return;
+        vlog_msg(level, fmt.get(), std::make_wformat_args(args...));
     }
 
     /// @brief Logs the verbose message by formatting the arguments according to the format string.
@@ -115,11 +157,27 @@ namespace vgi {
         log_msg<log_level::verbose>(fmt, std::forward<Args>(args)...);
     }
 
+    /// @brief Logs the verbose message by formatting the arguments according to the format string.
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log_verbose(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
+        log_msg<log_level::verbose>(fmt, std::forward<Args>(args)...);
+    }
+
     /// @brief Logs the debug message by formatting the arguments according to the format string.
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_dbg(std::format_string<Args...> fmt, Args&&... args) noexcept {
+        log_msg<log_level::debug>(fmt, std::forward<Args>(args)...);
+    }
+
+    /// @brief Logs the debug message by formatting the arguments according to the format string.
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log_dbg(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
         log_msg<log_level::debug>(fmt, std::forward<Args>(args)...);
     }
 
@@ -132,6 +190,15 @@ namespace vgi {
         log_msg<log_level::info>(fmt, std::forward<Args>(args)...);
     }
 
+    /// @brief Logs the information message by formatting the arguments according to the format
+    /// string.
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
+        log_msg<log_level::info>(fmt, std::forward<Args>(args)...);
+    }
+
     /// @brief Logs the warning message by formatting the arguments according to the format string.
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
@@ -140,11 +207,27 @@ namespace vgi {
         log_msg<log_level::warn>(fmt, std::forward<Args>(args)...);
     }
 
+    /// @brief Logs the warning message by formatting the arguments according to the format string.
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log_warn(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
+        log_msg<log_level::warn>(fmt, std::forward<Args>(args)...);
+    }
+
     /// @brief Logs the error message by formatting the arguments according to the format string.
     /// @param fmt Formatting string
     /// @param args Arguments to be formatted
     template<class... Args>
     VGI_FORCEINLINE void log_err(std::format_string<Args...> fmt, Args&&... args) noexcept {
+        log_msg<log_level::error>(fmt, std::forward<Args>(args)...);
+    }
+
+    /// @brief Logs the error message by formatting the arguments according to the format string.
+    /// @param fmt Formatting string
+    /// @param args Arguments to be formatted
+    template<class... Args>
+    VGI_FORCEINLINE void log_err(std::wformat_string<Args...> fmt, Args&&... args) noexcept {
         log_msg<log_level::error>(fmt, std::forward<Args>(args)...);
     }
 }  // namespace vgi

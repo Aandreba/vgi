@@ -30,7 +30,7 @@ run *ARGS="": (build "Debug" "OFF")
 
 # Runs the program in Release mode
 [windows]
-run *ARGS="": (build "Release" "OFF")
+exe *ARGS="": (build "Release" "OFF")
     Start-Process -NoNewWindow -FilePath "build\Release\vgi_exe.exe" {{ARGS}}
 
 [windows]

@@ -5,6 +5,19 @@
 #include <concepts>
 #include <utility>
 
+#ifndef VGI_CONCAT
+/// @brief Concatenates two identifers. Useful for code generating macros
+#define VGI_CONCAT(x, y) VGI_CONCAT_(x, y)
+//! @cond Doxygen_Suppress
+#define VGI_CONCAT_(x, y) x##y
+//! @endcond
+#endif
+
+#ifndef VGI_ANON
+/// @brief Generates a new random identifier. Useful for code generating macros
+#define VGI_ANON VGI_CONCAT(__vgi_anon_, __COUNTER__)
+#endif
+
 #ifndef VGI_HAS_BUILTIN
 /// @brief Checks whether the compiler has support for the specified builtin.
 #ifdef __has_builtin
@@ -21,7 +34,14 @@
 #ifndef NDEBUG
 #define VGI_ASSERT(cond) assert(cond)
 #else
-#define VGI_ASSERT(cond) [[assume(cond)]]
+#define VGI_ASSERT(cond) VGI_ASSERT_(VGI_ANON, cond)
+//! @cond Doxygen_Suppress
+#define VGI_ASSERT_(__name, __cond)              \
+    do {                                         \
+        bool __name = static_cast<bool>(__cond); \
+        [[assume(__name)]];                      \
+    } while (false)
+//! @endcond
 #endif
 #endif
 
