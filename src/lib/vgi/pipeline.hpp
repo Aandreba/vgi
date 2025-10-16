@@ -14,25 +14,12 @@ namespace vgi {
     /// @brief A pipeline used to execute user code on the acceleration device
     /// @warning This object cannot be directly constructed, for that you must use either
     /// `vgi::graphics_pipeline` or `vgi::compute_pipeline`
-    struct pipeline {
-        pipeline(const pipeline&) = delete;
-        pipeline& operator=(const pipeline&) = delete;
-
+    struct pipeline : public shared_resource {
         /// @brief Move constructor
         /// @param other Object to be moved
         pipeline(pipeline&& other) noexcept :
             handle(std::move(other.handle)), set_layout(std::move(other.set_layout)),
             layout(std::move(other.layout)), pool_sizes(std::move(other.pool_sizes)) {}
-
-        /// @brief Move assignment
-        /// @param other Object to be moved
-        pipeline& operator=(pipeline&& other) noexcept {
-            if (this == &other) [[unlikely]]
-                return *this;
-            std::destroy_at(this);
-            std::construct_at(this, std::move(other));
-            return *this;
-        }
 
         /// @brief Casts to the undelying `vk::Pipeline`
         constexpr operator vk::Pipeline() const noexcept { return this->handle; }
@@ -49,7 +36,7 @@ namespace vgi {
 
         /// @brief Destroys the pipeline
         /// @param parent Window used to create the pipeline
-        void destroy(const window& parent) &&;
+        void destroy(const window& parent) && override;
 
     protected:
         /// @brief Handle to the underlying `vk::Pipeline`
@@ -162,8 +149,27 @@ namespace vgi {
         graphics_pipeline(const window& parent, const shader_stage& vertex,
                           const shader_stage& fragment,
                           const graphics_pipeline_options& options = {});
+
+        /// @brief Move constructor
+        /// @param other Object to be moved
+        graphics_pipeline(graphics_pipeline&& other) noexcept : pipeline(std::move(other)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to be moved
+        graphics_pipeline& operator=(graphics_pipeline&& other) noexcept {
+            if (this == &other) [[unlikely]]
+                return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
+        /// @brief Binds the pipeline to a command buffer
+        /// @param cmdbuf Command buffer that the pipeline will be bound to.
+        inline void bind(vk::CommandBuffer cmdbuf) const noexcept {
+            cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->handle);
+        }
     };
 
-    using graphics_pipeline_guard = resource_guard<graphics_pipeline>;
     using descriptor_pool_guard = resource_guard<descriptor_pool>;
 }  // namespace vgi

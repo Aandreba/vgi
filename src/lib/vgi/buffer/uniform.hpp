@@ -50,10 +50,14 @@ namespace vgi {
         uniform_buffer(const uniform_buffer&) = delete;
         uniform_buffer& operator=(const uniform_buffer&) = delete;
 
+        /// @brief Move constructor
+        /// @param other Object to be moved
         uniform_buffer(uniform_buffer&& other) noexcept :
             buffer(std::move(other.buffer)),
             allocation(std::exchange(other.allocation, VK_NULL_HANDLE)) {}
 
+        /// @brief Move assignment
+        /// @param other Object to be moved
         uniform_buffer& operator=(uniform_buffer&& other) noexcept {
             if (this == &other) return *this;
             std::destroy_at(this);

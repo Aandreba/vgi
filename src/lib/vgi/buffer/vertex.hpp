@@ -63,6 +63,10 @@ namespace vgi {
 
     /// @brief A buffer used to store the vertices of a mesh
     struct vertex_buffer {
+        /// @brief Maximum number of vertices a buffer can be made to store
+        constexpr static inline const vk::DeviceSize MAX_SIZE =
+                std::numeric_limits<vk::DeviceSize>::max() / sizeof(vertex);
+
         /// @brief Default constructor.
         vertex_buffer() = default;
         /// @brief Creates a vertex buffer of the specified size
@@ -86,6 +90,18 @@ namespace vgi {
             std::destroy_at(this);
             std::construct_at(this, std::move(other));
             return *this;
+        }
+
+        /// @brief Binds the vertex buffer to a command buffer
+        /// @param cmdbuf Command buffer into which the command is recorded
+        /// @param binding Index of the vertex input binding whose state is updated by the command
+        /// @param offset Starting offset within buffer used in vertex buffer address
+        /// calculations
+        inline void bind(vk::CommandBuffer cmdbuf, uint32_t binding = 0,
+                         vk::DeviceSize offset = 0) const noexcept {
+            VGI_ASSERT(offset <= MAX_SIZE);
+            offset *= sizeof(vertex);
+            cmdbuf.bindVertexBuffers(binding, 1, &this->buffer, &offset);
         }
 
         /// @brief Destroys the buffer

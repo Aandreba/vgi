@@ -1,8 +1,10 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <type_traits>
 
+#include "forward.hpp"
 #include "window.hpp"
 
 namespace vgi {
@@ -12,8 +14,128 @@ namespace vgi {
         { std::move(self).destroy(window) } -> std::same_as<void>;
     };
 
+    /// @brief Specifies that a type is valid as a resource, but isn't derived from
+    /// `vgi::shared_resource`
+    template<class T>
+    concept local_resource = !std::derived_from<T, shared_resource> && resource<T>;
+
+    /// @brief A resource whose lifetime is handled by a parent `vgi::window`.
+    struct shared_resource {
+        shared_resource(const shared_resource&) = delete;
+        shared_resource& operator=(const shared_resource&) = delete;
+
+        /// @brief Destroys the resource
+        /// @param parent Window used to create the resource
+        virtual void destroy(const window& parent) && = 0;
+
+        virtual ~shared_resource() = default;
+
+    protected:
+        shared_resource() = default;
+
+    private:
+        size_t strong = 1;
+        size_t weak = 1;
+
+        template<std::derived_from<shared_resource> R>
+        friend struct res_lock;
+        template<std::derived_from<shared_resource> R>
+        friend struct res;
+    };
+
+    /// @brief A strong reference to a `vgi::shared_resource`
+    template<std::derived_from<shared_resource> R>
+    struct [[nodiscard]] res_lock {
+        res_lock(const res_lock&) = delete;
+        res_lock& operator=(const res_lock&) = delete;
+
+        /// @brief Checks wether the resource locking was successful
+        inline explicit operator bool() const noexcept { return this->ptr; }
+        /// @brief Provides access to the acquired resource
+        /// @return A pointer to the resource
+        inline R* operator->() const noexcept { return this->ptr; }
+        /// @brief Provides access to the acquired resource
+        /// @return A pointer to the resource
+        inline R& operator*() const noexcept { return *this->ptr; }
+
+        ~res_lock() noexcept { VGI_ASSERT(--static_cast<shared_resource&>(ptr).strong > 0); }
+
+    private:
+        using value_type = std::remove_cv_t<R>;
+        value_type* ptr;
+
+        res_lock(value_type* ptr) noexcept : ptr(ptr) {}
+
+        template<std::derived_from<shared_resource> R>
+        friend struct res;
+    };
+
+    /// @brief A weak reference to a `vgi::shared_resource`
+    template<std::derived_from<shared_resource> R>
+    struct res {
+        /// @brief Copy constructor
+        /// @param other Object to be copied
+        res(const res& other) noexcept : ptr(other.ptr) {
+            if (ptr) static_cast<shared_resource*>(ptr)->weak++;
+        }
+
+        /// @brief Move constructor
+        /// @param other Object to be moved
+        res(res&& other) noexcept : ptr(std::exchange(other.ptr, nullptr)) {}
+
+        /// @brief Copy assignment
+        /// @param other Object to be copied
+        res& operator=(const res& other) noexcept {
+            if (this == &other) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, other);
+            return *this;
+        }
+
+        /// @brief Move assignment
+        /// @param other Object to be moved
+        res& operator=(res&& other) noexcept {
+            if (this == &other) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
+        /// @brief Checks wether this value points to a shared resource, whether destroyed or not.
+        inline explicit operator bool() const noexcept { return this->ptr; }
+
+        /// @brief Attempts to lock the resource, so that it can be used safely for the remainder of
+        /// the frame.
+        /// @return The result of the attempted lock
+        res_lock<R> lock() noexcept {
+            if (!this->ptr) return nullptr;
+
+            shared_resource* res_ptr = static_cast<shared_resource*>(this->ptr);
+            if (res_ptr->strong == 0) {
+                this->ptr = nullptr;
+                if (--res_ptr->weak == 0) delete ptr;
+                return nullptr;
+            }
+
+            res_ptr->strong++;
+            return this->ptr;
+        }
+
+        ~res() noexcept(std::is_nothrow_destructible_v<R>) {
+            if (this->ptr) {
+                if (--static_cast<shared_resource*>(this->ptr)->weak == 0) {
+                    delete this->ptr;
+                }
+            }
+        }
+
+    private:
+        using value_type = std::remove_cv_t<R>;
+        value_type* ptr;
+    };
+
     /// @brief A guard that destroys resources when dropped.
-    template<resource T>
+    template<local_resource T>
     struct resource_guard final : public T {
         /// @brief Creates a resource_guard in place
         /// @tparam ...Args Argument types

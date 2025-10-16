@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vgi/buffer/index.hpp>
 #include <vgi/buffer/transfer.hpp>
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
@@ -12,6 +13,7 @@
 #include <vgi/math/camera.hpp>
 #include <vgi/math/transf3d.hpp>
 #include <vgi/pipeline.hpp>
+#include <vgi/resource/mesh.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
 
@@ -109,7 +111,7 @@ struct triangle_scene : public vgi::scene {
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                                   this->desc_pool[current_frame], {});
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
-        cmdbuf.bindVertexBuffers(0, {this->vertices}, {0});
+        this->vertices.bind(cmdbuf);
         cmdbuf.draw(3, 1, 0, 0);
     }
 
