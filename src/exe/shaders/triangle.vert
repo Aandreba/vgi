@@ -18,6 +18,6 @@ layout (binding = 0) uniform UBO
 void main()  {
 	outColor = inColor;
     outTex = inTex;
-    gl_Position = vec4(inPos.xyz, 1.0);
+    // gl_Position = ubo.projectionMatrix * vec4(inPos.xyz, 1.0);
 	// gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
 }

@@ -286,7 +286,7 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            for (std::unique_ptr<scene>& s: this->scenes) s->on_event(event);
+            for (std::unique_ptr<scene>& s: this->scenes) s->on_event(*this, event);
         }
     }
 
@@ -374,7 +374,7 @@ namespace vgi {
                     continue;
                 }
             }
-            this->scenes[i]->on_update(cmdbuf, ts);
+            this->scenes[i]->on_update(*this, cmdbuf, this->current_frame, ts);
             ++i;
         }
 
@@ -409,7 +409,7 @@ namespace vgi {
             // TODO Per-scene scissor
             cmdbuf.setScissor(0, vk::Rect2D{.extent = this->draw_size()});
 
-            s->on_render(cmdbuf, this->current_frame);
+            s->on_render(*this, cmdbuf, this->current_frame);
             cmdbuf.endRendering();
         }
 

@@ -44,9 +44,13 @@ struct triangle_scene : public vgi::scene {
         }
 
         // Create uniform buffer
-        this->uniforms = vgi::uniform_buffer<uniform>{win};
-        uniforms.write(win, uniform{.projection = glm::perspective(
-                                            glm::radians(60.0f), 900.0f / 600.0f, 0.01f, 1000.0f)});
+        this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
+        for (size_t i = 0; i < vgi::window::MAX_FRAMES_IN_FLIGHT; ++i) {
+            uniforms.write(win,
+                           uniform{.projection = glm::perspective(glm::radians(60.0f),
+                                                                  900.0f / 600.0f, 0.01f, 1000.0f)},
+                           i);
+        }
 
         this->pipeline = vgi::graphics_pipeline{
                 win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"triangle.vert.spv"},
@@ -62,18 +66,17 @@ struct triangle_scene : public vgi::scene {
                         }}},
                 }};
 
-        // WARNING: Currently sharing the same uniform buffer for all frames.
         this->desc_pool = vgi::descriptor_pool{win, this->pipeline};
-        for (vk::DescriptorSet desc_set: desc_pool) {
+        for (uint32_t i = 0; i < this->desc_pool.size(); ++i) {
             const vk::DescriptorBufferInfo buf_info{
                     .buffer = uniforms,
-                    .offset = 0,
+                    .offset = sizeof(uniform) * i,
                     .range = sizeof(uniform),
             };
 
             win->updateDescriptorSets(
                     vk::WriteDescriptorSet{
-                            .dstSet = desc_set,
+                            .dstSet = this->desc_pool[i],
                             .dstBinding = 0,
                             .descriptorCount = 1,
                             .descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -83,11 +86,28 @@ struct triangle_scene : public vgi::scene {
         }
     }
 
-    void on_update(vk::CommandBuffer cmdbuf, const vgi::timings& ts) override {
-        // TODO
+    void on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
+                   const vgi::timings& ts) override {
+        glm::mat4 projection =
+                glm::perspective(glm::radians(60.0f), 900.0f / 600.0f, 0.01f, 1000.0f);
+        projection[1][1] *= -1.0f;
+
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+                                     glm::vec3(0.0f, 1.0f, 0.0f));
+
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, ts.start, glm::vec3(1.0f, 0.0f, 0.0f));
+
+        this->uniforms.write(win,
+                             uniform{
+                                     .projection = projection,
+                                     .view = view,
+                                     .model = model,
+                             },
+                             current_frame);
     }
 
-    void on_render(vk::CommandBuffer cmdbuf, uint32_t current_frame) override {
+    void on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) override {
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                                   this->desc_pool[current_frame], {});
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);

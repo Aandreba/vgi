@@ -101,7 +101,7 @@ namespace vgi {
         }
 
         /// @brief Number of elements in the container
-        consteval size_t size() const noexcept { return window::MAX_FRAMES_IN_FLIGHT; }
+        constexpr uint32_t size() const noexcept { return window::MAX_FRAMES_IN_FLIGHT; }
         /// @brief Iterator to the first decriptor set
         constexpr sets_type::const_iterator begin() const noexcept { return this->sets.cbegin(); }
         /// @brief Iterator past the last decriptor set
