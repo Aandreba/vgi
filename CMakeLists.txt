@@ -34,6 +34,7 @@ set(GLM_ENABLE_FAST_MATH ON)
 set(GLM_BUILD_TESTS OFF)
 set(SDL_STATIC ON)
 set(SDL_SHARED ON)
+#set(SDL_MAIN_USE_CALLBACKS ON)
 
 # Fetch/Dowload libraries
 FetchContent_Declare(

@@ -8,6 +8,7 @@
 #include <vgi/device.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
+#include <vgi/main.hpp>
 #include <vgi/pipeline.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
@@ -130,6 +131,10 @@ static void show_error_box(const char* msg) noexcept {
 int main() {
     try {
         vgi::init(u8"Entorn VGI");
+        vgi::log("Arguments:");
+        for (const auto& arg: vgi::argv()) {
+            vgi::log("- {}", arg);
+        }
     } catch (const std::exception& e) {
         show_error_box(e.what());
         return 1;

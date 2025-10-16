@@ -102,9 +102,9 @@ namespace vgi {
         window(window&& other) noexcept :
             handle(std::exchange(other.handle, nullptr)), surface(std::move(other.surface)),
             physical(other.physical), logical(std::move(other.logical)),
-            allocator(std::move(other.allocator)),
-            queue(std::move(other.queue)), cmdpool(std::move(other.cmdpool)),
-            swapchain(std::move(other.swapchain)), has_mailbox(other.has_mailbox), has_hdr10(other.has_hdr10) {}
+            allocator(std::move(other.allocator)), queue(std::move(other.queue)),
+            cmdpool(std::move(other.cmdpool)), swapchain(std::move(other.swapchain)),
+            has_mailbox(other.has_mailbox), has_hdr10(other.has_hdr10) {}
 
         /// @brief Move assignment for `window`
         /// @param other Object to move
@@ -162,9 +162,7 @@ namespace vgi {
             this->push_scene(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
-        //! @inheritDoc
         void on_event(const SDL_Event& event) override;
-        //! @inheritDoc
         void on_update(const timings& ts) override;
 
         /// @brief Creates a new buffer

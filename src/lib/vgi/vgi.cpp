@@ -319,7 +319,7 @@ namespace vgi {
 
     void quit() noexcept {
         layers.clear();
-        instance.destroy();
+        if (instance) std::exchange(instance, nullptr).destroy();
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
     }

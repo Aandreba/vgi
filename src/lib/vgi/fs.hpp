@@ -56,4 +56,12 @@ namespace vgi {
     /// @sa [`std::getenv`](https://en.cppreference.com/w/cpp/utility/program/getenv.html)
     [[nodiscard]] std::optional<std::filesystem::path::string_type> get_env(
             const std::filesystem::path::value_type* name) noexcept;
+
+    /// @brief Returns the number of arguments passed
+    /// @return Number of arguments passed
+    size_t argc() noexcept;
+
+    /// @brief Returns a list with all the arguments passed
+    /// @returns List with all the arguments passed
+    std::span<const std::filesystem::path::string_type> argv() noexcept;
 }  // namespace vgi
