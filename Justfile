@@ -5,10 +5,11 @@ set windows-powershell := true
 set dotenv-load
 
 DOCS_URL := "file://" + justfile_directory() + "/build/docs/index.html"
+COMMON_CMAKE_ARGS := "-DCMAKE_OSX_ARCHITECTURES=\"x86_64;arm64\""
 
 build build_type="Debug" docs="OFF" *ARGS="":
     cmake -E make_directory build
-    cmake -DCMAKE_BUILD_TYPE={{build_type}} -DVGI_DOXYGEN={{docs}} {{ARGS}} -S . -B build
+    cmake -DCMAKE_BUILD_TYPE={{build_type}} -DVGI_DOXYGEN={{docs}} {{COMMON_CMAKE_ARGS}} {{ARGS}} -S . -B build
     cmake --build build -j {{num_cpus()}}
 
 [unix]

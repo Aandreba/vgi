@@ -318,6 +318,7 @@ namespace vgi {
     void shutdown() noexcept { shutdown_requested = true; }
 
     void quit() noexcept {
+        layers.clear();
         instance.destroy();
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();

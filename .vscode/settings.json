@@ -106,6 +106,7 @@
         "__tree": "cpp",
         "print": "cpp",
         "string_view": "cpp",
-        "__bit_reference": "cpp"
+        "__bit_reference": "cpp",
+        "__split_buffer": "cpp"
     }
 }

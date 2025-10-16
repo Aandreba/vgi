@@ -71,6 +71,11 @@ namespace vgi::priv {
             VGI_ASSERT(removed);
         }
 
+        inline void clear() noexcept(std::is_nothrow_destructible_v<T>) {
+            this->entries.clear();
+            this->next = 0;
+        }
+
         inline auto keys() noexcept {
             return std::views::iota(static_cast<size_t>(0), this->entries.size()) |
                    std::views::filter([&](size_t i) { return this->entries[i].index() == 0; });
