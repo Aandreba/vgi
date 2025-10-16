@@ -103,10 +103,17 @@ struct triangle_scene : public vgi::scene {
     }
 };
 
-static int run() {
+int main() {
+    vgi::init(u8"Entorn VGI");
+
+    vgi::log("Arguments ({}):", vgi::argc());
+    for (const auto& arg: vgi::argv()) {
+        vgi::log("- {}", arg);
+    }
+
     vgi::log("Detected devices ({}):", vgi::device::all().size());
     for (const vgi::device& device: vgi::device::all()) {
-        vgi::log("{}", device.name());
+        vgi::log("- {}", device.name());
     }
 
     vgi::emplace_layer<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
@@ -114,46 +121,4 @@ static int run() {
 
     vgi::run();
     return 0;
-}
-
-static void show_error_box(const char* msg) noexcept {
-    try {
-        if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, reinterpret_cast<const char*>(u8"Error"),
-                                     msg, nullptr)) {
-            std::cout << msg << std::endl;
-        } else {
-            std::cout << SDL_GetError() << std::endl;
-        }
-    } catch (...) {
-    }
-}
-
-int main() {
-    try {
-        vgi::init(u8"Entorn VGI");
-        vgi::log("Arguments:");
-        for (const auto& arg: vgi::argv()) {
-            vgi::log("- {}", arg);
-        }
-    } catch (const std::exception& e) {
-        show_error_box(e.what());
-        return 1;
-    } catch (...) {
-        show_error_box("Unknown exception");
-        return 1;
-    }
-
-    try {
-        int ret = run();
-        vgi::quit();
-        return ret;
-    } catch (const std::exception& e) {
-        show_error_box(e.what());
-        vgi::quit();
-        return 1;
-    } catch (...) {
-        show_error_box("Unknown exception");
-        vgi::quit();
-        return 1;
-    }
 }

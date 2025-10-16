@@ -12,13 +12,25 @@ build build_type="Debug" docs="OFF" *ARGS="":
     cmake -DCMAKE_BUILD_TYPE={{build_type}} -DVGI_DOXYGEN={{docs}} {{COMMON_CMAKE_ARGS}} {{ARGS}} -S . -B build
     cmake --build build -j {{num_cpus()}}
 
+# Runs the program in Debug mode
 [unix]
-run build_type="Debug" *ARGS="": (build build_type "OFF")
+run *ARGS="": (build "Debug" "OFF")
     ./build/vgi_exe {{ARGS}}
 
+# Runs the program in Release mode
+[unix]
+exe *ARGS="": (build "Release" "OFF")
+    ./build/vgi_exe {{ARGS}}
+
+# Runs the program in Debug mode
 [windows]
-run build_type="Debug" *ARGS="": (build build_type "OFF")
-    Start-Process -NoNewWindow -FilePath "build\{{build_type}}\vgi_exe.exe" {{ARGS}}
+run *ARGS="": (build "Debug" "OFF")
+    Start-Process -NoNewWindow -FilePath "build\Debug\vgi_exe.exe" {{ARGS}}
+
+# Runs the program in Release mode
+[windows]
+run *ARGS="": (build "Release" "OFF")
+    Start-Process -NoNewWindow -FilePath "build\Release\vgi_exe.exe" {{ARGS}}
 
 [windows]
 docs: (build "Debug" "ON")

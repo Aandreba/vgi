@@ -33,7 +33,19 @@
         assert("Unreachable code reached" && 0); \
     } while (true)
 #else
-#define VGI_UNREACHABLE ::std::unreachable()
+namespace vgi {
+    [[noreturn]] inline void unreachable() {
+        // Uses compiler specific extensions if possible.
+        // Even if no extension is used, undefined behavior is still raised by
+        // an empty function body and the noreturn attribute.
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+        __assume(false);
+#elif VGI_HAS_BUILTIN(__builtin_unreachable)  // GCC, Clang
+        __builtin_unreachable();
+#endif
+    }
+}  // namespace vgi
+#define VGI_UNREACHABLE ::vgi::unreachable()
 #endif
 #endif
 
