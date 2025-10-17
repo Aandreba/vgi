@@ -474,6 +474,7 @@ namespace vgi {
             } else if (uint32_t* release_frame = std::get_if<shared_resource::WAITING>(&r.state)) {
                 if (*release_frame == this->current_frame) {
                     std::swap(this->resources[i], this->resources.back());
+                    std::move(*this->resources.back()).destroy(*this);
                     this->resources.pop_back();
                     continue;
                 }
@@ -511,6 +512,12 @@ namespace vgi {
             for (size_t i: this->scenes.keys()) {
                 this->scenes[i]->on_detach(*this);
                 VGI_ASSERT(this->scenes.try_remove(i));
+            }
+
+            // Destroy resources
+            while (!this->resources.empty()) {
+                std::move(*this->resources.back()).destroy(*this);
+                this->resources.pop_back();
             }
 
             // Destroy internals
