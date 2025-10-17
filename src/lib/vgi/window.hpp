@@ -200,6 +200,12 @@ namespace vgi {
             vk::Fence fence;
         };
 
+        struct depth_texture {
+            vk::Image image;
+            vk::ImageView view;
+            VmaAllocation allocation;
+        };
+
         SDL_Window* VGI_RESTRICT handle;
         vk::SurfaceKHR surface;
         const device& physical;
@@ -211,6 +217,7 @@ namespace vgi {
         vk::SwapchainCreateInfoKHR swapchain_info;
         unique_span<vk::Image> swapchain_images;
         unique_span<vk::ImageView> swapchain_views;
+        unique_span<depth_texture> swapchain_depths;
         std::deque<flying_command_buffer> flying_cmdbufs;
         vk::CommandBuffer cmdbufs[MAX_FRAMES_IN_FLIGHT];
         vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];

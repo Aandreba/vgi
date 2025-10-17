@@ -1,5 +1,6 @@
 #pragma once
 
+#include "forward.hpp"
 #include "vulkan.hpp"
 
 namespace vgi {
@@ -8,4 +9,4 @@ namespace vgi {
                        vk::PipelineStageFlags src_stage = vk::PipelineStageFlagBits::eAllCommands,
                        vk::PipelineStageFlags dst_stage = vk::PipelineStageFlagBits::eAllCommands,
                        vk::ImageAspectFlags img_aspect = vk::ImageAspectFlagBits::eColor) noexcept;
-}
+}  // namespace vgi
