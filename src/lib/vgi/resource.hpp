@@ -70,15 +70,15 @@ namespace vgi {
 
         /// @brief Provides access to the acquired resource
         /// @return A pointer to the resource
-        inline R* operator->() const noexcept { return std::addressof(this->ptr); }
+        inline R* operator->() const noexcept { return std::addressof(this->ref); }
         /// @brief Provides access to the acquired resource
         /// @return A pointer to the resource
-        inline R& operator*() const noexcept { return this->ptr; }
+        inline R& operator*() const noexcept { return this->ref; }
 
         ~res_lock() noexcept {
 #ifndef NDEBUG
-            shared_resource::alive* alive =
-                    std::get_if(&static_cast<shared_resource&>(this->ptr).state);
+            shared_resource::alive* alive = std::get_if<shared_resource::ALIVE>(
+                    &static_cast<shared_resource&>(this->ref).state);
             VGI_ASSERT(alive != nullptr);
             alive->locks.remove(this->location);
 #endif
@@ -86,14 +86,13 @@ namespace vgi {
 
     private:
         using value_type = std::remove_cv_t<R>;
-        value_type& ptr;
+        value_type& ref;
 
 #ifndef NDEBUG
         size_t location;
-        res_lock(value_type* ptr, size_t location) noexcept : ptr(ptr), location(location) {}
-        res_lock(std::nullptr_t) noexcept : ptr(nullptr) {}
+        res_lock(value_type& ref, size_t location) noexcept : ref(ref), location(location) {}
 #else
-        res_lock(value_type* ptr) noexcept : ptr(ptr) {}
+        res_lock(value_type& ref) noexcept : ref(ref) {}
 #endif
 
         friend struct res<R>;
@@ -102,6 +101,9 @@ namespace vgi {
     /// @brief A weak reference to a `vgi::shared_resource`
     template<std::derived_from<shared_resource> R>
     struct res {
+        /// @brief Default constructor
+        constexpr res() noexcept = default;
+
         /// @brief Copy constructor
         /// @param other Object to be copied
         res(const res& other) noexcept : ptr(other.ptr) {
@@ -153,9 +155,9 @@ namespace vgi {
             if (shared_resource::alive* alive =
                         std::get_if<shared_resource::ALIVE>(&res_ptr->state)) {
 #ifndef NDEBUG
-                return res_lock<R>{this->ptr, alive->locks.emplace(std::move(location))};
+                return res_lock<R>{*this->ptr, alive->locks.emplace(std::move(location))};
 #else
-                return this->ptr;
+                return *this->ptr;
 #endif
             } else {
                 throw std::runtime_error{"The resource has already been released"};
@@ -174,7 +176,7 @@ namespace vgi {
 
     private:
         using value_type = std::remove_cv_t<R>;
-        value_type* ptr;
+        value_type* ptr = nullptr;
 
         res(value_type* ptr) noexcept : ptr(ptr) {}
         friend struct window;

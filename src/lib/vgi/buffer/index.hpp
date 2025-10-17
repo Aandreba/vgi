@@ -55,7 +55,7 @@ namespace vgi {
                             .size = byte_size.value(),
                             .usage = vk::BufferUsageFlagBits::eTransferSrc |
                                      vk::BufferUsageFlagBits::eTransferDst |
-                                     vk::BufferUsageFlagBits::eVertexBuffer,
+                                     vk::BufferUsageFlagBits::eIndexBuffer,
                     },
                     VmaAllocationCreateInfo{
                             .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,

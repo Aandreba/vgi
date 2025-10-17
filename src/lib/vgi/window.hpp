@@ -171,7 +171,7 @@ namespace vgi {
         res<T> create_resource(Args&&... args) {
             using value_type = std::remove_cv_t<T>;
             value_type* ptr = new value_type(*this, std::forward<Args>(args)...);
-            this->add_resource(ptr);
+            this->add_resource(std::unique_ptr<shared_resource>{ptr});
             return static_cast<T*>(ptr);
         }
 

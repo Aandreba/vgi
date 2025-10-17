@@ -44,7 +44,7 @@ namespace vgi {
         /// @warning This method assumes that this mesh is the one currently bound. Call `bind` or
         /// `bind_and_draw` before calling this.
         void draw(vk::CommandBuffer cmdbuf, uint32_t instance_count = 1) const noexcept {
-            cmdbuf.drawIndexed(this->index_count, 0, 0, 0);
+            cmdbuf.drawIndexed(this->index_count, instance_count, 0, 0, 0);
         }
 
         /// @brief Binds and draws the mesh.

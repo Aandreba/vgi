@@ -37,12 +37,12 @@ struct triangle_scene : public vgi::scene {
         this->mesh = win.create_resource<vgi::mesh<uint16_t>>(3, 3);
         {
             auto mesh_ref = this->mesh.lock();
-            vk::DeviceSize indices_offset = 3 * sizeof(vgi::vertex);
+            vk::DeviceSize vertex_size = 3 * sizeof(vgi::vertex);
+            vk::DeviceSize index_size = 3 * sizeof(uint16_t);
 
-            vgi::transfer_buffer_guard transfer{win,
-                                                3 * sizeof(vgi::vertex) + 3 * sizeof(uint16_t)};
+            vgi::transfer_buffer_guard transfer{win, vertex_size + index_size};
 
-            transfer.template write_at<uint16_t>({0, 1, 2}, indices_offset);
+            transfer.template write_at<uint16_t>({0, 1, 2}, vertex_size);
             transfer.template write_at<vgi::vertex>(
                     {{.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
                      {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
@@ -53,12 +53,12 @@ struct triangle_scene : public vgi::scene {
             cmdbuf->copyBuffer(transfer, mesh_ref->vertices,
                                vk::BufferCopy{
                                        .srcOffset = 0,
-                                       .size = transfer->size(),
+                                       .size = vertex_size,
                                });
             cmdbuf->copyBuffer(transfer, mesh_ref->indices,
                                vk::BufferCopy{
-                                       .srcOffset = indices_offset,
-                                       .size = transfer->size(),
+                                       .srcOffset = vertex_size,
+                                       .size = index_size,
                                });
             std::move(cmdbuf).submit_and_wait();
         }
@@ -118,11 +118,11 @@ struct triangle_scene : public vgi::scene {
     }
 
     void on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) override {
+        auto mesh_ref = this->mesh.lock();
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                                   this->desc_pool[current_frame], {});
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
-        this->vertices.bind(cmdbuf);
-        cmdbuf.draw(3, 1, 0, 0);
+        mesh_ref->bind_and_draw(cmdbuf);
     }
 
     void on_detach(vgi::window& win) override {
