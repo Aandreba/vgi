@@ -26,7 +26,7 @@ struct uniform {
 };
 
 struct triangle_scene : public vgi::scene {
-    vgi::vertex_buffer vertices;
+    vgi::res<vgi::mesh<uint16_t>> mesh;
     vgi::uniform_buffer<uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;
@@ -34,17 +34,32 @@ struct triangle_scene : public vgi::scene {
 
     void on_attach(vgi::window& win) override {
         // Create vertex buffer
-        this->vertices = vgi::vertex_buffer{win, 3};
+        this->mesh = win.create_resource<vgi::mesh<uint16_t>>(3, 3);
         {
-            vgi::transfer_buffer_guard transfer{
-                    win,
-                    std::initializer_list<vgi::vertex>{
-                            {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
-                            {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
-                            {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}}};
+            auto mesh_ref = this->mesh.lock();
+            vk::DeviceSize indices_offset = 3 * sizeof(vgi::vertex);
+
+            vgi::transfer_buffer_guard transfer{win,
+                                                3 * sizeof(vgi::vertex) + 3 * sizeof(uint16_t)};
+
+            transfer.template write_at<uint16_t>({0, 1, 2}, indices_offset);
+            transfer.template write_at<vgi::vertex>(
+                    {{.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                     {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                     {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}},
+                    0);
 
             vgi::command_buffer cmdbuf{win};
-            cmdbuf->copyBuffer(transfer, vertices, vk::BufferCopy{.size = transfer->size()});
+            cmdbuf->copyBuffer(transfer, mesh_ref->vertices,
+                               vk::BufferCopy{
+                                       .srcOffset = 0,
+                                       .size = transfer->size(),
+                               });
+            cmdbuf->copyBuffer(transfer, mesh_ref->indices,
+                               vk::BufferCopy{
+                                       .srcOffset = indices_offset,
+                                       .size = transfer->size(),
+                               });
             std::move(cmdbuf).submit_and_wait();
         }
 
@@ -111,7 +126,6 @@ struct triangle_scene : public vgi::scene {
     }
 
     void on_detach(vgi::window& win) override {
-        std::move(this->vertices).destroy(win);
         std::move(this->uniforms).destroy(win);
         std::move(this->pipeline).destroy(win);
         std::move(this->desc_pool).destroy(win);

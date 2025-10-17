@@ -1,7 +1,9 @@
+//! @cond Doxygen_Supress
 #pragma once
 
 #include <cstddef>
 #include <ranges>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -126,3 +128,4 @@ namespace vgi::collections {
         }
     };
 }  // namespace vgi::collections
+//! @endcond

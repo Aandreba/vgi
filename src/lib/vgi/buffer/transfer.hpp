@@ -73,6 +73,17 @@ namespace vgi {
         }
 
         /// @brief Write to the buffer
+        /// @param src Values to write
+        /// @param byte_offset Buffer offset, in bytes
+        /// @return The offset right after the copied memory, in bytes
+        template<class T>
+            requires(std::is_trivially_copy_constructible_v<T> &&
+                     std::is_trivially_destructible_v<T>)
+        inline size_t write_at(std::initializer_list<T> src, size_t byte_offset) {
+            return write_at<T>(std::span<const T>{src.begin(), src.size()}, byte_offset);
+        }
+
+        /// @brief Write to the buffer
         /// @param src Value to write
         /// @param byte_offset Buffer offset, in bytes
         /// @return The offset right after the copied memory, in bytes
@@ -96,6 +107,17 @@ namespace vgi {
             size_t new_offset = write_at<T>(src, byte_offset.value());
             VGI_ASSERT(new_offset % sizeof(T) == 0);
             return new_offset / sizeof(T);
+        }
+
+        /// @brief Write to the buffer
+        /// @param src Values to write
+        /// @param offset Buffer offset, in units of `T`
+        /// @return The offset right after the copied memory, in units of `T`
+        template<class T>
+            requires(std::is_trivially_copy_constructible_v<T> &&
+                     std::is_trivially_destructible_v<T>)
+        inline size_t write(std::initializer_list<T> src, size_t offset) {
+            return write<T>(std::span<const T>{src.begin(), src.size()}, offset);
         }
 
         /// @brief Write to the buffer

@@ -410,7 +410,7 @@ namespace vgi {
             cmdbuf.endRendering();
         }
 
-        // Present frame
+        // Present frame to the window
         change_layout(cmdbuf, img, vk::ImageLayout::eColorAttachmentOptimal,
                       vk::ImageLayout::ePresentSrcKHR);
         cmdbuf.end();
@@ -456,8 +456,39 @@ namespace vgi {
             throw;
         }
 
+        // Process resource cleanup
+        size_t i = 0;
+        while (i < this->resources.size()) {
+            shared_resource& r = *this->resources[i];
+            if (shared_resource::alive* alive = std::get_if<shared_resource::ALIVE>(&r.state)) {
+                if (alive->refs == 0) {
+// Prepare resource destruction
+#ifndef NDEBUG
+                    for (std::source_location& loc: alive->locks.values()) {
+                        vgi::log_err("file: {}({}:{}): Resource locked after destruction.",
+                                     loc.file_name(), loc.line(), loc.column());
+                    }
+#endif
+                    r.state.template emplace<shared_resource::WAITING>(this->current_frame);
+                }
+            } else if (uint32_t* release_frame = std::get_if<shared_resource::WAITING>(&r.state)) {
+                if (*release_frame == this->current_frame) {
+                    std::swap(this->resources[i], this->resources.back());
+                    this->resources.pop_back();
+                    continue;
+                }
+            } else {
+                VGI_UNREACHABLE;
+            }
+            i++;
+        }
+
         this->current_frame = math::check_add<uint32_t>(this->current_frame, 1).value_or(0) %
                               window::MAX_FRAMES_IN_FLIGHT;
+    }
+
+    void window::add_resource(std::unique_ptr<shared_resource>&& res) {
+        this->resources.push_back(std::move(res));
     }
 
     std::pair<vk::Buffer, VmaAllocation VGI_RESTRICT> window::create_buffer(

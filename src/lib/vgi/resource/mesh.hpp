@@ -17,6 +17,14 @@ namespace vgi {
         /// @brief Number of indices inside `indices`
         uint32_t index_count;
 
+        /// @brief Creates a new mesh with the specified capacity
+        /// @param parent Window that will create the mesh
+        /// @param vertex_count Number of vertices that will fit inside the mesh
+        /// @param index_count Number of indices that will fit inside the mesh
+        mesh(const window& parent, vk::DeviceSize vertex_count, uint32_t index_count) :
+            vertices(parent, vertex_count), indices(parent, index_count), index_count(index_count) {
+        }
+
         /// @brief Binds both the vertex and index buffers
         /// @param cmdbuf Command buffer into which the command is recorded.
         /// @param vertex_binding Index of the vertex input binding whose state is updated by the
@@ -73,9 +81,9 @@ namespace vgi {
             res_lock<mesh_type> mesh = this->mesh.lock();
             if (!mesh) return false;
 
-            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline, set_offset,
+            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, set_offset,
                                       this->desc_pool[current_frame], {});
-            cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
+            cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
             mesh->bind(vertex_binding);
             mesh->draw();
             return true;

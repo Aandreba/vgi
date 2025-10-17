@@ -5,8 +5,15 @@
 #include <type_traits>
 #include <variant>
 
+#ifndef NDEBUG
+#include <source_location>
+
+#include "collections/slab.hpp"
+#endif
+
 #include "defs.hpp"
 #include "forward.hpp"
+#include "vgi.hpp"
 
 namespace vgi {
     /// @brief Specifies that a type is valid as a resource
@@ -27,21 +34,28 @@ namespace vgi {
         virtual ~shared_resource() = default;
 
     protected:
-        shared_resource() = default;
+        shared_resource() : state(std::in_place_index<ALIVE>, 1) {}
 
         /// @brief Destroys the resource
         /// @param parent Window used to create the resource
         virtual void destroy(const window& parent) && = 0;
 
     private:
-        using state_type = std::variant<bool, size_t, std::monostate>;
+        struct alive {
+            size_t refs = 1;
+#ifndef NDEBUG
+            collections::slab<std::source_location> locks;
+#endif
+        };
+
+        using state_type = std::variant<alive, uint32_t, std::monostate>;
         constexpr static inline const size_t ALIVE = 0;
         constexpr static inline const size_t WAITING = 1;
         constexpr static inline const size_t RELEASED = 2;
 
         state_type state;
-        std::array<vk::Fence, VGI_MAX_FRAMES_IN_FLIGHT> fence_buffer;
 
+        friend struct window;
         template<std::derived_from<shared_resource> R>
         friend struct res_lock;
         template<std::derived_from<shared_resource> R>
@@ -54,22 +68,33 @@ namespace vgi {
         res_lock(const res_lock&) = delete;
         res_lock& operator=(const res_lock&) = delete;
 
-        /// @brief Checks wether the resource locking was successful
-        inline explicit operator bool() const noexcept { return this->ptr; }
         /// @brief Provides access to the acquired resource
         /// @return A pointer to the resource
-        inline R* operator->() const noexcept { return this->ptr; }
+        inline R* operator->() const noexcept { return std::addressof(this->ptr); }
         /// @brief Provides access to the acquired resource
         /// @return A pointer to the resource
-        inline R& operator*() const noexcept { return *this->ptr; }
+        inline R& operator*() const noexcept { return this->ptr; }
 
-        ~res_lock() noexcept { VGI_ASSERT(--static_cast<shared_resource&>(ptr).strong > 0); }
+        ~res_lock() noexcept {
+#ifndef NDEBUG
+            shared_resource::alive* alive =
+                    std::get_if(&static_cast<shared_resource&>(this->ptr).state);
+            VGI_ASSERT(alive != nullptr);
+            alive->locks.remove(this->location);
+#endif
+        }
 
     private:
         using value_type = std::remove_cv_t<R>;
-        value_type* ptr;
+        value_type& ptr;
 
+#ifndef NDEBUG
+        size_t location;
+        res_lock(value_type* ptr, size_t location) noexcept : ptr(ptr), location(location) {}
+        res_lock(std::nullptr_t) noexcept : ptr(nullptr) {}
+#else
         res_lock(value_type* ptr) noexcept : ptr(ptr) {}
+#endif
 
         friend struct res<R>;
     };
@@ -80,7 +105,12 @@ namespace vgi {
         /// @brief Copy constructor
         /// @param other Object to be copied
         res(const res& other) noexcept : ptr(other.ptr) {
-            if (ptr) static_cast<shared_resource*>(ptr)->weak++;
+            if (ptr) {
+                if (shared_resource::alive* alive = std::get_if<shared_resource::ALIVE>(
+                            &static_cast<shared_resource*>(ptr)->state)) {
+                    alive->refs++;
+                }
+            }
         }
 
         /// @brief Move constructor
@@ -105,28 +135,39 @@ namespace vgi {
             return *this;
         }
 
-        /// @brief Checks wether this value points to a shared resource, whether destroyed or not.
+        /// @brief Checks wether this value points to a shared resource, whether destroyed or
+        /// not.
         inline explicit operator bool() const noexcept { return this->ptr; }
 
-        /// @brief Attempts to lock the resource, so that it can be used safely for the remainder of
-        /// the frame.
-        /// @return The result of the attempted lock
-        res_lock<R> lock() noexcept {
-            if (!this->ptr) return nullptr;
+/// @brief Attempts to lock the resource, so that it can be used safely for the
+/// remainder of the frame.
+/// @return The result of the attempted lock
+#ifndef NDEBUG
+        res_lock<R> lock(std::source_location&& location = std::source_location::current()) {
+#else
+        res_lock<R> lock() {
+#endif
+            if (!this->ptr) throw std::runtime_error{"The resource has already been released"};
 
             shared_resource* res_ptr = static_cast<shared_resource*>(this->ptr);
-            if (bool* locked = std::get_if<shared_resource::ALIVE>(&res_ptr->state)) {
-                *locked = true;
+            if (shared_resource::alive* alive =
+                        std::get_if<shared_resource::ALIVE>(&res_ptr->state)) {
+#ifndef NDEBUG
+                return res_lock<R>{this->ptr, alive->locks.emplace(std::move(location))};
+#else
                 return this->ptr;
+#endif
             } else {
-                return nullptr;
+                throw std::runtime_error{"The resource has already been released"};
             }
         }
 
-        ~res() noexcept(std::is_nothrow_destructible_v<R>) {
+        ~res() noexcept {
             if (this->ptr) {
-                if (--static_cast<shared_resource*>(this->ptr)->weak == 0) {
-                    delete this->ptr;
+                if (shared_resource::alive* alive = std::get_if<shared_resource::ALIVE>(
+                            &static_cast<shared_resource*>(this->ptr)->state)) {
+                    VGI_ASSERT(alive->refs > 0);
+                    alive->refs--;
                 }
             }
         }
@@ -134,6 +175,9 @@ namespace vgi {
     private:
         using value_type = std::remove_cv_t<R>;
         value_type* ptr;
+
+        res(value_type* ptr) noexcept : ptr(ptr) {}
+        friend struct window;
     };
 
     /// @brief A guard that destroys resources when dropped.

@@ -161,6 +161,20 @@ namespace vgi {
             return this->add_scene(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
+        /// @brief Creates a new resource
+        /// @tparam ...Args Argument types
+        /// @tparam T Shared resource type
+        /// @param ...args Arguments to create the resource
+        /// @return A weak reference to the newly created resource
+        template<std::derived_from<shared_resource> T, class... Args>
+            requires(std::is_constructible_v<T, const window&, Args...>)
+        res<T> create_resource(Args&&... args) {
+            using value_type = std::remove_cv_t<T>;
+            value_type* ptr = new value_type(*this, std::forward<Args>(args)...);
+            this->add_resource(ptr);
+            return static_cast<T*>(ptr);
+        }
+
         void on_event(const SDL_Event& event) override;
         void on_update(const timings& ts) override;
 
@@ -203,13 +217,14 @@ namespace vgi {
         vk::Semaphore present_complete[MAX_FRAMES_IN_FLIGHT];
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
-        collections::slab<std::unique_ptr<shared_resource>> resources;
+        std::vector<std::unique_ptr<shared_resource>> resources;
         collections::slab<std::unique_ptr<scene>> scenes;
         bool has_mailbox;
         bool has_hdr10;
 
         void create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10);
         void create_swapchain(bool vsync, bool hdr10);
+        void add_resource(std::unique_ptr<shared_resource>&& res);
 
         friend struct command_buffer;
         friend struct frame;
