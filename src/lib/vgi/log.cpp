@@ -102,7 +102,8 @@ namespace vgi {
     }
 
     void logger::log(std::wstring_view msg) {
-        std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>> cvt;
+        struct local_codecvt : public std::codecvt<wchar_t, char, std::mbstate_t> {};
+        std::wstring_convert<local_codecvt> cvt;
         this->log(cvt.to_bytes(&*msg.begin(), &*msg.end()));
     }
 

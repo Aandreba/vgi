@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <ranges>
 #include <vector>
-#include <vgi/slab.hpp>
 
+#include "collections/slab.hpp"
 #include "defs.hpp"
 #include "fs.hpp"
 #include "log.hpp"
@@ -19,8 +19,8 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 // Log callback functions
 extern "C" {
-void SDLCALL sdl_log_callback(void *userdata, int category, SDL_LogPriority priority,
-                              const char *message) {
+void SDLCALL sdl_log_callback(void* userdata, int category, SDL_LogPriority priority,
+                              const char* message) {
     vgi::log_level level;
     switch (priority) {
         case SDL_LOG_PRIORITY_CRITICAL:
@@ -48,7 +48,7 @@ void SDLCALL sdl_log_callback(void *userdata, int category, SDL_LogPriority prio
 
 VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
         vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT types,
-        const vk::DebugUtilsMessengerCallbackDataEXT *data, void *userdata) {
+        const vk::DebugUtilsMessengerCallbackDataEXT* data, void* userdata) {
     vgi::log_level level;
     switch (severity) {
         case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
@@ -79,7 +79,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL vulkan_log_callback(
 }
 
 namespace vgi {
-    using namespace priv;
+    using namespace collections;
 
     vk::Instance instance;
     slab<std::unique_ptr<layer>> layers;
@@ -90,11 +90,11 @@ namespace vgi {
     // Sets the C++ global locale to the user prefered one.
     static void setup_locale() {
         int count;
-        SDL_Locale **locales = sdl::tri(SDL_GetPreferredLocales(&count));
+        SDL_Locale** locales = sdl::tri(SDL_GetPreferredLocales(&count));
 
         try {
             for (int i = 0; i < count; ++i) {
-                const SDL_Locale *info = locales[i];
+                const SDL_Locale* info = locales[i];
                 std::string locale_name = std::format("{}{}{}.UTF-8", info->language,
                                                       info->country ? "_" : "", info->country);
 
@@ -121,7 +121,7 @@ namespace vgi {
                 vk::enumerateInstanceExtensionProperties(nullptr);
         std::vector<std::string> ext_names;
         ext_names.reserve(ext_props.size());
-        for (const vk::ExtensionProperties &props: ext_props) {
+        for (const vk::ExtensionProperties& props: ext_props) {
             ext_names.push_back(props.extensionName);
         }
         return ext_names;
@@ -132,7 +132,7 @@ namespace vgi {
         std::vector<vk::LayerProperties> ext_props = vk::enumerateInstanceLayerProperties();
         std::vector<std::string> ext_names;
         ext_names.reserve(ext_props.size());
-        for (const vk::LayerProperties &props: ext_props) {
+        for (const vk::LayerProperties& props: ext_props) {
             ext_names.push_back(props.layerName);
         }
         return ext_names;
@@ -160,21 +160,21 @@ namespace vgi {
         };
     }
 
-    static void create_instance(const char8_t *app_name) {
+    static void create_instance(const char8_t* app_name) {
         VGI_ASSERT(!instance);
 
         vk::InstanceCreateFlags flags;
-        std::vector<const char *> extensions;
-        std::vector<const char *> layers;
+        std::vector<const char*> extensions;
+        std::vector<const char*> layers;
 
         // Ask SDL which extensions it requires
         Uint32 sdl_ext_count;
-        const char *const *sdl_ext_ptr = sdl::tri(SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count));
+        const char* const* sdl_ext_ptr = sdl::tri(SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count));
         extensions.insert(extensions.end(), sdl_ext_ptr, sdl_ext_ptr + sdl_ext_count);
 
         // Check if all required extensions are supported
         const std::vector<std::string> available_exts = enuerate_instance_extensions();
-        for (const char *ext_name: extensions) {
+        for (const char* ext_name: extensions) {
             if (std::ranges::find(available_exts, ext_name) == available_exts.end()) {
                 throw std::runtime_error{
                         std::format("Required instance extension '{}' is not present", ext_name)};
@@ -183,7 +183,7 @@ namespace vgi {
 
         // Check if all required layers are supported
         const std::vector<std::string> available_layers = enuerate_instance_layers();
-        for (const char *layer_name: layers) {
+        for (const char* layer_name: layers) {
             if (std::ranges::find(available_layers, layer_name) == available_layers.end()) {
                 throw std::runtime_error{
                         std::format("Required instance layer '{}' is not present", layer_name)};
@@ -213,8 +213,8 @@ namespace vgi {
 // are valid and correct (by default, Vulkan assumes all arguments are valid and correct).
 #ifndef NDEBUG
         if (!has_env(VGI_OS("VGI_NO_VALIDATION_LAYER"))) {
-            const char *validation_layer_name =
-                    reinterpret_cast<const char *>(u8"VK_LAYER_KHRONOS_validation");
+            const char* validation_layer_name =
+                    reinterpret_cast<const char*>(u8"VK_LAYER_KHRONOS_validation");
 
             if (std::ranges::find(available_layers, validation_layer_name) !=
                 available_layers.end()) {
@@ -233,8 +233,8 @@ namespace vgi {
 
         vk::DebugUtilsMessengerCreateInfoEXT debug_create_info = setup_logger_info();
         vk::ApplicationInfo app_info{
-                .pApplicationName = reinterpret_cast<const char *>(app_name),
-                .pEngineName = reinterpret_cast<const char *>(u8"Entorn VGI"),
+                .pApplicationName = reinterpret_cast<const char*>(app_name),
+                .pEngineName = reinterpret_cast<const char*>(u8"Entorn VGI"),
                 .apiVersion = VK_API_VERSION_1_3,
         };
 
@@ -250,7 +250,7 @@ namespace vgi {
         });
     }
 
-    void init(const char8_t *app_name) {
+    void init(const char8_t* app_name) {
         // Setup default logger
         add_logger<default_logger>();
         // Initialize SDL
@@ -290,7 +290,7 @@ namespace vgi {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 shutdown_requested |= event.type == SDL_EVENT_QUIT;
-                for (std::unique_ptr<layer> &l: layers.values()) {
+                for (std::unique_ptr<layer>& l: layers.values()) {
                     l->on_event(event);
                 }
             }
@@ -305,12 +305,11 @@ namespace vgi {
                         layers[i] = std::move(target);
                     } else {
                         // Remove layer
-                        layers.remove(i);
+                        VGI_ASSERT(layers.try_remove(i));
                         continue;
                     }
                 }
                 layers[i]->on_update(ts);
-                ++i;
             }
         }
     }
@@ -324,8 +323,8 @@ namespace vgi {
         SDL_Quit();
     }
 
-    size_t add_layer(std::unique_ptr<layer> &&layer) { return layers.emplace(std::move(layer)); }
-    layer &get_layer(size_t key) { return *layers.at(key); }
+    size_t add_layer(std::unique_ptr<layer>&& layer) { return layers.emplace(std::move(layer)); }
+    layer& get_layer(size_t key) { return *layers.at(key); }
 
     timings::timings() {
         this->time_point = std::chrono::steady_clock::now();

@@ -286,7 +286,7 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            for (std::unique_ptr<scene>& s: this->scenes) s->on_event(*this, event);
+            for (std::unique_ptr<scene>& s: this->scenes.values()) s->on_event(*this, event);
         }
     }
 
@@ -356,30 +356,27 @@ namespace vgi {
                       vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
         // Handle transitions & updates
-        size_t i = 0;
-        while (i < this->scenes.size()) {
+        for (size_t i: this->scenes.keys()) {
             if (this->scenes[i]->transition_target.has_value()) {
                 std::unique_ptr<scene> target =
                         std::move(this->scenes[i]->transition_target.value());
 
                 this->scenes[i]->on_detach(*this);
                 if (target) {
-                    // Transition the layer
+                    // Swap layer
                     target->on_attach(*this);
                     this->scenes[i] = std::move(target);
                 } else {
-                    // Remove the layer
-                    std::swap(this->scenes[i], this->scenes.back());
-                    this->scenes.pop_back();
+                    // Remove layer
+                    VGI_ASSERT(this->scenes.try_remove(i));
                     continue;
                 }
             }
             this->scenes[i]->on_update(*this, cmdbuf, this->current_frame, ts);
-            ++i;
         }
 
         // Run scene renders
-        for (std::unique_ptr<scene>& s: this->scenes) {
+        for (std::unique_ptr<scene>& s: this->scenes.values()) {
             vk::RenderingAttachmentInfo color_attachment{
                     .imageView = view,
                     .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -480,9 +477,9 @@ namespace vgi {
             this->logical.waitIdle();
 
             // Destroy scenes
-            while (!this->scenes.empty()) {
-                this->scenes.back()->on_detach(*this);
-                this->scenes.pop_back();
+            for (size_t i: this->scenes.keys()) {
+                this->scenes[i]->on_detach(*this);
+                VGI_ASSERT(this->scenes.try_remove(i));
             }
 
             // Destroy internals

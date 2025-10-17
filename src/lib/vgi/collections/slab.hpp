@@ -9,7 +9,7 @@
 #include <vector>
 #include <vgi/defs.hpp>
 
-namespace vgi::priv {
+namespace vgi::collections {
     template<class T>
     class slab {
         using entry_type = std::variant<T, size_t>;
@@ -125,4 +125,4 @@ namespace vgi::priv {
                    });
         }
     };
-}  // namespace vgi::priv
+}  // namespace vgi::collections

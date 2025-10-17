@@ -10,8 +10,10 @@
 #include <type_traits>
 #include <utility>
 
+#include "collections/slab.hpp"
 #include "device.hpp"
 #include "forward.hpp"
+#include "resource.hpp"
 #include "vgi.hpp"
 #include "vulkan.hpp"
 
@@ -76,14 +78,7 @@ namespace vgi {
     /// @brief Handle to a presentable window
     struct window : public layer {
         /// @brief Maximum number of frames that can waiting to be presented at the same time.
-#ifdef VGI_MAX_FRAMES_IN_FLIGHT
-#if VGI_MAX_FRAMES_IN_FLIGHT <= 0
-#error "Max number of frames in flight must be a positive integer greater than zero"
-#endif
         constexpr static inline const uint32_t MAX_FRAMES_IN_FLIGHT = VGI_MAX_FRAMES_IN_FLIGHT;
-#else
-        constexpr static inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-#endif
 
         /// @brief Create a window with the specified properties
         /// @param device Device to be used for hardware acceleration
@@ -151,8 +146,9 @@ namespace vgi {
 
         /// @brief Adds a new scene to the window
         /// @param scene Scene to be added
-        void push_scene(std::unique_ptr<scene>&& scene) {
-            this->scenes.emplace_back(std::move(scene))->on_attach(*this);
+        size_t add_scene(std::unique_ptr<scene>&& scene) {
+            scene->on_attach(*this);
+            return this->scenes.emplace(std::move(scene));
         }
 
         /// @brief Adds a new scene to the window
@@ -161,8 +157,8 @@ namespace vgi {
         /// @param ...args Arguments to create the scene
         template<std::derived_from<scene> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
-        void add_scene(Args&&... args) {
-            this->push_scene(std::make_unique<T>(std::forward<Args>(args)...));
+        size_t add_scene(Args&&... args) {
+            return this->add_scene(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
         void on_event(const SDL_Event& event) override;
@@ -207,7 +203,8 @@ namespace vgi {
         vk::Semaphore present_complete[MAX_FRAMES_IN_FLIGHT];
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
-        std::vector<std::unique_ptr<scene>> scenes;
+        collections::slab<std::unique_ptr<shared_resource>> resources;
+        collections::slab<std::unique_ptr<scene>> scenes;
         bool has_mailbox;
         bool has_hdr10;
 

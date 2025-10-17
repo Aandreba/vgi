@@ -5,6 +5,15 @@
 #include <concepts>
 #include <utility>
 
+#ifdef VGI_MAX_FRAMES_IN_FLIGHT
+#if VGI_MAX_FRAMES_IN_FLIGHT <= 0
+#error "Max number of frames in flight must be a positive integer greater than zero"
+#endif
+#else
+/// @brief Maximum number of frames that can waiting to be presented at the same time.
+#define VGI_MAX_FRAMES_IN_FLIGHT 2
+#endif
+
 #ifndef VGI_CONCAT
 /// @brief Concatenates two identifers. Useful for code generating macros
 #define VGI_CONCAT(x, y) VGI_CONCAT_(x, y)

@@ -3,9 +3,10 @@
 #include <concepts>
 #include <optional>
 #include <type_traits>
+#include <variant>
 
+#include "defs.hpp"
 #include "forward.hpp"
-#include "window.hpp"
 
 namespace vgi {
     /// @brief Specifies that a type is valid as a resource
@@ -23,19 +24,23 @@ namespace vgi {
     struct shared_resource {
         shared_resource(const shared_resource&) = delete;
         shared_resource& operator=(const shared_resource&) = delete;
-
-        /// @brief Destroys the resource
-        /// @param parent Window used to create the resource
-        virtual void destroy(const window& parent) && = 0;
-
         virtual ~shared_resource() = default;
 
     protected:
         shared_resource() = default;
 
+        /// @brief Destroys the resource
+        /// @param parent Window used to create the resource
+        virtual void destroy(const window& parent) && = 0;
+
     private:
-        size_t strong = 1;
-        size_t weak = 1;
+        using state_type = std::variant<bool, size_t, std::monostate>;
+        constexpr static inline const size_t ALIVE = 0;
+        constexpr static inline const size_t WAITING = 1;
+        constexpr static inline const size_t RELEASED = 2;
+
+        state_type state;
+        std::array<vk::Fence, VGI_MAX_FRAMES_IN_FLIGHT> fence_buffer;
 
         template<std::derived_from<shared_resource> R>
         friend struct res_lock;
@@ -66,8 +71,7 @@ namespace vgi {
 
         res_lock(value_type* ptr) noexcept : ptr(ptr) {}
 
-        template<std::derived_from<shared_resource> R>
-        friend struct res;
+        friend struct res<R>;
     };
 
     /// @brief A weak reference to a `vgi::shared_resource`
@@ -111,14 +115,12 @@ namespace vgi {
             if (!this->ptr) return nullptr;
 
             shared_resource* res_ptr = static_cast<shared_resource*>(this->ptr);
-            if (res_ptr->strong == 0) {
-                this->ptr = nullptr;
-                if (--res_ptr->weak == 0) delete ptr;
+            if (bool* locked = std::get_if<shared_resource::ALIVE>(&res_ptr->state)) {
+                *locked = true;
+                return this->ptr;
+            } else {
                 return nullptr;
             }
-
-            res_ptr->strong++;
-            return this->ptr;
         }
 
         ~res() noexcept(std::is_nothrow_destructible_v<R>) {

@@ -58,52 +58,29 @@ namespace vgi {
     /// @brief An instance of `vgi::mesh`
     template<index T>
     struct mesh_instance {
-        void bind(vk::CommandBuffer cmdbuf, uint32_t current_frame, uint32_t set_offset = 0,
-                  uint32_t vertex_binding = 0) const noexcept {
-            std::ignore = this->bind_impl(cmdbuf, current_frame, set_offset, vertex_binding);
-        }
+        using mesh_type = mesh<T>;
 
-        void draw() const noexcept {
-            // TODO
-        }
-
-        /// @brief Binds and draws the mesh.
-        /// @details This is equivalent to calling `bind` and `draw` in sequence
-        /// @sa vgi::mesh_instance::bind
-        /// @sa vgi::mesh_instance::draw
-        void bind_and_draw() const noexcept {
-            // TODO
-        }
-
-        void destroy(const window& parent) && { std::move(desc_pool).destroy(parent); }
-
-    private:
-        res<mesh<T>> mesh;
-        res<graphics_pipeline> pipeline;
+        res<mesh_type> mesh;
         descriptor_pool desc_pool;
 
-        [[nodiscard]] bool bind_impl(vk::CommandBuffer cmdbuf, uint32_t current_frame,
-                                     uint32_t set_offset, uint32_t vertex_binding) const noexcept {
-            auto mesh = this->mesh.lock();
-            if (!mesh) {
-                vgi::log_warn(
-                        "Underlying mesh has been released. The mesh instance will not be bound.");
-                return false;
-            }
-
-            auto pipeline = this->pipeline.lock();
-            if (!pipeline) {
-                vgi::log_warn(
-                        "Underlying pipeline has been released. The mesh instance will not be "
-                        "bound.");
-                return false;
-            }
+        /// @brief Binds and draws the mesh.
+        /// @warning Each mesh instance can only be drawn **once** per each frame.
+        /// @sa vgi::mesh_instance::bind
+        /// @sa vgi::mesh_instance::draw
+        [[nodiscard]] bool draw(vk::CommandBuffer cmdbuf, const graphics_pipeline& pipeline,
+                                uint32_t current_frame, uint32_t set_offset = 0,
+                                uint32_t vertex_binding = 0) const noexcept {
+            res_lock<mesh_type> mesh = this->mesh.lock();
+            if (!mesh) return false;
 
             cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline, set_offset,
                                       this->desc_pool[current_frame], {});
             cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
             mesh->bind(vertex_binding);
+            mesh->draw();
             return true;
         }
+
+        void destroy(const window& parent) && { std::move(desc_pool).destroy(parent); }
     };
 }  // namespace vgi
