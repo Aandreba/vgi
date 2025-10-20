@@ -36,6 +36,23 @@ namespace vgi {
         return true;
     }
 
+    bool device::is_format_supported(vk::Format format, vk::FormatFeatureFlags features,
+                                     vk::ImageTiling tiling) const noexcept {
+        vk::FormatProperties props = this->handle.getFormatProperties2(format).formatProperties;
+        vk::FormatFeatureFlags flags;
+        switch (tiling) {
+            case vk::ImageTiling::eLinear:
+                flags = props.linearTilingFeatures;
+                break;
+            case vk::ImageTiling::eOptimal:
+                flags = props.optimalTilingFeatures;
+                break;
+            default:
+                return false;
+        }
+        return (flags & features) == features;
+    }
+
     std::optional<uint32_t> device::select_queue_family(vk::SurfaceKHR surface,
                                                         vk::SurfaceFormatKHR format,
                                                         bool vsync) const {

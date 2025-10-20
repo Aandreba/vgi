@@ -54,11 +54,39 @@ namespace vgi {
 
         /// @brief Iterator over all the queue family properties
         /// @return Iterator of `const vk::QueueFamilyProperties&`
-        inline const auto queue_families() const noexcept {
+        inline auto queue_families() const noexcept {
             return std::views::transform(
                     this->queue_family_chains,
                     [](const queue_family_type& chain) -> const vk::QueueFamilyProperties& {
                         return chain.get<vk::QueueFamilyProperties2>().queueFamilyProperties;
+                    });
+        }
+
+        /// @brief Checks if the format supports the provided features for the tiling
+        /// @param format Format for which to check the features
+        /// @param features Features to check support for
+        /// @param tiling Tiling for which to check the features
+        /// @return `true` if all the features are supported on the specified tiling, `false`
+        /// otherwise
+        bool is_format_supported(vk::Format format, vk::FormatFeatureFlags features,
+                                 vk::ImageTiling tiling = vk::ImageTiling::eOptimal) const noexcept;
+
+        /// @brief Filters the provided range to only return the formats supported by this device
+        /// @tparam R Range type
+        /// @param candidates The format range to be filtered
+        /// @param features Features to check support for
+        /// @param tiling Tiling for which to check the features
+        /// @return The filtered range
+        template<std::ranges::input_range R>
+            requires(std::convertible_to<std::ranges::range_value_t<R>, vk::Format> &&
+                     std::ranges::view<R>)
+        inline auto supported_formats(
+                R&& candidates, vk::FormatFeatureFlags features,
+                vk::ImageTiling tiling = vk::ImageTiling::eOptimal) const noexcept {
+            return std::views::filter(
+                    std::move(candidates), [=, this](std::ranges::range_value_t<R> format) {
+                        return this->is_format_supported(static_cast<vk::Format>(format), features,
+                                                         tiling);
                     });
         }
 

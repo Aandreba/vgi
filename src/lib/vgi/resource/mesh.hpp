@@ -62,33 +62,4 @@ namespace vgi {
             std::move(this->indices).destroy(parent);
         }
     };
-
-    /// @brief An instance of `vgi::mesh`
-    template<index T>
-    struct mesh_instance {
-        using mesh_type = mesh<T>;
-
-        res<mesh_type> mesh;
-        descriptor_pool desc_pool;
-
-        /// @brief Binds and draws the mesh.
-        /// @warning Each mesh instance can only be drawn **once** per each frame.
-        /// @sa vgi::mesh_instance::bind
-        /// @sa vgi::mesh_instance::draw
-        [[nodiscard]] bool draw(vk::CommandBuffer cmdbuf, const graphics_pipeline& pipeline,
-                                uint32_t current_frame, uint32_t set_offset = 0,
-                                uint32_t vertex_binding = 0) const noexcept {
-            res_lock<mesh_type> mesh = this->mesh.lock();
-            if (!mesh) return false;
-
-            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, set_offset,
-                                      this->desc_pool[current_frame], {});
-            cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-            mesh->bind(vertex_binding);
-            mesh->draw();
-            return true;
-        }
-
-        void destroy(const window& parent) && { std::move(desc_pool).destroy(parent); }
-    };
 }  // namespace vgi

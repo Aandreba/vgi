@@ -18,11 +18,11 @@
 #include "vulkan.hpp"
 
 namespace vgi {
-    /// @brief A scene that attaches to the update loop of a window
-    /// @details Scenes may be thought of as the layers of a window.
-    struct scene {
-        /// @brief Notifies the scene is being attached to a window
-        /// @param w The window to which the scene is being attached
+    /// @brief A layer that attaches to the update loop of a window
+    /// @details Layers may be thought of as the systems of a window.
+    struct layer {
+        /// @brief Notifies the layer is being attached to a window
+        /// @param w The window to which the layer is being attached
         virtual void on_attach(window& w) {}
 
         /// @brief Notifies an event was received.
@@ -45,38 +45,38 @@ namespace vgi {
         /// `vgi::uniform_buffer` or `vgi::descriptor_pool`.
         virtual void on_render(window& w, vk::CommandBuffer cmdbuf, uint32_t current_frame) {}
 
-        /// @brief Notifies the scene is being detached from a window
-        /// @param w The window from which the scene is being detached
+        /// @brief Notifies the layer is being detached from a window
+        /// @param w The window from which the layer is being detached
         virtual void on_detach(window& w) {}
 
-        virtual ~scene() = default;
+        virtual ~layer() = default;
 
-        /// @brief At the end of this frame, replace this scene with a new one
-        /// @param scene Scene that will replace the current one
-        void transition_to(std::unique_ptr<scene>&& scene) noexcept {
-            this->transition_target.emplace(std::move(scene));
+        /// @brief At the end of this frame, replace this layer with a new one
+        /// @param layer layer that will replace the current one
+        void transition_to(std::unique_ptr<layer>&& layer) noexcept {
+            this->transition_target.emplace(std::move(layer));
         }
 
-        /// @brief At the end of this frame, replace this scene with a new one
+        /// @brief At the end of this frame, replace this layer with a new one
         /// @tparam ...Args Argument types
-        /// @tparam T Scene type
-        /// @param ...args Arguments to create the new scene
-        template<std::derived_from<scene> T, class... Args>
+        /// @tparam T layer type
+        /// @param ...args Arguments to create the new layer
+        template<std::derived_from<layer> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
         inline void transition_to(Args&&... args) {
             return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
-        /// @brief At the end of this frame, detach the current scene
+        /// @brief At the end of this frame, detach the current layer
         void detach() noexcept { this->transition_to(nullptr); }
 
     private:
-        std::optional<std::unique_ptr<scene>> transition_target;
+        std::optional<std::unique_ptr<layer>> transition_target;
         friend struct window;
     };
 
     /// @brief Handle to a presentable window
-    struct window : public layer {
+    struct window : public system {
         /// @brief Maximum number of frames that can waiting to be presented at the same time.
         constexpr static inline const uint32_t MAX_FRAMES_IN_FLIGHT = VGI_MAX_FRAMES_IN_FLIGHT;
 
@@ -144,35 +144,21 @@ namespace vgi {
         /// @brief Casts `window` to it's underlying `VmaAllocator`
         constexpr operator VmaAllocator() const noexcept { return this->allocator; }
 
-        /// @brief Adds a new scene to the window
-        /// @param scene Scene to be added
-        size_t add_scene(std::unique_ptr<scene>&& scene) {
-            scene->on_attach(*this);
-            return this->scenes.emplace(std::move(scene));
+        /// @brief Adds a new layer to the window
+        /// @param layer layer to be added
+        size_t add_layer(std::unique_ptr<layer>&& layer) {
+            layer->on_attach(*this);
+            return this->layers.emplace(std::move(layer));
         }
 
-        /// @brief Adds a new scene to the window
+        /// @brief Adds a new layer to the window
         /// @tparam ...Args Argument types
-        /// @tparam T Scene type
-        /// @param ...args Arguments to create the scene
-        template<std::derived_from<scene> T, class... Args>
+        /// @tparam T layer type
+        /// @param ...args Arguments to create the layer
+        template<std::derived_from<layer> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
-        size_t add_scene(Args&&... args) {
-            return this->add_scene(std::make_unique<T>(std::forward<Args>(args)...));
-        }
-
-        /// @brief Creates a new resource
-        /// @tparam ...Args Argument types
-        /// @tparam T Shared resource type
-        /// @param ...args Arguments to create the resource
-        /// @return A weak reference to the newly created resource
-        template<std::derived_from<shared_resource> T, class... Args>
-            requires(std::is_constructible_v<T, const window&, Args...>)
-        res<T> create_resource(Args&&... args) {
-            using value_type = std::remove_cv_t<T>;
-            value_type* ptr = new value_type(*this, std::forward<Args>(args)...);
-            this->add_resource(std::unique_ptr<shared_resource>{ptr});
-            return static_cast<T*>(ptr);
+        size_t add_layer(Args&&... args) {
+            return this->add_layer(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
         void on_event(const SDL_Event& event) override;
@@ -204,6 +190,10 @@ namespace vgi {
             vk::Image image;
             vk::ImageView view;
             VmaAllocation allocation;
+
+            depth_texture(vk::Device logical, VmaAllocator allocator, vk::Format format,
+                          uint32_t width, uint32_t height);
+            void destroy(vk::Device logical, VmaAllocator allocator) && noexcept;
         };
 
         SDL_Window* VGI_RESTRICT handle;
@@ -218,20 +208,19 @@ namespace vgi {
         unique_span<vk::Image> swapchain_images;
         unique_span<vk::ImageView> swapchain_views;
         unique_span<depth_texture> swapchain_depths;
+        vk::Format depth_format;
         std::deque<flying_command_buffer> flying_cmdbufs;
         vk::CommandBuffer cmdbufs[MAX_FRAMES_IN_FLIGHT];
         vk::Fence in_flight[MAX_FRAMES_IN_FLIGHT];
         vk::Semaphore present_complete[MAX_FRAMES_IN_FLIGHT];
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
-        std::vector<std::unique_ptr<shared_resource>> resources;
-        collections::slab<std::unique_ptr<scene>> scenes;
+        collections::slab<std::unique_ptr<layer>> layers;
         bool has_mailbox;
         bool has_hdr10;
 
         void create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10);
         void create_swapchain(bool vsync, bool hdr10);
-        void add_resource(std::unique_ptr<shared_resource>&& res);
 
         friend struct command_buffer;
         friend struct frame;

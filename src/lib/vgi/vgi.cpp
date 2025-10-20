@@ -82,7 +82,7 @@ namespace vgi {
     using namespace collections;
 
     vk::Instance instance;
-    slab<std::unique_ptr<layer>> layers;
+    slab<std::unique_ptr<system>> systems;
     std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
     std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
     bool shutdown_requested = false;
@@ -290,26 +290,27 @@ namespace vgi {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 shutdown_requested |= event.type == SDL_EVENT_QUIT;
-                for (std::unique_ptr<layer>& l: layers.values()) {
+                for (std::unique_ptr<system>& l: systems.values()) {
                     l->on_event(event);
                 }
             }
 
-            // Handle transitions & run layer updates
+            // Handle transitions & run system updates
             timings ts;
-            for (size_t i: layers.keys()) {
-                if (layers[i]->transition_target.has_value()) {
-                    std::unique_ptr<layer> target = std::move(layers[i]->transition_target.value());
+            for (size_t i: systems.keys()) {
+                if (systems[i]->transition_target.has_value()) {
+                    std::unique_ptr<system> target =
+                            std::move(systems[i]->transition_target.value());
                     if (target) {
-                        // Swap layer
-                        layers[i] = std::move(target);
+                        // Swap system
+                        systems[i] = std::move(target);
                     } else {
-                        // Remove layer
-                        VGI_ASSERT(layers.try_remove(i));
+                        // Remove system
+                        VGI_ASSERT(systems.try_remove(i));
                         continue;
                     }
                 }
-                layers[i]->on_update(ts);
+                systems[i]->on_update(ts);
             }
         }
     }
@@ -317,14 +318,16 @@ namespace vgi {
     void shutdown() noexcept { shutdown_requested = true; }
 
     void quit() noexcept {
-        layers.clear();
+        systems.clear();
         if (instance) std::exchange(instance, nullptr).destroy();
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
     }
 
-    size_t add_layer(std::unique_ptr<layer>&& layer) { return layers.emplace(std::move(layer)); }
-    layer& get_layer(size_t key) { return *layers.at(key); }
+    size_t add_system(std::unique_ptr<system>&& system) {
+        return systems.emplace(std::move(system));
+    }
+    system& get_system(size_t key) { return *systems.at(key); }
 
     timings::timings() {
         this->time_point = std::chrono::steady_clock::now();

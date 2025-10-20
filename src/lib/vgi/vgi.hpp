@@ -47,64 +47,63 @@ namespace vgi {
         friend void run();
     };
 
-    /// @brief
-    struct layer {
+    struct system {
         virtual void on_event(const SDL_Event& event) {}
         virtual void on_update(const timings& ts) {}
-        virtual ~layer() = default;
+        virtual ~system() = default;
 
-        /// @brief At the end of this frame, replace this layer with a new one
-        /// @param layer Layer that will replace the current one
-        void transition_to(std::unique_ptr<layer>&& layer) noexcept {
-            this->transition_target.emplace(std::move(layer));
+        /// @brief At the end of this frame, replace this system with a new one
+        /// @param system System that will replace the current one
+        void transition_to(std::unique_ptr<system>&& system) noexcept {
+            this->transition_target.emplace(std::move(system));
         }
 
-        /// @brief At the end of this frame, replace this layer with a new one
+        /// @brief At the end of this frame, replace this system with a new one
         /// @tparam ...Args Argument types
-        /// @tparam T Layer type
-        /// @param ...args Arguments to create the new layer
-        template<std::derived_from<layer> T, class... Args>
+        /// @tparam T system type
+        /// @param ...args Arguments to create the new system
+        template<std::derived_from<system> T, class... Args>
             requires(std::is_constructible_v<T, Args...>)
         inline void transition_to(Args&&... args) {
             return this->transition_to(std::make_unique<T>(std::forward<Args>(args)...));
         }
 
-        /// @brief At the end of this frame, detach the current layer
+        /// @brief At the end of this frame, detach the current system
         void detach() noexcept { this->transition_to(nullptr); }
 
     private:
-        std::optional<std::unique_ptr<layer>> transition_target = std::nullopt;
+        std::optional<std::unique_ptr<system>> transition_target = std::nullopt;
         friend void run();
     };
 
-    /// @brief Adds a new layer
-    /// @param layer Layer to be added
-    size_t add_layer(std::unique_ptr<layer>&& layer);
+    /// @brief Adds a new system
+    /// @param system system to be added
+    size_t add_system(std::unique_ptr<system>&& system);
 
-    /// @brief Access a layer
-    /// @param key Key of the layer to access
-    /// @warning If you add a new layer, the returned reference may be invalidated.
-    layer& get_layer(size_t key);
+    /// @brief Access a system
+    /// @param key Key of the system to access
+    /// @warning If you add a new system, the returned reference may be invalidated.
+    system& get_system(size_t key);
 
-    /// @brief Adds a new layer to the window
+    /// @brief Adds a new system to the window
     /// @tparam ...Args Argument types
-    /// @tparam T Layer type
-    /// @param ...args Arguments to create the layer
-    template<std::derived_from<layer> T, class... Args>
+    /// @tparam T system type
+    /// @param ...args Arguments to create the system
+    template<std::derived_from<system> T, class... Args>
         requires(std::is_constructible_v<T, Args...>)
-    size_t add_layer(Args&&... args) {
-        return add_layer(std::make_unique<T>(std::forward<Args>(args)...));
+    size_t add_system(Args&&... args) {
+        return add_system(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
-    /// @brief Adds a new layer to the window
+    /// @brief Adds a new system to the window
     /// @tparam ...Args Argument types
-    /// @tparam T Layer type
-    /// @param ...args Arguments to create the layer
-    template<std::derived_from<layer> T, class... Args>
+    /// @tparam T system type
+    /// @param ...args Arguments to create the system
+    template<std::derived_from<system> T, class... Args>
         requires(std::is_constructible_v<T, Args...>)
-    T& emplace_layer(Args&&... args) {
-        const size_t key = add_layer<T, Args...>(std::forward<Args>(args)...);
-        return static_cast<T&>(get_layer(key));
+    T& emplace_system(Args&&... args) {
+        const size_t key = add_system<T, Args...>(std::forward<Args>(args)...);
+        return static_cast<T&>(get_system(key));
     }
 
     namespace sdl {

@@ -14,7 +14,7 @@ namespace vgi {
     /// @brief A pipeline used to execute user code on the acceleration device
     /// @warning This object cannot be directly constructed, for that you must use either
     /// `vgi::graphics_pipeline` or `vgi::compute_pipeline`
-    struct pipeline : public shared_resource {
+    struct pipeline {
         /// @brief Move constructor
         /// @param other Object to be moved
         pipeline(pipeline&& other) noexcept :
@@ -36,7 +36,7 @@ namespace vgi {
 
         /// @brief Destroys the pipeline
         /// @param parent Window used to create the pipeline
-        void destroy(const window& parent) && override;
+        void destroy(const window& parent) &&;
 
     protected:
         /// @brief Handle to the underlying `vk::Pipeline`

@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL_vulkan.h>
 #include <iterator>
+#include <optional>
 #include <ranges>
 
 #include "log.hpp"
@@ -20,6 +21,10 @@ constexpr static inline const vk::SurfaceFormatKHR SRGB_FORMAT{vk::Format::eB8G8
 // High definition, 10-bit color format.
 constexpr static inline const vk::SurfaceFormatKHR HDR10_FORMAT{vk::Format::eA2B10G10R10UnormPack32,
                                                                 vk::ColorSpaceKHR::eHdr10St2084EXT};
+// Formats that can be used on a depth buffer
+constexpr static inline const vk::Format DEPTH_FORMATS[] = {
+        vk::Format::eD32Sfloat,      vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint,
+        vk::Format::eD24UnormS8Uint, vk::Format::eD16Unorm,  vk::Format::eD16UnormS8Uint};
 
 template<std::ranges::input_range R, class T, class Proj = std::identity>
     requires std::indirect_binary_predicate<
@@ -27,6 +32,14 @@ template<std::ranges::input_range R, class T, class Proj = std::identity>
 constexpr static bool contains(R&& r, const T& value, Proj proj = {}) {
     const auto end = std::ranges::end(r);
     return std::ranges::find(std::ranges::begin(r), end, value, std::ref(proj)) == end;
+}
+
+template<std::ranges::input_range R>
+    requires(std::is_move_constructible_v<std::ranges::range_value_t<R>>)
+constexpr static std::optional<std::ranges::range_value_t<R>> first(R&& r) {
+    if (std::ranges::empty(r)) return std::nullopt;
+    auto it = std::ranges::begin(r);
+    return std::make_optional<std::ranges::range_value_t<R>>(std::move(*it));
 }
 
 namespace vgi {
@@ -190,6 +203,7 @@ namespace vgi {
         std::vector<vk::UniqueSemaphore> new_render_complete;
         new_render_complete.reserve(new_swapchain_images.size());
 
+        // TODO Create depth textures
         for (size_t i = 0; i < new_swapchain_images.size(); ++i) {
             new_swapchain_views.push_back(logical.createImageViewUnique(vk::ImageViewCreateInfo{
                     .image = new_swapchain_images[i],
@@ -207,8 +221,13 @@ namespace vgi {
         }
 
         // If an existing swap chain is re-created, destroy the old swap chain and the ressources
-        // owned by the application (image views, images are owned by the swa
+        // owned by the application (image views, images are owned by the swapchain)
         if (this->swapchain) {
+            this->logical.waitIdle();
+
+            for (depth_texture& depth: this->swapchain_depths) {
+                std::move(depth).destroy(this->logical, this->allocator);
+            }
             for (vk::ImageView view: this->swapchain_views) {
                 this->logical.destroyImageView(view);
             }
@@ -216,8 +235,8 @@ namespace vgi {
                 this->logical.destroySemaphore(sem);
             }
             this->logical.destroySwapchainKHR(this->swapchain);
-        } else {
         }
+
         this->swapchain = new_swapchain.release();
         this->swapchain_images = std::move(new_swapchain_images);
         this->swapchain_info = new_swapchain_info;
@@ -237,11 +256,58 @@ namespace vgi {
         return create_swapchain(width.value(), height.value(), vsync, hdr10);
     }
 
+    window::depth_texture::depth_texture(vk::Device logical, VmaAllocator allocator,
+                                         vk::Format format, uint32_t width, uint32_t height) {
+        VkImageCreateInfo create_info = vk::ImageCreateInfo{
+                .imageType = vk::ImageType::e2D,
+                .format = format,
+                .extent = {width, height, UINT32_C(1)},
+                .mipLevels = 1,
+                .arrayLayers = 1,
+                .samples = vk::SampleCountFlagBits::e1,
+                .tiling = vk::ImageTiling::eOptimal,
+                .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                .sharingMode = vk::SharingMode::eExclusive,
+        };
+
+        VmaAllocationCreateInfo alloc_create_info{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+        VkImage image = VK_NULL_HANDLE;
+        VMA_CHECK(vmaCreateImage(allocator, &create_info, &alloc_create_info, &image,
+                                 &this->allocation, nullptr));
+        this->image = image;
+
+        vk::ImageViewCreateInfo view_create_info{
+                .image = this->image,
+                .viewType = vk::ImageViewType::e2D,
+                .format = format,
+                .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
+                               vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
+                .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eDepth,
+                                     .levelCount = 1,
+                                     .layerCount = 1},
+        };
+        this->view = logical.createImageView(view_create_info);
+    }
+
+    void window::depth_texture::destroy(vk::Device logical, VmaAllocator allocator) && noexcept {
+        if (this->view) logical.destroyImageView(this->view);
+        vmaDestroyImage(allocator, this->image, this->allocation);
+    }
+
     window::window(const device& device, const char8_t* title, int width, int height,
                    SDL_WindowFlags flags, bool vsync, bool hdr10) :
         handle(sdl::tri(SDL_CreateWindow(reinterpret_cast<const char*>(title), width, height,
                                          (flags & ~EXCLUDED_FLAGS) | REQUIRED_FLAGS))),
         physical(device) {
+        // Find depth format
+        auto depth_formats =
+                device.supported_formats(std::span<const vk::Format>{DEPTH_FORMATS},
+                                         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+        if (std::ranges::empty(depth_formats))
+            throw std::runtime_error{"Device does not support depth textures"};
+        this->depth_format = *std::ranges::begin(depth_formats);
+
+        // Create surface
         VkSurfaceKHR surface;
         sdl::tri(SDL_Vulkan_CreateSurface(this->handle, static_cast<VkInstance>(instance), nullptr,
                                           &surface));
@@ -286,7 +352,7 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            for (std::unique_ptr<scene>& s: this->scenes.values()) s->on_event(*this, event);
+            for (std::unique_ptr<layer>& s: this->layers.values()) s->on_event(*this, event);
         }
     }
 
@@ -356,27 +422,27 @@ namespace vgi {
                       vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
         // Handle transitions & updates
-        for (size_t i: this->scenes.keys()) {
-            if (this->scenes[i]->transition_target.has_value()) {
-                std::unique_ptr<scene> target =
-                        std::move(this->scenes[i]->transition_target.value());
+        for (size_t i: this->layers.keys()) {
+            if (this->layers[i]->transition_target.has_value()) {
+                std::unique_ptr<layer> target =
+                        std::move(this->layers[i]->transition_target.value());
 
-                this->scenes[i]->on_detach(*this);
+                this->layers[i]->on_detach(*this);
                 if (target) {
                     // Swap layer
                     target->on_attach(*this);
-                    this->scenes[i] = std::move(target);
+                    this->layers[i] = std::move(target);
                 } else {
                     // Remove layer
-                    VGI_ASSERT(this->scenes.try_remove(i));
+                    VGI_ASSERT(this->layers.try_remove(i));
                     continue;
                 }
             }
-            this->scenes[i]->on_update(*this, cmdbuf, this->current_frame, ts);
+            this->layers[i]->on_update(*this, cmdbuf, this->current_frame, ts);
         }
 
         // Run scene renders
-        for (std::unique_ptr<scene>& s: this->scenes.values()) {
+        for (std::unique_ptr<layer>& s: this->layers.values()) {
             vk::RenderingAttachmentInfo color_attachment{
                     .imageView = view,
                     .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -456,40 +522,8 @@ namespace vgi {
             throw;
         }
 
-        // Process resource cleanup
-        size_t i = 0;
-        while (i < this->resources.size()) {
-            shared_resource& r = *this->resources[i];
-            if (shared_resource::alive* alive = std::get_if<shared_resource::ALIVE>(&r.state)) {
-                if (alive->refs == 0) {
-// Prepare resource destruction
-#ifndef NDEBUG
-                    for (std::source_location& loc: alive->locks.values()) {
-                        vgi::log_err("file: {}({}:{}): Resource locked after destruction.",
-                                     loc.file_name(), loc.line(), loc.column());
-                    }
-#endif
-                    r.state.template emplace<shared_resource::WAITING>(this->current_frame);
-                }
-            } else if (uint32_t* release_frame = std::get_if<shared_resource::WAITING>(&r.state)) {
-                if (*release_frame == this->current_frame) {
-                    std::swap(this->resources[i], this->resources.back());
-                    std::move(*this->resources.back()).destroy(*this);
-                    this->resources.pop_back();
-                    continue;
-                }
-            } else {
-                VGI_UNREACHABLE;
-            }
-            i++;
-        }
-
         this->current_frame = math::check_add<uint32_t>(this->current_frame, 1).value_or(0) %
                               window::MAX_FRAMES_IN_FLIGHT;
-    }
-
-    void window::add_resource(std::unique_ptr<shared_resource>&& res) {
-        this->resources.push_back(std::move(res));
     }
 
     std::pair<vk::Buffer, VmaAllocation VGI_RESTRICT> window::create_buffer(
@@ -508,22 +542,19 @@ namespace vgi {
             // finish everything it's working on.
             this->logical.waitIdle();
 
-            // Destroy scenes
-            for (size_t i: this->scenes.keys()) {
-                this->scenes[i]->on_detach(*this);
-                VGI_ASSERT(this->scenes.try_remove(i));
-            }
-
-            // Destroy resources
-            while (!this->resources.empty()) {
-                std::move(*this->resources.back()).destroy(*this);
-                this->resources.pop_back();
+            // Destroy layers
+            for (size_t i: this->layers.keys()) {
+                this->layers[i]->on_detach(*this);
+                VGI_ASSERT(this->layers.try_remove(i));
             }
 
             // Destroy internals
             for (flying_command_buffer& flying: this->flying_cmdbufs) {
                 this->logical.freeCommandBuffers(this->cmdpool, flying.cmdbuf);
                 this->logical.destroyFence(flying.fence);
+            }
+            for (depth_texture& depth: this->swapchain_depths) {
+                std::move(depth).destroy(this->logical, this->allocator);
             }
             for (vk::ImageView view: this->swapchain_views) {
                 this->logical.destroyImageView(view);
@@ -549,5 +580,4 @@ namespace vgi {
             SDL_DestroyWindow(this->handle);
         }
     }
-
 }  // namespace vgi
