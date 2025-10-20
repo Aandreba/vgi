@@ -9,13 +9,16 @@
 namespace vgi {
     /// @brief A vertex array-based geometry
     template<index T>
-    struct mesh : public shared_resource {
+    struct mesh {
         /// @brief Buffer containint the mesh vertices
         vertex_buffer vertices;
         /// @brief Buffer containing the mesh indices
         index_buffer<T> indices;
         /// @brief Number of indices inside `indices`
-        uint32_t index_count;
+        uint32_t index_count = 0;
+
+        /// @brief Default constructor
+        mesh() noexcept = default;
 
         /// @brief Creates a new mesh with the specified capacity
         /// @param parent Window that will create the mesh
@@ -23,6 +26,21 @@ namespace vgi {
         /// @param index_count Number of indices that will fit inside the mesh
         mesh(const window& parent, vk::DeviceSize vertex_count, uint32_t index_count) :
             vertices(parent, vertex_count), indices(parent, index_count), index_count(index_count) {
+        }
+
+        /// @brief Move constructor
+        /// @param other Object to move
+        mesh(mesh&& other) noexcept :
+            vertices(std::move(other.vertices)), indices(std::move(other.indices)),
+            index_count(std::exchange(other.index_count, 0)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to move
+        mesh& operator=(mesh&& other) noexcept {
+            if (this == &other) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
         }
 
         /// @brief Binds both the vertex and index buffers
@@ -57,9 +75,14 @@ namespace vgi {
             this->draw(cmdbuf, instance_count);
         }
 
-        void destroy(const window& parent) && override {
+        /// @brief Destroys the resource
+        /// @param parent Window that created the resource
+        void destroy(const window& parent) && {
             std::move(this->vertices).destroy(parent);
             std::move(this->indices).destroy(parent);
         }
+
+        mesh(const mesh&) = delete;
+        mesh& operator=(const mesh&) = delete;
     };
 }  // namespace vgi

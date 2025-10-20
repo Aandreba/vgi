@@ -25,8 +25,8 @@ struct uniform {
     vgi::std140<glm::mat4> model = glm::mat4{1};
 };
 
-struct triangle_scene : public vgi::scene {
-    vgi::res<vgi::mesh<uint16_t>> mesh;
+struct triangle_scene : public vgi::layer {
+    vgi::mesh<uint16_t> mesh;
     vgi::uniform_buffer<uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;
@@ -34,9 +34,8 @@ struct triangle_scene : public vgi::scene {
 
     void on_attach(vgi::window& win) override {
         // Create vertex buffer
-        this->mesh = win.create_resource<vgi::mesh<uint16_t>>(3, 3);
+        this->mesh = vgi::mesh<uint16_t>{win, 3, 3};
         {
-            auto mesh_ref = this->mesh.lock();
             vk::DeviceSize vertex_size = 3 * sizeof(vgi::vertex);
             vk::DeviceSize index_size = 3 * sizeof(uint16_t);
 
@@ -50,12 +49,12 @@ struct triangle_scene : public vgi::scene {
                     0);
 
             vgi::command_buffer cmdbuf{win};
-            cmdbuf->copyBuffer(transfer, mesh_ref->vertices,
+            cmdbuf->copyBuffer(transfer, this->mesh.vertices,
                                vk::BufferCopy{
                                        .srcOffset = 0,
                                        .size = vertex_size,
                                });
-            cmdbuf->copyBuffer(transfer, mesh_ref->indices,
+            cmdbuf->copyBuffer(transfer, this->mesh.indices,
                                vk::BufferCopy{
                                        .srcOffset = vertex_size,
                                        .size = index_size,
@@ -118,17 +117,17 @@ struct triangle_scene : public vgi::scene {
     }
 
     void on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) override {
-        auto mesh_ref = this->mesh.lock();
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                                   this->desc_pool[current_frame], {});
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
-        mesh_ref->bind_and_draw(cmdbuf);
+        this->mesh.bind_and_draw(cmdbuf);
     }
 
     void on_detach(vgi::window& win) override {
         std::move(this->uniforms).destroy(win);
         std::move(this->pipeline).destroy(win);
         std::move(this->desc_pool).destroy(win);
+        std::move(this->mesh).destroy(win);
     }
 };
 
@@ -145,8 +144,8 @@ int main() {
         vgi::log("- {}", device.name());
     }
 
-    vgi::emplace_layer<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
-            .add_scene<triangle_scene>();
+    vgi::emplace_system<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
+            .add_layer<triangle_scene>();
 
     vgi::run();
     return 0;

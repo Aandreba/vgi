@@ -225,6 +225,16 @@ namespace vgi {
         friend struct command_buffer;
         friend struct frame;
     };
+
+    template<resource... Res>
+    struct resource_provider : public layer {
+        virtual ~resource_provider() {
+            // TODO
+        }
+
+    private:
+        std::tuple<Res...> resources;
+    };
 }  // namespace vgi
 
 /// @brief Checks whether the windows has the provided identifier

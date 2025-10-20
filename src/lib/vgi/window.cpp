@@ -202,39 +202,50 @@ namespace vgi {
         new_swapchain_views.reserve(new_swapchain_images.size());
         std::vector<vk::UniqueSemaphore> new_render_complete;
         new_render_complete.reserve(new_swapchain_images.size());
+        std::vector<depth_texture> new_swapchain_depths;
+        new_swapchain_depths.reserve(new_swapchain_images.size());
 
-        // TODO Create depth textures
-        for (size_t i = 0; i < new_swapchain_images.size(); ++i) {
-            new_swapchain_views.push_back(logical.createImageViewUnique(vk::ImageViewCreateInfo{
-                    .image = new_swapchain_images[i],
-                    .viewType = vk::ImageViewType::e2D,
-                    .format = swapchain_format.format,
-                    .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
-                                   vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
-                    .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                         .baseMipLevel = 0,
-                                         .levelCount = 1,
-                                         .baseArrayLayer = 0,
-                                         .layerCount = 1},
-            }));
-            new_render_complete.push_back(logical.createSemaphoreUnique({}));
-        }
+        try {
+            for (size_t i = 0; i < new_swapchain_images.size(); ++i) {
+                new_swapchain_views.push_back(logical.createImageViewUnique(vk::ImageViewCreateInfo{
+                        .image = new_swapchain_images[i],
+                        .viewType = vk::ImageViewType::e2D,
+                        .format = swapchain_format.format,
+                        .components = {vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG,
+                                       vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA},
+                        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                             .baseMipLevel = 0,
+                                             .levelCount = 1,
+                                             .baseArrayLayer = 0,
+                                             .layerCount = 1},
+                }));
+                new_swapchain_depths.emplace_back(this->logical, this->allocator,
+                                                  this->depth_format, new_swapchain_extent.width,
+                                                  new_swapchain_extent.height);
+                new_render_complete.push_back(logical.createSemaphoreUnique({}));
+            }
 
-        // If an existing swap chain is re-created, destroy the old swap chain and the ressources
-        // owned by the application (image views, images are owned by the swapchain)
-        if (this->swapchain) {
-            this->logical.waitIdle();
+            // If an existing swap chain is re-created, destroy the old swap chain and the
+            // ressources owned by the application (image views, images are owned by the swapchain)
+            if (this->swapchain) {
+                this->logical.waitIdle();
 
-            for (depth_texture& depth: this->swapchain_depths) {
+                for (depth_texture& depth: this->swapchain_depths) {
+                    std::move(depth).destroy(this->logical, this->allocator);
+                }
+                for (vk::ImageView view: this->swapchain_views) {
+                    this->logical.destroyImageView(view);
+                }
+                for (vk::Semaphore sem: this->render_complete) {
+                    this->logical.destroySemaphore(sem);
+                }
+                this->logical.destroySwapchainKHR(this->swapchain);
+            }
+        } catch (...) {
+            for (depth_texture& depth: new_swapchain_depths) {
                 std::move(depth).destroy(this->logical, this->allocator);
             }
-            for (vk::ImageView view: this->swapchain_views) {
-                this->logical.destroyImageView(view);
-            }
-            for (vk::Semaphore sem: this->render_complete) {
-                this->logical.destroySemaphore(sem);
-            }
-            this->logical.destroySwapchainKHR(this->swapchain);
+            throw;
         }
 
         this->swapchain = new_swapchain.release();
@@ -242,6 +253,7 @@ namespace vgi {
         this->swapchain_info = new_swapchain_info;
         this->swapchain_views = new_swapchain_views |
                                 std::views::transform(std::mem_fn(&vk::UniqueImageView::release));
+        this->swapchain_depths = new_swapchain_depths;
         this->render_complete = new_render_complete |
                                 std::views::transform(std::mem_fn(&vk::UniqueSemaphore::release));
     }
