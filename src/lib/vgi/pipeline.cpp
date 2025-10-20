@@ -150,6 +150,16 @@ namespace vgi {
         this->handle = parent->createGraphicsPipeline(nullptr, create_info).value;
     }
 
+    compute_pipeline::compute_pipeline(const window& parent, const shader_stage& shader,
+                                       std::span<const vk::DescriptorSetLayoutBinding> bindings) :
+        pipeline(parent, bindings) {
+        this->handle = parent->createComputePipeline(
+                                     nullptr,
+                                     {.stage = shader.stage_info(vk::ShaderStageFlagBits::eCompute),
+                                      .layout = *this})
+                               .value;
+    }
+
     descriptor_pool::descriptor_pool(const window& parent, const pipeline& pipeline) {
         VGI_ASSERT(pipeline.pool_sizes.size() <= UINT32_MAX);
         this->pool = parent->createDescriptorPool(vk::DescriptorPoolCreateInfo{

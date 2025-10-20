@@ -171,5 +171,57 @@ namespace vgi {
         }
     };
 
+    /// @brief A compute pipeline
+    struct compute_pipeline : public pipeline {
+        /// @brief Default constructor
+        compute_pipeline() = default;
+
+        /// @brief Creates a new compute pipeline
+        /// @param parent Window that will create the pipeline
+        /// @param shader Shader the compute pipeline will execute
+        /// @param bindings The bindings used throughout by the pipeline
+        compute_pipeline(const window& parent, const shader_stage& shader,
+                         std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
+
+        /// @brief Creates a new compute pipeline
+        /// @param parent Window that will create the pipeline
+        /// @param shader Shader the compute pipeline will execute
+        /// @param bindings The bindings used throughout by the pipeline
+        compute_pipeline(const window& parent, const shader_stage& shader,
+                         std::initializer_list<vk::DescriptorSetLayoutBinding> bindings) :
+            compute_pipeline(parent, shader,
+                             std::span<const vk::DescriptorSetLayoutBinding>{bindings.begin(),
+                                                                             bindings.size()}) {}
+
+        /// @brief Binds the pipeline to a command buffer
+        /// @param cmdbuf Command buffer that the pipeline will be bound to.
+        inline void bind(vk::CommandBuffer cmdbuf) const noexcept {
+            cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, this->handle);
+        }
+
+        /// @brief Binds the pipeline to a command buffer
+        /// @param cmdbuf Command buffer that the pipeline is bound to
+        /// @param groups_x Number of local workgroups to dispatch in the X dimension
+        /// @param groups_y Number of local workgroups to dispatch in the Y dimension
+        /// @param groups_z Number of local workgroups to dispatch in the Z dimension
+        inline void dispatch(vk::CommandBuffer cmdbuf, uint32_t groups_x, uint32_t groups_y = 1,
+                             uint32_t groups_z = 1) const noexcept {
+            cmdbuf.dispatch(groups_x, groups_y, groups_z);
+        }
+
+        /// @brief Binds the pipeline to a command buffer
+        /// @param cmdbuf Command buffer that the pipeline will be bound to.
+        /// @param groups_x Number of local workgroups to dispatch in the X dimension
+        /// @param groups_y Number of local workgroups to dispatch in the Y dimension
+        /// @param groups_z Number of local workgroups to dispatch in the Z dimension
+        /// @sa vgi::compute_pipeline::bind
+        /// @sa vgi::compute_pipeline::dispatch
+        inline void bind_and_dispatch(vk::CommandBuffer cmdbuf, uint32_t groups_x,
+                                      uint32_t groups_y = 1, uint32_t groups_z = 1) const noexcept {
+            this->bind(cmdbuf);
+            this->dispatch(cmdbuf, groups_x, groups_y, groups_z);
+        }
+    };
+
     using descriptor_pool_guard = resource_guard<descriptor_pool>;
 }  // namespace vgi
