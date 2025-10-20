@@ -476,13 +476,22 @@ namespace vgi {
                     .clearValue = {.color = {.float32 = {{0.0f, 0.0f, 0.0f, 1.0f}}}},
             };
 
+            vk::RenderingAttachmentInfo depth_attachment{
+                    .imageView = depth.view,
+                    .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+                    .loadOp = vk::AttachmentLoadOp::eClear,
+                    .storeOp = vk::AttachmentStoreOp::eDontCare,
+                    // TODO Per-scene clear color
+                    .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}},
+            };
+
             cmdbuf.beginRendering(vk::RenderingInfo{
                     // TODO Per-scene render area
                     .renderArea = {.extent = this->swapchain_info.imageExtent},
                     .layerCount = 1,
                     .colorAttachmentCount = 1,
                     .pColorAttachments = &color_attachment,
-                    .pDepthAttachment = nullptr,
+                    .pDepthAttachment = &depth_attachment,
                     .pStencilAttachment = nullptr,
             });
 

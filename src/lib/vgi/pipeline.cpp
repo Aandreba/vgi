@@ -127,7 +127,7 @@ namespace vgi {
         vk::PipelineRenderingCreateInfo pipeline_rendering{
                 .colorAttachmentCount = 1,
                 .pColorAttachmentFormats = &swapchain_format,
-                .depthAttachmentFormat = vk::Format::eUndefined,
+                .depthAttachmentFormat = parent.depth_texture_format(),
                 .stencilAttachmentFormat = vk::Format::eUndefined,
         };
 

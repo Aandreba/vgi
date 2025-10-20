@@ -129,7 +129,7 @@ namespace vgi {
         /// @brief Specifies the front-facing triangle orientation to be used for culling.
         vk::FrontFace fron_face = vk::FrontFace::eCounterClockwise;
         /// @brief Specifies the comparison operator to use in the depth testing
-        vk::CompareOp depth_compare_op = vk::CompareOp::eNever;
+        vk::CompareOp depth_compare_op = vk::CompareOp::eLess;
         /// @brief Enables/Disables color blending
         bool color_blending = true;
         /// @brief The bindings used throughout the pipeline
