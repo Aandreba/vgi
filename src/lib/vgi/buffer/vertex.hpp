@@ -65,7 +65,7 @@ namespace vgi {
     struct vertex_buffer {
         /// @brief Maximum number of vertices a buffer can be made to store
         constexpr static inline const vk::DeviceSize MAX_SIZE =
-                std::numeric_limits<vk::DeviceSize>::max() / sizeof(vertex);
+                (std::numeric_limits<vk::DeviceSize>::max)() / sizeof(vertex);
 
         /// @brief Default constructor.
         vertex_buffer() = default;

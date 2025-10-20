@@ -15,6 +15,7 @@
 #endif
 
 #include "log.hpp"
+#include "vgi.hpp"
 
 int main(int argc, char* argv[]) {
     extern int __vgi_main_();

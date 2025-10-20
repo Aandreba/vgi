@@ -4,6 +4,7 @@
 #include <vgi/buffer/index.hpp>
 #include <vgi/buffer/transfer.hpp>
 #include <vgi/buffer/vertex.hpp>
+#include <vgi/cmdbuf.hpp>
 #include <vgi/math.hpp>
 #include <vgi/pipeline.hpp>
 #include <vgi/resource.hpp>
@@ -65,10 +66,6 @@ namespace vgi {
         /// @param cmdbuf Command buffer into which the command is recorded.
         /// @param vertex_binding Index of the vertex input binding whose state is updated by the
         /// command
-        /// @param vertex_offset Starting offset within the vertex buffer used in vertex buffer
-        /// address calculations
-        /// @param index_offset Starting offset within the index buffer used in index buffer address
-        /// calculations
         void bind(vk::CommandBuffer cmdbuf, uint32_t vertex_binding = 0) const noexcept {
             this->vertices.bind(cmdbuf, vertex_binding);
             this->indices.bind(cmdbuf);
@@ -170,7 +167,6 @@ namespace vgi {
         /// the command for the upload
         /// @param parent Window that will create the mesh
         /// @param cmdbuf Command buffer used to register commands
-        /// @param transfer Transfer buffer used to move the data from host to device memory
         /// @param vertices The vertex data to be uploaded
         /// @param indices The index data to be uploaded
         /// @param min_size The minimum size of the transfer buffer
@@ -187,17 +183,59 @@ namespace vgi {
         /// @brief Creates a mesh and uploads the data to the device, waiting for the upload to
         /// complete.
         /// @param parent Window that will create the mesh
-        /// @param cmdbuf Command buffer used to register commands
-        /// @param transfer Transfer buffer used to move the data from host to device memory
         /// @param vertices The vertex data to be uploaded
         /// @param indices The index data to be uploaded
-        /// @param min_size The minimum size of the transfer buffer
         /// @warning If possible, avoid using this method and instead upload multiple meshes
         /// simultaneously.
         static inline mesh upload_and_wait(window& parent, std::span<const vertex> vertices,
                                            std::span<const T> indices) {
             command_buffer cmdbuf{parent};
             auto [mesh, transfer] = upload(parent, cmdbuf, vertices, indices);
+            std::move(cmdbuf).submit_and_wait();
+            return std::move(mesh);
+        }
+
+        /// @brief Computes the size required for a transfer buffer to hold a cube mesh data
+        static size_t cube_transfer_size() { return 24 * sizeof(vertex) + 36 * sizeof(T); }
+
+        /// @brief Loads a solid cube as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param cmdbuf Command buffer used to register commands
+        /// @param transfer Transfer buffer used to move the data from host to device memory
+        /// @param color Color value of the cube's vertices
+        /// @param offset The offset from which the data will be written to the transfer buffer
+        /// @author Andreas Umbach <marvin@dataway.ch>
+        /// @author Enric Marti <enric.marti@uab.cat>
+        static mesh load_cube(const window& parent, vk::CommandBuffer cmdbuf,
+                              transfer_buffer& transfer, const glm::vec4& color = glm::vec4{1.0f},
+                              size_t offset = 0);
+
+        /// @brief Loads a solid cube as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param cmdbuf Command buffer used to register commands
+        /// @param color Color value of the cube's vertices
+        /// @param min_size The minimum size of the transfer buffer
+        /// @author Andreas Umbach <marvin@dataway.ch>
+        /// @author Enric Marti <enric.marti@uab.cat>
+        static std::pair<mesh, transfer_buffer_guard> load_cube(
+                const window& parent, vk::CommandBuffer cmdbuf,
+                const glm::vec4& color = glm::vec4{1.0f}, size_t min_size = 0) {
+            vgi::transfer_buffer_guard transfer{parent, (std::max)(cube_transfer_size(), min_size)};
+            mesh result = load_cube(parent, cmdbuf, transfer, color, min_size);
+            return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
+                                                               std::move(transfer));
+        }
+
+        /// @brief Loads a solid cube as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param color Color value of the cube's vertices
+        /// @warning If possible, avoid using this method and instead upload multiple meshes
+        /// simultaneously.
+        /// @author Andreas Umbach <marvin@dataway.ch>
+        /// @author Enric Marti <enric.marti@uab.cat>
+        static mesh load_cube_and_wait(window& parent, const glm::vec4& color = glm::vec4{1.0f}) {
+            command_buffer cmdbuf{parent};
+            auto [mesh, transfer] = load_cube(parent, cmdbuf, color);
             std::move(cmdbuf).submit_and_wait();
             return std::move(mesh);
         }
