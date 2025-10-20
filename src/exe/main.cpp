@@ -34,32 +34,14 @@ struct triangle_scene : public vgi::layer {
 
     void on_attach(vgi::window& win) override {
         // Create vertex buffer
-        this->mesh = vgi::mesh<uint16_t>{win, 3, 3};
         {
-            vk::DeviceSize vertex_size = 3 * sizeof(vgi::vertex);
-            vk::DeviceSize index_size = 3 * sizeof(uint16_t);
+            uint16_t indices[] = {0, 1, 2};
+            vgi::vertex vertices[] = {
+                    {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}};
 
-            vgi::transfer_buffer_guard transfer{win, vertex_size + index_size};
-
-            transfer.template write_at<uint16_t>({0, 1, 2}, vertex_size);
-            transfer.template write_at<vgi::vertex>(
-                    {{.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
-                     {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
-                     {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}},
-                    0);
-
-            vgi::command_buffer cmdbuf{win};
-            cmdbuf->copyBuffer(transfer, this->mesh.vertices,
-                               vk::BufferCopy{
-                                       .srcOffset = 0,
-                                       .size = vertex_size,
-                               });
-            cmdbuf->copyBuffer(transfer, this->mesh.indices,
-                               vk::BufferCopy{
-                                       .srcOffset = vertex_size,
-                                       .size = index_size,
-                               });
-            std::move(cmdbuf).submit_and_wait();
+            this->mesh = vgi::mesh<uint16_t>::upload_and_wait(win, vertices, indices);
         }
 
         this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};

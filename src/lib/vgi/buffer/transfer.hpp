@@ -73,6 +73,21 @@ namespace vgi {
         }
 
         /// @brief Write to the buffer
+        /// @param cmdbuf Command buffer where the copy operations will be registered
+        /// @param src Values to write
+        /// @param src_offset Transfer buffer offset, in bytes
+        /// @param dst Buffer where the data will be copied to
+        /// @param dst_offset Destination buffer offset, in bytes
+        /// @return The offset right after the copied memory, in bytes
+        template<class T>
+            requires(std::is_trivially_copy_constructible_v<T> &&
+                     std::is_trivially_destructible_v<T>)
+        inline size_t write_at(vk::CommandBuffer cmdbuf, std::span<const T> src, size_t src_offset,
+                               vk::Buffer dst, vk::DeviceSize dst_offset) {
+            return write_at(cmdbuf, std::as_bytes(src), src_offset, dst, dst_offset);
+        }
+
+        /// @brief Write to the buffer
         /// @param src Values to write
         /// @param byte_offset Buffer offset, in bytes
         /// @return The offset right after the copied memory, in bytes
@@ -84,6 +99,22 @@ namespace vgi {
         }
 
         /// @brief Write to the buffer
+        /// @param cmdbuf Command buffer where the copy operations will be registered
+        /// @param src Values to write
+        /// @param src_offset Transfer buffer offset, in bytes
+        /// @param dst Buffer where the data will be copied to
+        /// @param dst_offset Destination buffer offset, in bytes
+        /// @return The offset right after the copied memory, in bytes
+        template<class T>
+            requires(std::is_trivially_copy_constructible_v<T> &&
+                     std::is_trivially_destructible_v<T>)
+        inline size_t write_at(vk::CommandBuffer cmdbuf, std::initializer_list<T> src,
+                               size_t src_offset, vk::Buffer dst, vk::DeviceSize dst_offset) {
+            return write_at<T>(cmdbuf, std::span<const T>{src.begin(), src.size()}, src_offset, dst,
+                               dst_offset);
+        }
+
+        /// @brief Write to the buffer
         /// @param src Value to write
         /// @param byte_offset Buffer offset, in bytes
         /// @return The offset right after the copied memory, in bytes
@@ -92,6 +123,21 @@ namespace vgi {
                      std::is_trivially_destructible_v<T>)
         inline size_t write_at(const T& src, size_t byte_offset) {
             return write_at<T>(std::span<const T>{std::addressof(src), 1}, byte_offset);
+        }
+
+        /// @brief Write to the buffer
+        /// @param src Value to write
+        /// @param src_offset Transfer buffer offset, in bytes
+        /// @param dst Buffer where the data will be copied to
+        /// @param dst_offset Destination buffer offset, in bytes
+        /// @return The offset right after the copied memory, in bytes
+        template<class T>
+            requires(std::is_trivially_copy_constructible_v<T> &&
+                     std::is_trivially_destructible_v<T>)
+        inline size_t write_at(vk::CommandBuffer cmdbuf, const T& src, size_t src_offset,
+                               vk::Buffer dst, vk::DeviceSize dst_offset) {
+            return write_at<T>(cmdbuf, std::span<const T>{std::addressof(src), 1}, src_offset, dst,
+                               dst_offset);
         }
 
         /// @brief Write to the buffer
@@ -160,6 +206,8 @@ namespace vgi {
         std::span<std::byte> bytes;
 
         size_t write_at(std::span<const std::byte> src, size_t byte_offset);
+        size_t write_at(vk::CommandBuffer cmdbuf, std::span<const std::byte> src, size_t src_offset,
+                        vk::Buffer dst, vk::DeviceSize dst_offset);
     };
 
     /// @brief A guard that destroys the transfer buffer when dropped.

@@ -29,10 +29,25 @@ namespace vgi {
 
     size_t transfer_buffer::write_at(std::span<const std::byte> src, size_t byte_offset) {
         std::optional<size_t> end = math::check_add(byte_offset, src.size());
-        if (!end || end.value() > this->bytes.size())
+        if (!end || *end > this->bytes.size())
             throw std::out_of_range{"tried to write outside memory bounds"};
         std::copy_n(src.data(), src.size(), this->bytes.data() + byte_offset);
-        return end.value();
+        return *end;
+    }
+
+    size_t transfer_buffer::write_at(vk::CommandBuffer cmdbuf, std::span<const std::byte> src,
+                                     size_t src_offset, vk::Buffer dst, vk::DeviceSize dst_offset) {
+        std::optional<size_t> end = math::check_add(src_offset, src.size());
+        if (!end || *end > this->bytes.size())
+            throw std::out_of_range{"tried to write outside memory bounds"};
+
+        std::copy_n(src.data(), src.size(), this->bytes.data() + src_offset);
+        cmdbuf.copyBuffer(
+                this->buffer, dst,
+                vk::BufferCopy{
+                        .srcOffset = src_offset, .dstOffset = dst_offset, .size = src.size()});
+
+        return *end;
     }
 
     void transfer_buffer::flush(const window& parent) {

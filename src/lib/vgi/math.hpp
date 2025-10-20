@@ -48,13 +48,13 @@ namespace vgi::math {
             return std::make_optional<T>(std::move(res));
 #elif VGI_ARCH_FAMILY_X86
             if constexpr (unsigned_integral<T>) {
-                if constexpr (L::digits == 8) {
+                if constexpr (L::digits == 64) {
                     unsigned __int64 res;
                     if (_addcarry_u64(0, static_cast<unsigned __int64>(lhs),
                                       static_cast<unsigned __int64>(rhs), &res)) [[unlikely]]
                         return std::nullopt;
                     return std::make_optional<T>(static_cast<T>(res));
-                } else if constexpr (L::digits == 4) {
+                } else if constexpr (L::digits == 32) {
                     unsigned int res;
                     if (_addcarry_u32(0, static_cast<unsigned int>(lhs),
                                       static_cast<unsigned int>(rhs), &res)) [[unlikely]]
@@ -62,13 +62,13 @@ namespace vgi::math {
                     return std::make_optional<T>(static_cast<T>(res));
                 }
 #ifdef _MSC_VER
-                if constexpr (L::digits == 2) {
+                if constexpr (L::digits == 16) {
                     unsigned short res;
                     if (_addcarry_u16(0, static_cast<unsigned short>(lhs),
                                       static_cast<unsigned short>(rhs), &res)) [[unlikely]]
                         return std::nullopt;
                     return std::make_optional<T>(static_cast<T>(res));
-                } else if constexpr (L::digits == 1) {
+                } else if constexpr (L::digits == 8) {
                     unsigned char res;
                     if (_addcarry_u8(0, static_cast<unsigned char>(lhs),
                                      static_cast<unsigned char>(rhs), &res)) [[unlikely]]
@@ -108,13 +108,13 @@ namespace vgi::math {
             return std::make_optional<T>(std::move(res));
 #elif VGI_ARCH_FAMILY_X86
             if constexpr (unsigned_integral<T>) {
-                if constexpr (L::digits == 8) {
+                if constexpr (L::digits == 64) {
                     unsigned __int64 res;
                     if (_subborrow_u64(0, static_cast<unsigned __int64>(lhs),
                                        static_cast<unsigned __int64>(rhs), &res)) [[unlikely]]
                         return std::nullopt;
                     return std::make_optional<T>(static_cast<T>(res));
-                } else if constexpr (L::digits == 4) {
+                } else if constexpr (L::digits == 32) {
                     unsigned int res;
                     if (_subborrow_u32(0, static_cast<unsigned int>(lhs),
                                        static_cast<unsigned int>(rhs), &res)) [[unlikely]]
@@ -122,13 +122,13 @@ namespace vgi::math {
                     return std::make_optional<T>(static_cast<T>(res));
                 }
 #ifdef _MSC_VER
-                if constexpr (L::digits == 2) {
+                if constexpr (L::digits == 16) {
                     unsigned short res;
                     if (_subborrow_u16(0, static_cast<unsigned short>(lhs),
                                        static_cast<unsigned short>(rhs), &res)) [[unlikely]]
                         return std::nullopt;
                     return std::make_optional<T>(static_cast<T>(res));
-                } else if constexpr (L::digits == 1) {
+                } else if constexpr (L::digits == 8) {
                     unsigned char res;
                     if (_subborrow_u8(0, static_cast<unsigned char>(lhs),
                                       static_cast<unsigned char>(rhs), &res)) [[unlikely]]
