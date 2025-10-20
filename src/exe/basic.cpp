@@ -46,6 +46,7 @@ void basic_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
                             const vgi::timings& ts) {
     this->camera.origin = glm::vec3{0.0f, 0.0f, 2.0f};
     this->camera.direction = glm::normalize(-this->camera.origin);
+    this->camera.rotate(ts.start, glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 model = glm::rotate(glm::mat4(1.0f), ts.start * glm::radians(90.0f),
                                   glm::vec3(1.0f, 0.0f, 0.0f));
 

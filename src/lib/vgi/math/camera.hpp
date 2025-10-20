@@ -29,7 +29,9 @@ namespace vgi::math {
         /// @brief Rotates the camera
         /// @param rot Quaternion representing the camera's rotation
         inline void rotate(const glm::quat& rot) noexcept {
-            this->direction = glm::normalize(glm::mat3_cast(rot) * this->direction);
+            glm::mat3 mat = glm::mat3_cast(rot);
+            glm::vec3 rotated = mat * this->direction;
+            this->direction = glm::normalize(rotated);
         }
 
         /// @brief Rotates the camera
