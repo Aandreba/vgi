@@ -35,11 +35,25 @@ struct triangle_scene : public vgi::layer {
     void on_attach(vgi::window& win) override {
         // Create vertex buffer
         {
+            /*
             uint16_t indices[] = {0, 1, 2};
             vgi::vertex vertices[] = {
                     {.origin = {0.5f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
                     {.origin = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
                     {.origin = {0.0f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}}};
+                    */
+
+            uint16_t indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+            vgi::vertex vertices[] = {
+                    {.origin = {-0.5f, -0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {.origin = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {.origin = {0.5f, 0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {.origin = {-0.5f, 0.5f, 0.0f}, .color = {1.0f, 1.0f, 1.0f, 1.0f}},
+                    {.origin = {-0.5f, -0.5f, -0.5f}, .color = {0.5f, 0.5f, 0.5f, 1.0f}},
+                    {.origin = {0.5f, -0.5f, -0.5f}, .color = {0.5f, 0.5f, 0.5f, 1.0f}},
+                    {.origin = {0.5f, 0.5f, -0.5f}, .color = {0.5f, 0.5f, 0.5f, 1.0f}},
+                    {.origin = {-0.5f, 0.5f, -0.5f}, .color = {0.5f, 0.5f, 0.5f, 1.0f}},
+            };
 
             this->mesh = vgi::mesh<uint16_t>::upload_and_wait(win, vertices, indices);
         }
@@ -84,10 +98,10 @@ struct triangle_scene : public vgi::layer {
 
     void on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
                    const vgi::timings& ts) override {
-        this->camera.rotate(ts.delta, glm::vec3(1.0f, 0.0f, 0.0f));
-
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), 0.0f * ts.start * glm::radians(90.0f),
-                                      glm::vec3(0.0f, 0.0f, 1.0f));
+        this->camera.origin = glm::vec3{0.0f, 0.0f, 2.0f};
+        this->camera.direction = glm::normalize(-this->camera.origin);
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), 0.0f * glm::radians(90.0f),
+                                      glm::vec3(1.0f, 0.0f, 0.0f));
 
         this->uniforms.write(win,
                              uniform{

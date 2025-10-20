@@ -15,17 +15,21 @@ namespace vgi::math {
         float z_near = 0.01f;
         /// @brief Far plane
         float z_far = 1000.0f;
+        /// @brief Position of the camera
+        glm::vec3 origin{0.0f, 0.0f, 0.0f};
+        /// @brief Direction at which the camera is looking at
+        glm::vec3 direction{0.0f, 0.0f, -1.0f};
+        /// @brief The camera's upward direction
+        glm::vec3 up{0.0f, 1.0f, 0.0f};
 
         /// @brief Translates the camera
         /// @param offset Offset by which the camera is moved
-        inline void translate(const glm::vec3& offset) noexcept {
-            this->view_ = glm::translate(this->view_, -offset);
-        }
+        constexpr void translate(const glm::vec3& offset) noexcept { this->origin += offset; }
 
         /// @brief Rotates the camera
         /// @param rot Quaternion representing the camera's rotation
         inline void rotate(const glm::quat& rot) noexcept {
-            this->view_ = glm::mat4_cast(glm::conjugate(rot)) * this->view_;
+            this->direction = glm::normalize(glm::mat3_cast(rot) * this->direction);
         }
 
         /// @brief Rotates the camera
@@ -35,21 +39,13 @@ namespace vgi::math {
             this->rotate(glm::angleAxis(angle, axis));
         }
 
-        /// @brief Makes the camera look at a certain diraction from a specified position
-        /// @param origin Position from which the camera is looking
-        /// @param target Position/Direction to which the camera is looking
-        /// @param up Up direction
-        inline void look_at_from(const glm::vec3& origin, const glm::vec3& target,
-                                 const glm::vec3& up = glm::vec3(0.0f, 1.0f, 0.0f)) noexcept {
-            this->view_ = glm::lookAt(origin, target, up);
-        }
-
         /// @brief Makes the camera look at a certain diraction
-        /// @param target Position/Direction to which the camera is looking
-        /// @param up Up direction
+        /// @param target Position to which the camera is looking
+        /// @param up Upward direction
         inline void look_at(const glm::vec3& target,
                             const glm::vec3& up = glm::vec3(0.0f, 1.0f, 0.0f)) noexcept {
-            this->look_at_from(-this->view_[3], target, up);
+            this->direction = glm::normalize(target - this->origin);
+            this->up = up;
         }
 
         /// @brief Returns the camera's perspective projection matrix
@@ -61,9 +57,28 @@ namespace vgi::math {
 
         /// @brief Returns the view matrix of the camera
         /// @return View matrix of the camera
-        inline glm::mat4 view() const noexcept { return this->view_; }
+        inline glm::mat4 view() const noexcept {
+            const glm::vec3 eye = this->origin;
+            const glm::vec3 up = this->up;
+            const glm::vec3 f = this->direction;
+            const glm::vec3 s = glm::normalize(glm::cross(f, up));
+            const glm::vec3 u = glm::cross(s, f);
 
-    private:
-        glm::mat4 view_{1.0f};
+            glm::mat4 Result(1.0f);
+            Result[0][0] = s.x;
+            Result[1][0] = s.y;
+            Result[2][0] = s.z;
+            Result[0][1] = u.x;
+            Result[1][1] = u.y;
+            Result[2][1] = u.z;
+            Result[0][2] = -f.x;
+            Result[1][2] = -f.y;
+            Result[2][2] = -f.z;
+            Result[3][0] = -glm::dot(s, eye);
+            Result[3][1] = -glm::dot(u, eye);
+            Result[3][2] = glm::dot(f, eye);
+
+            return Result;
+        }
     };
 }  // namespace vgi::math

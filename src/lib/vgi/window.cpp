@@ -5,6 +5,7 @@
 #include <optional>
 #include <ranges>
 
+#include "cmdbuf.hpp"
 #include "log.hpp"
 #include "math.hpp"
 #include "texture.hpp"
@@ -125,7 +126,7 @@ namespace vgi {
     }
 
     void window::create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10) {
-        VGI_ASSERT(this->logical);
+        VGI_ASSERT(this->logical && this->allocator != VK_NULL_HANDLE);
         vk::SurfaceCapabilitiesKHR surface_caps = physical->getSurfaceCapabilitiesKHR(surface);
 
         vk::Extent2D new_swapchain_extent;
@@ -205,6 +206,7 @@ namespace vgi {
         std::vector<depth_texture> new_swapchain_depths;
         new_swapchain_depths.reserve(new_swapchain_images.size());
 
+        command_buffer cmdbuf{*this};
         try {
             for (size_t i = 0; i < new_swapchain_images.size(); ++i) {
                 new_swapchain_views.push_back(logical.createImageViewUnique(vk::ImageViewCreateInfo{
@@ -219,11 +221,20 @@ namespace vgi {
                                              .baseArrayLayer = 0,
                                              .layerCount = 1},
                 }));
-                new_swapchain_depths.emplace_back(this->logical, this->allocator,
-                                                  this->depth_format, new_swapchain_extent.width,
-                                                  new_swapchain_extent.height);
                 new_render_complete.push_back(logical.createSemaphoreUnique({}));
+
+                depth_texture& depth = new_swapchain_depths.emplace_back(
+                        this->logical, this->allocator, this->depth_format,
+                        new_swapchain_extent.width, new_swapchain_extent.height);
+
+                // Change the layout of the depth image to the required one
+                change_layout(cmdbuf, depth.image, vk::ImageLayout::eUndefined,
+                              vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                              vk::PipelineStageFlagBits::eTopOfPipe,
+                              vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                              vk::ImageAspectFlagBits::eDepth);
             }
+            std::move(cmdbuf).submit_and_wait();
 
             // If an existing swap chain is re-created, destroy the old swap chain and the
             // ressources owned by the application (image views, images are owned by the swapchain)
@@ -425,6 +436,7 @@ namespace vgi {
         vk::CommandBuffer cmdbuf = this->cmdbufs[this->current_frame];
         vk::Image img = this->swapchain_images[current_image];
         vk::ImageView view = this->swapchain_views[current_image];
+        depth_texture& depth = this->swapchain_depths[current_image];
 
         cmdbuf.reset();
         cmdbuf.begin(vk::CommandBufferBeginInfo{});
