@@ -40,7 +40,6 @@ void basic_scene::on_attach(vgi::window& win) {
     }
 
     this->camera = vgi::math::camera{};
-    this->camera.translate(glm::vec3{0.0f, 0.0f, 2.5f});
 }
 
 void basic_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
@@ -53,8 +52,8 @@ void basic_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
     this->uniforms.write(win,
                          uniform{
                                  .projection = this->camera.perspective(900.0f / 600.0f),
-                                 .view = this->camera.view(),
                                  .model = model,
+                                 .view = this->camera.view(),
                          },
                          current_frame);
 }

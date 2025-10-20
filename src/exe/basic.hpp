@@ -10,8 +10,8 @@
 
 struct uniform {
     vgi::std140<glm::mat4> projection;
-    vgi::std140<glm::mat4> view = glm::mat4{1};
     vgi::std140<glm::mat4> model = glm::mat4{1};
+    vgi::std140<glm::mat4> view = glm::mat4{1};
 };
 
 struct basic_scene : public vgi::layer {

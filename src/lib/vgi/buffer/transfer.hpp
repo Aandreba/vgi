@@ -126,6 +126,7 @@ namespace vgi {
         }
 
         /// @brief Write to the buffer
+        /// @param cmdbuf Command buffer where the copy operations will be registered
         /// @param src Value to write
         /// @param src_offset Transfer buffer offset, in bytes
         /// @param dst Buffer where the data will be copied to
