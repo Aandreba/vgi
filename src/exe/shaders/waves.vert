@@ -10,13 +10,11 @@ layout (location = 1) out vec2 outTex;
 
 layout (binding = 0) uniform UBO 
 {
-	mat4 projectionMatrix;
-	mat4 modelMatrix;
-	mat4 viewMatrix;
+	mat4 mvp;
 } ubo;
 
 void main()  {
 	outColor = inColor;
     outTex = inTex;
-	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
+	gl_Position = ubo.mvp * vec4(inPos.xyz, 1.0);
 }

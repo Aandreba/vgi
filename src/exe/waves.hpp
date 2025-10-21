@@ -13,7 +13,7 @@ struct waves_uniform {
 };
 
 struct waves_scene : public vgi::layer {
-    vgi::mesh<uint16_t> mesh;
+    vgi::mesh<uint32_t> mesh;
     vgi::uniform_buffer<waves_uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;

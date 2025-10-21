@@ -254,8 +254,8 @@ namespace vgi {
                 const window& parent, vk::CommandBuffer cmdbuf, uint32_t points_x,
                 uint32_t points_y, const glm::vec4& color = glm::vec4{1.0f}, size_t min_size = 0) {
             vgi::transfer_buffer_guard transfer{
-                    parent, (std::max)(sphere_transfer_size(points_x, points_y), min_size)};
-            mesh result = load_plane(parent, cmdbuf, transfer, points_x, points_y, color, min_size);
+                    parent, (std::max)(plane_transfer_size(points_x, points_y), min_size)};
+            mesh result = load_plane(parent, cmdbuf, transfer, points_x, points_y, color);
             return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
                                                                std::move(transfer));
         }
@@ -271,7 +271,7 @@ namespace vgi {
                 const window& parent, vk::CommandBuffer cmdbuf,
                 const glm::vec4& color = glm::vec4{1.0f}, size_t min_size = 0) {
             vgi::transfer_buffer_guard transfer{parent, (std::max)(cube_transfer_size(), min_size)};
-            mesh result = load_cube(parent, cmdbuf, transfer, color, min_size);
+            mesh result = load_cube(parent, cmdbuf, transfer, color);
             return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
                                                                std::move(transfer));
         }
@@ -288,7 +288,7 @@ namespace vgi {
                 const glm::vec4& color = glm::vec4{1.0f}, size_t min_size = 0) {
             vgi::transfer_buffer_guard transfer{
                     parent, (std::max)(sphere_transfer_size(slices, stacks), min_size)};
-            mesh result = load_sphere(parent, cmdbuf, transfer, slices, stacks, color, min_size);
+            mesh result = load_sphere(parent, cmdbuf, transfer, slices, stacks, color);
             return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
                                                                std::move(transfer));
         }

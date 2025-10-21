@@ -93,6 +93,7 @@ set(
     # Adjust glm to use Vulkan's coordinate system
     GLM_FORCE_RADIANS
     GLM_FORCE_DEPTH_ZERO_TO_ONE
+    #GLM_FORCE_LEFT_HANDED
 )
 target_compile_definitions(vgi_vma PUBLIC ${vgi_definitions})
 target_compile_definitions(vgi_static PUBLIC ${vgi_definitions})

@@ -42,6 +42,12 @@ int main(int argc, char* argv[]) {
                                                         static_cast<size_t>(argc)};
 #endif
         exit_code = __vgi_main_();
+    } catch (const vgi::vgi_error& e) {
+        vgi::log_err("error: {}({}:{}): {}", e.location.file_name(), e.location.line(),
+                     e.location.column(), e.what());
+        std::ignore = SDL_ShowSimpleMessageBox(
+                SDL_MESSAGEBOX_ERROR, reinterpret_cast<const char*>(u8"Error"), e.what(), nullptr);
+        exit_code = EXIT_FAILURE;
     } catch (const std::exception& e) {
         vgi::log_err("{}", e.what());
         std::ignore = SDL_ShowSimpleMessageBox(

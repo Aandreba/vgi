@@ -70,6 +70,7 @@ void basic_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
 }
 
 void basic_scene::on_detach(vgi::window& win) {
+    win->waitIdle();
     std::move(this->uniforms).destroy(win);
     std::move(this->pipeline).destroy(win);
     std::move(this->desc_pool).destroy(win);

@@ -3,11 +3,11 @@
 #include <vgi/fs.hpp>
 
 void waves_scene::on_attach(vgi::window& win) {
-    this->mesh = vgi::mesh<uint16_t>::load_plane_and_wait(win, 1024, 1024);
+    this->mesh = vgi::mesh<uint32_t>::load_plane_and_wait(win, 1024, 1024);
     this->uniforms = vgi::uniform_buffer<waves_uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
     this->pipeline = vgi::graphics_pipeline{
-            win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"basic.vert.spv"},
-            vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"basic.frag.spv"},
+            win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"waves.vert.spv"},
+            vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"waves.frag.spv"},
             vgi::graphics_pipeline_options{
                     .cull_mode = vk::CullModeFlagBits::eNone,
                     .fron_face = vk::FrontFace::eCounterClockwise,
@@ -41,8 +41,17 @@ void waves_scene::on_attach(vgi::window& win) {
 
 void waves_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
                             const vgi::timings& ts) {
-    this->camera.origin = glm::vec3{0.0f, 1.0f, 2.0f};
+    this->camera.origin = glm::vec3{0.0f, -1.0f, 2.0f};
     this->camera.direction = glm::normalize(-this->camera.origin);
+    glm::mat4 model =
+            glm::rotate(glm::mat4{1.0f}, glm::radians(90.0f), glm::vec3{1.0f, 0.0f, 0.0f});
+
+    this->uniforms.write(
+            win,
+            waves_uniform{
+                    .mvp = this->camera.perspective(900.0f / 600.0f) * this->camera.view() * model,
+            },
+            current_frame);
 }
 
 void waves_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) {
@@ -54,5 +63,8 @@ void waves_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
 
 void waves_scene::on_detach(vgi::window& win) {
     win->waitIdle();
+    std::move(this->uniforms).destroy(win);
+    std::move(this->pipeline).destroy(win);
+    std::move(this->desc_pool).destroy(win);
     std::move(this->mesh).destroy(win);
 }
