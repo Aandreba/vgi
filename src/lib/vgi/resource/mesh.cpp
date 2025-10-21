@@ -114,19 +114,19 @@ namespace vgi {
 
     /// Packed sine and cosine data. Since we're going to be accessing sine and cosine for the same
     /// value every time, better have them close in memory so that they can better cached.
-    struct alignas(8) sincost {
+    struct alignas(8) sin_cos {
         float sin;
         float cos;
     };
 
-    static std::unique_ptr<sincost[]> build_circle_table(size_t size, bool dir) {
+    static std::unique_ptr<sin_cos[]> build_circle_table(size_t size, bool dir) {
         const float angle = (2.0f * std::numbers::pi_v<float>) /
                             (size == 0 ? 1.0f : (static_cast<float>(size) * (dir ? 1.0f : -1.0f)));
 
         std::optional<size_t> buf_size = math::check_add<size_t>(size, 1);
         if (!buf_size) throw std::runtime_error{"too many elements"};
 
-        std::unique_ptr<sincost[]> buf = std::make_unique_for_overwrite<sincost[]>(*buf_size);
+        std::unique_ptr<sin_cos[]> buf = std::make_unique_for_overwrite<sin_cos[]>(*buf_size);
         for (size_t i = 0; i <= size; ++i) {
             const float j = angle * static_cast<float>(i);
 #if defined(__GLIBC__) || defined(__BIONIC__)
@@ -143,18 +143,100 @@ namespace vgi {
     mesh<T> mesh<T>::load_sphere(const window& parent, vk::CommandBuffer cmdbuf,
                                  transfer_buffer& transfer, uint32_t slices, uint32_t stacks,
                                  const glm::vec4& color, size_t offset) {
-        size_t vertex_count = sphere_vertex_count(slices, stacks);
+        T vertex_count = sphere_vertex_count<T>(slices, stacks);
         uint32_t index_count = sphere_index_count(slices, stacks);
         std::optional<size_t> sincos2_size = math::check_add<size_t>(stacks, stacks);
         if (!sincos2_size) throw std::runtime_error{"too many stacks"};
 
-        std::unique_ptr<sincost[]> sincost1 = build_circle_table(slices, false);
-        std::unique_ptr<sincost[]> sincost2 = build_circle_table(*sincos2_size, true);
+        std::unique_ptr<sin_cos[]> sincost1 = build_circle_table(slices, false);
+        std::unique_ptr<sin_cos[]> sincost2 = build_circle_table(*sincos2_size, true);
+        const auto sint1 = [&](size_t i) noexcept -> float { return sincost1[i].sin; };
+        const auto cost1 = [&](size_t i) noexcept -> float { return sincost1[i].cos; };
+        const auto sint2 = [&](size_t i) noexcept -> float { return sincost2[i].sin; };
+        const auto cost2 = [&](size_t i) noexcept -> float { return sincost2[i].cos; };
+        const auto point_at = [&](float x, float y, float z) noexcept -> vertex {
+            return vertex{{x, y, z}, color, {y - x, z - x}, {x, y, z}};
+        };
 
-        size_t vertex_offset = 0;
-        size_t index_offset = 0;
+        std::optional<size_t> index_size = math::check_mul<size_t>(index_count, sizeof(T));
+        if (!index_size) throw std::runtime_error{"too many indices"};
+        std::optional<size_t> vertex_size = math::check_mul<size_t>(vertex_count, sizeof(vertex));
+        if (!vertex_size) throw std::runtime_error{"too many vertices"};
+        std::optional<size_t> start_index_offset = math::check_add<size_t>(offset, *vertex_size);
+        if (!start_index_offset) throw std::runtime_error{"out of memory"};
 
-        return {};
+        size_t vertex_offset = offset;
+        size_t index_offset = *start_index_offset;
+
+        float z0 = 1.0f;
+        float z1 = cost2(1);
+        float r0 = 0.0f;
+        float r1 = sint2(1);
+        T index = 0;
+
+        index += 1;
+        vertex_offset = transfer.write_at(
+                vertex{{0.0f, 0.0f, 1.0f}, color, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}, vertex_offset);
+
+        for (int64_t j = slices - 1; j >= 0; --j) {
+            index_offset = transfer.template write_at<T>({0, index, static_cast<T>(index + 1)},
+                                                         index_offset);
+            vertex_offset = transfer.template write_at<vertex>(
+                    {point_at(cost1(j + 1) * r1, sint1(j + 1) * r1, z1),
+                     point_at(cost1(j) * r1, sint1(j) * r1, z1)},
+                    vertex_offset);
+            index += 2;
+        }
+
+        for (uint32_t i = 1; i < stacks - 1; ++i) {
+            z0 = z1;
+            z1 = cost2(i + 1);
+            r0 = r1;
+            r1 = sint2(i + 1);
+
+            for (uint32_t j = 0; j < slices; ++j) {
+                index_offset = transfer.template write_at<T>(
+                        {index, static_cast<T>(index + 1), static_cast<T>(index + 3),
+                         static_cast<T>(index + 3), static_cast<T>(index + 2), index},
+                        index_offset);
+                vertex_offset = transfer.template write_at<vertex>(
+                        {
+                                point_at(cost1(j) * r1, sint1(j) * r1, z1),
+                                point_at(cost1(j) * r0, sint1(j) * r0, z0),
+                                point_at(cost1(j + 1) * r1, sint1(j + 1) * r1, z1),
+                                point_at(cost1(j + 1) * r0, sint1(j + 1) * r0, z0),
+                        },
+                        vertex_offset);
+                index += 4;
+            }
+        }
+
+        z0 = z1;
+        r0 = r1;
+
+        vertex_offset = transfer.write_at(
+                vertex{{0.0f, 0.0f, -1.0f}, color, {0.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+                vertex_offset);
+
+        const T sub_index = index;
+        index += 1;
+
+        for (uint32_t j = 0; j < slices; ++j) {
+            index_offset = transfer.template write_at<T>(
+                    {sub_index, index, static_cast<T>(index + 1)}, index_offset);
+            vertex_offset = transfer.template write_at<vertex>(
+                    {point_at(cost1(j) * r0, sint1(j) * r0, z0),
+                     point_at(cost1(j + 1) * r0, sint1(j + 1) * r0, z0)},
+                    vertex_offset);
+            index += 2;
+        }
+
+        mesh result{parent, vertex_count, index_count};
+        cmdbuf.copyBuffer(transfer, result.vertices, vk::BufferCopy{offset, 0, *vertex_size});
+        cmdbuf.copyBuffer(transfer, result.indices,
+                          vk::BufferCopy{*start_index_offset, 0, *index_size});
+
+        return result;
     }
 
     template size_t mesh<uint16_t>::sphere_transfer_size(uint32_t, uint32_t);

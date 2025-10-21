@@ -285,7 +285,7 @@ namespace vgi {
         static mesh load_sphere_and_wait(window& parent, uint32_t slices, uint32_t stacks,
                                          const glm::vec4& color = glm::vec4{1.0f}) {
             command_buffer cmdbuf{parent};
-            auto [mesh, transfer] = load_sphere(parent, slices, stacks, cmdbuf, color);
+            auto [mesh, transfer] = load_sphere(parent, cmdbuf, slices, stacks, color);
             std::move(cmdbuf).submit_and_wait();
             return std::move(mesh);
         }
