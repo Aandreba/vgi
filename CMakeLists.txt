@@ -3,6 +3,7 @@ project(vgi CXX)
 
 # Import CMake modules
 include(FetchContent)
+include("cmake/EnableSVML.cmake")
 include("cmake/BuildShaders.cmake")
 include("cmake/FindGraphViz.cmake")
 include("cmake/Unicode.cmake")
@@ -129,6 +130,12 @@ target_link_libraries(vgi_shared PUBLIC ${vgi_libraries} ${vgi_shared_libraries}
 if (MSVC)
     target_compile_options(vgi_static PUBLIC /Zc:preprocessor)
     target_compile_options(vgi_shared PUBLIC /Zc:preprocessor)
+endif()
+
+# (x86) Enable Intel SVML
+if (x86)
+    target_enable_svml(vgi_static)
+    target_enable_svml(vgi_shared)
 endif()
 
 # Create the executable

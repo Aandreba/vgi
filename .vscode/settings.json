@@ -109,6 +109,7 @@
         "__bit_reference": "cpp",
         "__split_buffer": "cpp",
         "__locale": "cpp",
-        "stacktrace": "cpp"
+        "stacktrace": "cpp",
+        "numbers": "cpp"
     }
 }
