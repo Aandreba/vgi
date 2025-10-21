@@ -5,7 +5,8 @@
 void basic_scene::on_attach(vgi::window& win) {
     // Create vertex buffer
     // this->mesh = vgi::mesh<uint16_t>::load_cube_and_wait(win);
-    this->mesh = vgi::mesh<uint16_t>::load_sphere_and_wait(win, 16, 16);
+    // this->mesh = vgi::mesh<uint16_t>::load_sphere_and_wait(win, 16, 16);
+    this->mesh = vgi::mesh<uint16_t>::load_plane_and_wait(win, 16, 16);
 
     this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
     this->pipeline = vgi::graphics_pipeline{
@@ -48,9 +49,9 @@ void basic_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
                             const vgi::timings& ts) {
     this->camera.origin = glm::vec3{0.0f, 0.0f, 2.0f};
     this->camera.direction = glm::normalize(-this->camera.origin);
-    this->camera.rotate(ts.start, glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 model = glm::rotate(glm::mat4(1.0f), ts.start * glm::radians(90.0f),
-                                  glm::vec3(1.0f, 0.0f, 0.0f));
+    // this->camera.rotate(ts.start, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 model =
+            glm::rotate(glm::mat4(1.0f), 0.0f * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
     this->uniforms.write(win,
                          uniform{

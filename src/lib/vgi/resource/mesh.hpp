@@ -195,6 +195,11 @@ namespace vgi {
             return std::move(mesh);
         }
 
+        /// @brief Computes the size required for a transfer buffer to hold a plane's mesh data
+        /// @param points_x Number of points per column (minumum 2)
+        /// @param points_y Number of points per row (minumum 2)
+        static size_t plane_transfer_size(uint32_t points_x, uint32_t points_y);
+
         /// @brief Computes the size required for a transfer buffer to hold a cube's mesh data
         static size_t cube_transfer_size() { return 24 * sizeof(vertex) + 36 * sizeof(T); }
 
@@ -202,6 +207,18 @@ namespace vgi {
         /// @param slices Number of slices that form the sphere
         /// @param stacks Number of stacks that form the sphere
         static size_t sphere_transfer_size(uint32_t slices, uint32_t stacks);
+
+        /// @brief Loads a plane as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param cmdbuf Command buffer used to register commands
+        /// @param transfer Transfer buffer used to move the data from host to device memory
+        /// @param points_x Number of points per column (minumum 2)
+        /// @param points_y Number of points per row (minumum 2)
+        /// @param color Color value of the cube's vertices
+        /// @param offset The offset from which the data will be written to the transfer buffer
+        static mesh load_plane(const window& parent, vk::CommandBuffer cmdbuf,
+                               transfer_buffer& transfer, uint32_t points_x, uint32_t points_y,
+                               const glm::vec4& color = glm::vec4{1.0f}, size_t offset = 0);
 
         /// @brief Loads a solid cube as a mesh
         /// @param parent Window that will create the mesh
@@ -215,7 +232,6 @@ namespace vgi {
                               transfer_buffer& transfer, const glm::vec4& color = glm::vec4{1.0f},
                               size_t offset = 0);
 
-
         /// @brief Loads a solid sphere as a mesh
         /// @param parent Window that will create the mesh
         /// @param cmdbuf Command buffer used to register commands
@@ -227,6 +243,23 @@ namespace vgi {
         static mesh load_sphere(const window& parent, vk::CommandBuffer cmdbuf,
                                 transfer_buffer& transfer, uint32_t slices, uint32_t stacks,
                                 const glm::vec4& color = glm::vec4{1.0f}, size_t offset = 0);
+
+        /// @brief Loads a solid cube as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param cmdbuf Command buffer used to register commands
+        /// @param points_x Number of points per column (minumum 2)
+        /// @param points_y Number of points per row (minumum 2)
+        /// @param color Color value of the cube's vertices
+        /// @param min_size The minimum size of the transfer buffer
+        static std::pair<mesh, transfer_buffer_guard> load_plane(
+                const window& parent, vk::CommandBuffer cmdbuf, uint32_t points_x,
+                uint32_t points_y, const glm::vec4& color = glm::vec4{1.0f}, size_t min_size = 0) {
+            vgi::transfer_buffer_guard transfer{
+                    parent, (std::max)(sphere_transfer_size(points_x, points_y), min_size)};
+            mesh result = load_plane(parent, cmdbuf, transfer, points_x, points_y, color, min_size);
+            return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
+                                                               std::move(transfer));
+        }
 
         /// @brief Loads a solid cube as a mesh
         /// @param parent Window that will create the mesh
@@ -259,6 +292,21 @@ namespace vgi {
             mesh result = load_sphere(parent, cmdbuf, transfer, slices, stacks, color, min_size);
             return std::make_pair<mesh, transfer_buffer_guard>(std::move(result),
                                                                std::move(transfer));
+        }
+
+        /// @brief Loads a solid cube as a mesh
+        /// @param parent Window that will create the mesh
+        /// @param points_x Number of points per column (minumum 2)
+        /// @param points_y Number of points per row (minumum 2)
+        /// @param color Color value of the cube's vertices
+        /// @warning If possible, avoid using this method and instead upload multiple meshes
+        /// simultaneously.
+        static mesh load_plane_and_wait(window& parent, uint32_t points_x, uint32_t points_y,
+                                        const glm::vec4& color = glm::vec4{1.0f}) {
+            command_buffer cmdbuf{parent};
+            auto [mesh, transfer] = load_plane(parent, cmdbuf, points_x, points_y, color);
+            std::move(cmdbuf).submit_and_wait();
+            return std::move(mesh);
         }
 
         /// @brief Loads a solid cube as a mesh

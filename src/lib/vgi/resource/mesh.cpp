@@ -5,6 +5,93 @@
 
 namespace vgi {
     template<index T>
+    size_t mesh<T>::plane_transfer_size(uint32_t points_x, uint32_t points_y) {
+        points_x = (std::max)(points_x, UINT32_C(2));
+        points_y = (std::max)(points_y, UINT32_C(2));
+
+        std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
+        if (!raw_point_count) throw std::runtime_error{"too many points"};
+        std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
+        if (!vertex_count) throw std::runtime_error{"too many points"};
+
+        std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
+        if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
+        if (!index_count) throw std::runtime_error{"too many indices"};
+
+        return transfer_size(*vertex_count, *index_count);
+    }
+
+    template<index T>
+    mesh<T> mesh<T>::load_plane(const window& parent, vk::CommandBuffer cmdbuf,
+                                transfer_buffer& transfer, uint32_t points_x, uint32_t points_y,
+                                const glm::vec4& color, size_t offset) {
+        points_x = (std::max)(points_x, UINT32_C(2));
+        points_y = (std::max)(points_y, UINT32_C(2));
+
+        std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
+        if (!raw_point_count) throw std::runtime_error{"too many points"};
+        std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
+        if (!vertex_count) throw std::runtime_error{"too many points"};
+
+        std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
+        if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
+        if (!index_count) throw std::runtime_error{"too many indices"};
+
+        std::vector<vertex> vertices;
+        std::vector<T> indices;
+
+        const float step_x = 1.0f / static_cast<float>(points_x - 1);
+        const float step_y = 1.0f / static_cast<float>(points_y - 1);
+
+        // Create top points
+        for (uint32_t i = 0; i < points_x; ++i) {
+            const float fi = static_cast<float>(i);
+            vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f, 0.0f},
+                                      color,
+                                      {step_x * fi, 0.0f},
+                                      {0.0f, 0.0f, 1.0f}});
+        }
+
+        // Create remaining points
+        for (uint32_t j = 1; j < points_y; ++j) {
+            const float fj = static_cast<float>(j);
+            const T upper_offset = static_cast<T>((j - 1) * points_x);
+            const T lower_offset = static_cast<T>(j * points_x);
+
+            for (uint32_t i = 0; i < points_x - 1; ++i) {
+                const float fi = static_cast<float>(i);
+                const T top_left = upper_offset + i;
+                const T top_right = top_left + 1;
+                const T bottom_left = lower_offset + i;
+                const T bottom_right = bottom_left + 1;
+
+                vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
+                                          color,
+                                          {step_x * fi, step_y * fj},
+                                          {0.0f, 0.0f, 1.0f}});
+
+                indices.push_back(top_right);
+                indices.push_back(top_left);
+                indices.push_back(bottom_left);
+
+                indices.push_back(bottom_left);
+                indices.push_back(bottom_right);
+                indices.push_back(top_right);
+            }
+
+            // Add rightmost vertex
+            const float fi = static_cast<float>(points_x - 1);
+            vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
+                                      color,
+                                      {step_x * fi, step_y * fj},
+                                      {0.0f, 0.0f, 1.0f}});
+        }
+
+        // TODO Write directly to the transfer buffer
+        return mesh{parent, cmdbuf, transfer, vertices, indices};
+    }
+
+    template<index T>
     mesh<T> mesh<T>::load_cube(const window& parent, vk::CommandBuffer cmdbuf,
                                transfer_buffer& transfer, const glm::vec4& color, size_t offset) {
         constexpr float size = 0.5f;
@@ -239,8 +326,18 @@ namespace vgi {
         return result;
     }
 
+    template size_t mesh<uint16_t>::plane_transfer_size(uint32_t, uint32_t);
+    template size_t mesh<uint32_t>::plane_transfer_size(uint32_t, uint32_t);
+
     template size_t mesh<uint16_t>::sphere_transfer_size(uint32_t, uint32_t);
     template size_t mesh<uint32_t>::sphere_transfer_size(uint32_t, uint32_t);
+
+    template mesh<uint16_t> mesh<uint16_t>::load_plane(const window&, vk::CommandBuffer,
+                                                       transfer_buffer&, uint32_t, uint32_t,
+                                                       const glm::vec4&, size_t);
+    template mesh<uint32_t> mesh<uint32_t>::load_plane(const window&, vk::CommandBuffer,
+                                                       transfer_buffer&, uint32_t, uint32_t,
+                                                       const glm::vec4&, size_t);
 
     template mesh<uint16_t> mesh<uint16_t>::load_cube(const window&, vk::CommandBuffer,
                                                       transfer_buffer&, const glm::vec4&, size_t);
