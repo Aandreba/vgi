@@ -107,7 +107,7 @@ namespace vgi {
             if (std::optional<uint32_t> index_count_32 = math::check_cast<uint32_t>(index_count)) {
                 return transfer_size(vertex_count, *index_count_32);
             } else {
-                throw std::runtime_error{"too many indices"};
+                throw vgi_error{"too many indices"};
             }
         }
 
@@ -121,12 +121,11 @@ namespace vgi {
             requires(!std::is_same_v<size_t, uint32_t>)
         {
             auto vertex_size = math::check_mul<size_t>(vertex_count, sizeof(vertex));
-            if (!vertex_size) throw std::runtime_error{"too many vertices"};
+            if (!vertex_size) throw vgi_error{"too many vertices"};
             auto index_size = math::check_mul<size_t>(index_count, sizeof(T));
-            if (!index_size) throw std::runtime_error{"too many indices"};
+            if (!index_size) throw vgi_error{"too many indices"};
             auto total_size = math::check_add(*vertex_size, *index_size);
-            if (!total_size)
-                throw std::runtime_error{"too much data to upload to the device at once"};
+            if (!total_size) throw vgi_error{"too much data to upload to the device at once"};
             return *total_size;
         }
 

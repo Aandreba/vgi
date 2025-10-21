@@ -46,7 +46,7 @@ namespace vgi {
         VGI_ASSERT(this->cmdbuf && this->fence);
 
         std::optional<uint32_t> signal_count = math::check_cast<uint32_t>(signal_semaphores.size());
-        if (!signal_count) throw std::runtime_error{"too many signal semaphores"};
+        if (!signal_count) throw vgi_error{"too many signal semaphores"};
 
         this->cmdbuf.end();
         this->parent.queue.submit(

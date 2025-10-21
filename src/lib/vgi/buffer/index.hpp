@@ -48,7 +48,7 @@ namespace vgi {
         index_buffer(const window& parent, vk::DeviceSize size) {
             std::optional<vk::DeviceSize> byte_size =
                     math::check_mul<vk::DeviceSize>(sizeof(T), size);
-            if (!byte_size) throw std::runtime_error{"too many indices"};
+            if (!byte_size) throw vgi_error{"too many indices"};
 
             auto [buffer, allocation] = parent.create_buffer(
                     vk::BufferCreateInfo{

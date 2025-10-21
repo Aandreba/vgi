@@ -8,14 +8,14 @@ namespace vgi {
     pipeline::pipeline(const window& parent,
                        std::span<const vk::DescriptorSetLayoutBinding> bindings) {
         std::optional<uint32_t> binding_count = math::check_cast<uint32_t>(bindings.size());
-        if (!binding_count) throw std::runtime_error{"too many bindings"};
+        if (!binding_count) throw vgi_error{"too many bindings"};
 
         std::vector<vk::DescriptorPoolSize> pool_sizes;
         pool_sizes.reserve(bindings.size());
         for (const vk::DescriptorSetLayoutBinding& binding: bindings) {
             std::optional<uint32_t> count =
                     math::check_mul(binding.descriptorCount, window::MAX_FRAMES_IN_FLIGHT);
-            if (!count) throw std::runtime_error{"too many bindings"};
+            if (!count) throw vgi_error{"too many bindings"};
 
             pool_sizes.push_back({
                     .type = binding.descriptorType,

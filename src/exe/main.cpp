@@ -24,7 +24,7 @@ int main() {
     }
 
     vgi::emplace_system<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
-            .add_layer<basic_scene>();
+            .add_layer<waves_scene>();
 
     vgi::run();
     return 0;

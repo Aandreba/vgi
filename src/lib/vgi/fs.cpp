@@ -37,7 +37,7 @@ namespace vgi {
         size_t size = file_size;
 
         while (size > 0) {
-            if (file.eof()) throw std::runtime_error{"unexpected eof"};
+            if (file.eof()) throw vgi_error{"unexpected eof"};
             file.read(ptr, size);
             std::streamoff bytes_read = static_cast<std::streamoff>(file.gcount());
             VGI_ASSERT(bytes_read >= 0 && bytes_read <= size);

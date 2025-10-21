@@ -28,7 +28,7 @@ namespace vgi {
         explicit uniform_buffer(const window& parent, vk::DeviceSize size = 1) {
             std::optional<vk::DeviceSize> byte_size =
                     math::check_mul<vk::DeviceSize>(sizeof(T), size);
-            if (!byte_size) throw std::runtime_error{"too many uniform objects"};
+            if (!byte_size) throw vgi_error{"too many uniform objects"};
 
             auto [buffer, allocation] = parent.create_buffer(
                     vk::BufferCreateInfo{
@@ -72,7 +72,7 @@ namespace vgi {
         inline void write(const window& parent, std::span<const T> src, vk::DeviceSize offset = 0) {
             std::optional<vk::DeviceSize> byte_offset =
                     math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw std::runtime_error{"offset is too large"};
+            if (!byte_offset) throw vgi_error{"offset is too large"};
 
             vk::detail::resultCheck(static_cast<vk::Result>(vmaCopyMemoryToAllocation(
                                             parent, src.data(), this->allocation,
@@ -95,7 +95,7 @@ namespace vgi {
         inline void read(const window& parent, std::span<T> dest, vk::DeviceSize offset = 0) {
             std::optional<vk::DeviceSize> byte_offset =
                     math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw std::runtime_error{"offset is too large"};
+            if (!byte_offset) throw vgi_error{"offset is too large"};
 
             vk::detail::resultCheck(static_cast<vk::Result>(vmaCopyAllocationToMemory(
                                             parent, this->allocation, byte_offset.value(),
@@ -117,7 +117,7 @@ namespace vgi {
         inline T read(const window& parent, vk::DeviceSize offset = 0) {
             std::optional<vk::DeviceSize> byte_offset =
                     math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw std::runtime_error{"offset is too large"};
+            if (!byte_offset) throw vgi_error{"offset is too large"};
 
             std::byte bytes[sizeof(T)];
             vk::detail::resultCheck(

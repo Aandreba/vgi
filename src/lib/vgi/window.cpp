@@ -63,8 +63,7 @@ namespace vgi {
         // Check that all enabled extensions are available
         for (const char* ext: extensions) {
             if (std::ranges::find(available_exts, ext) == available_exts.end()) {
-                throw std::runtime_error{
-                        std::format("Required device extension '{}' is not present", ext)};
+                throw vgi_error{std::format("Required device extension '{}' is not present", ext)};
             }
         }
 
@@ -94,7 +93,7 @@ namespace vgi {
         };
 
         std::optional<uint32_t> extension_count = math::check_cast<uint32_t>(extensions.size());
-        if (!extension_count) throw std::runtime_error{"too many device extensions"};
+        if (!extension_count) throw vgi_error{"too many device extensions"};
 
         return physical->createDevice(vk::DeviceCreateInfo{
                 .pNext = &features.get<vk::PhysicalDeviceFeatures2>(),
@@ -275,7 +274,7 @@ namespace vgi {
         sdl::tri(SDL_GetWindowSizeInPixels(this->handle, &w, &h));
         std::optional<uint32_t> width = math::check_cast<uint32_t>(w);
         std::optional<uint32_t> height = math::check_cast<uint32_t>(h);
-        if (!w || !h) throw std::runtime_error{"invalid window size"};
+        if (!w || !h) throw vgi_error{"invalid window size"};
         return create_swapchain(width.value(), height.value(), vsync, hdr10);
     }
 
@@ -327,7 +326,7 @@ namespace vgi {
                 device.supported_formats(std::span<const vk::Format>{DEPTH_FORMATS},
                                          vk::FormatFeatureFlagBits::eDepthStencilAttachment);
         if (std::ranges::empty(depth_formats))
-            throw std::runtime_error{"Device does not support depth textures"};
+            throw vgi_error{"Device does not support depth textures"};
         this->depth_format = *std::ranges::begin(depth_formats);
 
         // Create surface
@@ -339,7 +338,7 @@ namespace vgi {
 
         std::optional<uint32_t> queue_family = device.select_queue_family(
                 this->surface, hdr10 ? HDR10_FORMAT : SRGB_FORMAT, vsync);
-        if (!queue_family) throw std::runtime_error{"No valid queue family found"};
+        if (!queue_family) throw vgi_error{"No valid queue family found"};
 
         // Properties
         this->has_hdr10 = contains(device->getSurfaceFormatsKHR(this->surface), HDR10_FORMAT);

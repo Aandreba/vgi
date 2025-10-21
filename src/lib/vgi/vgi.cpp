@@ -176,7 +176,7 @@ namespace vgi {
         const std::vector<std::string> available_exts = enuerate_instance_extensions();
         for (const char* ext_name: extensions) {
             if (std::ranges::find(available_exts, ext_name) == available_exts.end()) {
-                throw std::runtime_error{
+                throw vgi_error{
                         std::format("Required instance extension '{}' is not present", ext_name)};
             }
         }
@@ -185,7 +185,7 @@ namespace vgi {
         const std::vector<std::string> available_layers = enuerate_instance_layers();
         for (const char* layer_name: layers) {
             if (std::ranges::find(available_layers, layer_name) == available_layers.end()) {
-                throw std::runtime_error{
+                throw vgi_error{
                         std::format("Required instance layer '{}' is not present", layer_name)};
             }
         }

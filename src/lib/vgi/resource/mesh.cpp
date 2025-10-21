@@ -10,13 +10,13 @@ namespace vgi {
         points_y = (std::max)(points_y, UINT32_C(2));
 
         std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
-        if (!raw_point_count) throw std::runtime_error{"too many vertices"};
+        if (!raw_point_count) throw vgi_error{"too many vertices"};
         std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
-        if (!vertex_count) throw std::runtime_error{"too many vertices"};
+        if (!vertex_count) throw vgi_error{"too many vertices"};
 
         std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
         if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
-        if (!index_count) throw std::runtime_error{"too many indices"};
+        if (!index_count) throw vgi_error{"too many indices"};
 
         return transfer_size(*vertex_count, *index_count);
     }
@@ -29,20 +29,20 @@ namespace vgi {
         points_y = (std::max)(points_y, UINT32_C(2));
 
         std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
-        if (!raw_point_count) throw std::runtime_error{"too many vertices"};
+        if (!raw_point_count) throw vgi_error{"too many vertices"};
         std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
-        if (!vertex_count) throw std::runtime_error{"too many vertices"};
+        if (!vertex_count) throw vgi_error{"too many vertices"};
         std::optional<size_t> vertex_size = math::check_mul<size_t>(*vertex_count, sizeof(vertex));
-        if (!vertex_size) throw std::runtime_error{"too many vertices"};
+        if (!vertex_size) throw vgi_error{"too many vertices"};
 
         std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
         if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
-        if (!index_count) throw std::runtime_error{"too many indices"};
+        if (!index_count) throw vgi_error{"too many indices"};
         std::optional<size_t> index_size = math::check_mul<size_t>(*index_count, sizeof(T));
-        if (!index_size) throw std::runtime_error{"too many indices"};
+        if (!index_size) throw vgi_error{"too many indices"};
 
         const std::optional<size_t> start_index_offset = math::check_add(offset, *vertex_size);
-        if (!start_index_offset) throw std::runtime_error{"out of memory"};
+        if (!start_index_offset) throw vgi_error{"out of memory"};
         size_t vertex_offset = offset;
         size_t index_offset = *start_index_offset;
 
@@ -162,44 +162,44 @@ namespace vgi {
     template<index T>
     static T sphere_vertex_count(uint32_t raw_slices, uint32_t raw_stacks) {
         constexpr T const_v = 2;
-        if (raw_stacks < 2) throw std::runtime_error{"spheres require at least 2 stacks"};
+        if (raw_stacks < 2) throw vgi_error{"spheres require at least 2 stacks"};
 
         std::optional<T> opt_slices = math::check_cast<T>(raw_slices);
-        if (!opt_slices) throw std::runtime_error{"too many slices"};
+        if (!opt_slices) throw vgi_error{"too many slices"};
         std::optional<T> opt_stacks = math::check_cast<T>(raw_stacks);
-        if (!opt_stacks) throw std::runtime_error{"too many stacks"};
+        if (!opt_stacks) throw vgi_error{"too many stacks"};
         T slices = *opt_slices;
         T stacks = *opt_stacks;
 
         std::optional<T> stage13_v = math::check_mul<T>(2, slices);
-        if (!stage13_v) throw std::runtime_error{"too many slices"};
+        if (!stage13_v) throw vgi_error{"too many slices"};
         std::optional<T> stage2_v = math::check_mul<T>(2, *stage13_v);
-        if (!stage2_v) throw std::runtime_error{"too many slices"};
+        if (!stage2_v) throw vgi_error{"too many slices"};
         stage2_v = math::check_mul<T>(stacks - 2, *stage2_v);
-        if (!stage2_v) throw std::runtime_error{"too many stacks"};
+        if (!stage2_v) throw vgi_error{"too many stacks"};
 
         std::optional<T> vertex_count = math::check_add(*stage13_v, *stage2_v);
         if (vertex_count) vertex_count = math::check_add(*vertex_count, *stage13_v);
         if (vertex_count) vertex_count = math::check_add(*vertex_count, const_v);
-        if (!vertex_count) throw std::runtime_error{"too many vertices"};
+        if (!vertex_count) throw vgi_error{"too many vertices"};
         return *vertex_count;
     }
 
     static uint32_t sphere_index_count(uint32_t slices, uint32_t stacks) {
         constexpr uint32_t const_i = 0;
-        if (stacks < 2) throw std::runtime_error{"spheres require at least 2 stacks"};
+        if (stacks < 2) throw vgi_error{"spheres require at least 2 stacks"};
 
         std::optional<uint32_t> stage13_i = math::check_mul<uint32_t>(3, slices);
-        if (!stage13_i) throw std::runtime_error{"too many slices"};
+        if (!stage13_i) throw vgi_error{"too many slices"};
         std::optional<uint32_t> stage2_i = math::check_mul<uint32_t>(2, *stage13_i);
-        if (!stage2_i) throw std::runtime_error{"too many slices"};
+        if (!stage2_i) throw vgi_error{"too many slices"};
         stage2_i = math::check_mul<uint32_t>(stacks - 2, *stage2_i);
-        if (!stage2_i) throw std::runtime_error{"too many stacks"};
+        if (!stage2_i) throw vgi_error{"too many stacks"};
 
         std::optional<uint32_t> index_count = math::check_add(*stage13_i, *stage2_i);
         if (index_count) index_count = math::check_add(*index_count, *stage13_i);
         if (index_count) index_count = math::check_add(*index_count, const_i);
-        if (!index_count) throw std::runtime_error{"too many indices"};
+        if (!index_count) throw vgi_error{"too many indices"};
         return *index_count;
     }
 
@@ -221,7 +221,7 @@ namespace vgi {
                             (size == 0 ? 1.0f : (static_cast<float>(size) * (dir ? 1.0f : -1.0f)));
 
         std::optional<size_t> buf_size = math::check_add<size_t>(size, 1);
-        if (!buf_size) throw std::runtime_error{"too many elements"};
+        if (!buf_size) throw vgi_error{"too many elements"};
 
         std::unique_ptr<sin_cos[]> buf = std::make_unique_for_overwrite<sin_cos[]>(*buf_size);
         for (size_t i = 0; i <= size; ++i) {
@@ -243,7 +243,7 @@ namespace vgi {
         T vertex_count = sphere_vertex_count<T>(slices, stacks);
         uint32_t index_count = sphere_index_count(slices, stacks);
         std::optional<size_t> sincos2_size = math::check_add<size_t>(stacks, stacks);
-        if (!sincos2_size) throw std::runtime_error{"too many stacks"};
+        if (!sincos2_size) throw vgi_error{"too many stacks"};
 
         std::unique_ptr<sin_cos[]> sincost1 = build_circle_table(slices, false);
         std::unique_ptr<sin_cos[]> sincost2 = build_circle_table(*sincos2_size, true);
@@ -256,11 +256,11 @@ namespace vgi {
         };
 
         std::optional<size_t> index_size = math::check_mul<size_t>(index_count, sizeof(T));
-        if (!index_size) throw std::runtime_error{"too many indices"};
+        if (!index_size) throw vgi_error{"too many indices"};
         std::optional<size_t> vertex_size = math::check_mul<size_t>(vertex_count, sizeof(vertex));
-        if (!vertex_size) throw std::runtime_error{"too many vertices"};
+        if (!vertex_size) throw vgi_error{"too many vertices"};
         std::optional<size_t> start_index_offset = math::check_add<size_t>(offset, *vertex_size);
-        if (!start_index_offset) throw std::runtime_error{"out of memory"};
+        if (!start_index_offset) throw vgi_error{"out of memory"};
 
         size_t vertex_offset = offset;
         size_t index_offset = *start_index_offset;

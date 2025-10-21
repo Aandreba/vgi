@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <optional>
+#include <source_location>
 #include <stdexcept>
 
 #include "defs.hpp"
@@ -24,9 +25,24 @@ namespace vgi {
     /// @brief Shuts down the environment context
     void quit() noexcept;
 
+    struct vgi_error : public std::runtime_error {
+        std::source_location location;
+
+        vgi_error(const char* what,
+                  std::source_location&& location = std::source_location::current()) :
+            std::runtime_error(what), location(std::move(location)) {}
+
+        vgi_error(const std::string& what,
+                  std::source_location&& location = std::source_location::current()) :
+            std::runtime_error(what), location(std::move(location)) {}
+
+        vgi_error(const vgi_error& error) : std::runtime_error(error), location(error.location) {}
+    };
+
     /// @brief Exception class to report errors concurred by SDL
-    struct sdl_error : public std::runtime_error {
-        sdl_error() : std::runtime_error(SDL_GetError()) {}
+    struct sdl_error : public vgi_error {
+        sdl_error(std::source_location&& location = std::source_location::current()) :
+            vgi_error(SDL_GetError(), std::move(location)) {}
     };
 
     /// @brief Represents the time intervals of the current update iteration
@@ -110,18 +126,20 @@ namespace vgi {
         /// @brief Helper function that parses an SDL result
         /// @param res The result of an SDL function
         /// @throws `sdl_error` if `res == false`
-        constexpr VGI_FORCEINLINE void tri(bool res) {
+        constexpr VGI_FORCEINLINE void tri(
+                bool res, std::source_location&& location = std::source_location::current()) {
             if (!res) [[unlikely]]
-                throw sdl_error{};
+                throw sdl_error{std::move(location)};
         }
 
         /// @brief Helper function that parses an SDL result
         /// @param res The result of an SDL function
         /// @throws `sdl_error` if `res == nullptr`
         template<class T>
-        constexpr VGI_FORCEINLINE T* tri(T* res) {
+        constexpr VGI_FORCEINLINE T* tri(
+                T* res, std::source_location&& location = std::source_location::current()) {
             if (!res) [[unlikely]]
-                throw sdl_error{};
+                throw sdl_error{std::move(location)};
             return res;
         }
     }  // namespace sdl

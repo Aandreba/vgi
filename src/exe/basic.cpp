@@ -4,9 +4,9 @@
 
 void basic_scene::on_attach(vgi::window& win) {
     // Create vertex buffer
-    // this->mesh = vgi::mesh<uint16_t>::load_cube_and_wait(win);
+    this->mesh = vgi::mesh<uint16_t>::load_cube_and_wait(win);
     // this->mesh = vgi::mesh<uint16_t>::load_sphere_and_wait(win, 16, 16);
-    this->mesh = vgi::mesh<uint16_t>::load_plane_and_wait(win, 16, 16);
+    // this->mesh = vgi::mesh<uint16_t>::load_plane_and_wait(win, 16, 16);
 
     this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
     this->pipeline = vgi::graphics_pipeline{

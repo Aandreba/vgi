@@ -8,9 +8,15 @@
 #include <vgi/resource/mesh.hpp>
 #include <vgi/vgi.hpp>
 
-struct waves_uniform {};
+struct waves_uniform {
+    vgi::std140<glm::mat4> mvp;
+};
 
 struct waves_scene : public vgi::layer {
+    vgi::mesh<uint16_t> mesh;
+    vgi::uniform_buffer<waves_uniform> uniforms;
+    vgi::graphics_pipeline pipeline;
+    vgi::descriptor_pool desc_pool;
     vgi::math::camera camera;
 
     void on_attach(vgi::window& win) override;
