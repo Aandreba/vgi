@@ -10,9 +10,9 @@ namespace vgi {
         points_y = (std::max)(points_y, UINT32_C(2));
 
         std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
-        if (!raw_point_count) throw std::runtime_error{"too many points"};
+        if (!raw_point_count) throw std::runtime_error{"too many vertices"};
         std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
-        if (!vertex_count) throw std::runtime_error{"too many points"};
+        if (!vertex_count) throw std::runtime_error{"too many vertices"};
 
         std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
         if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
@@ -29,16 +29,22 @@ namespace vgi {
         points_y = (std::max)(points_y, UINT32_C(2));
 
         std::optional<uint32_t> raw_point_count = math::check_mul(points_x, points_y);
-        if (!raw_point_count) throw std::runtime_error{"too many points"};
+        if (!raw_point_count) throw std::runtime_error{"too many vertices"};
         std::optional<T> vertex_count = math::check_cast<T>(*raw_point_count);
-        if (!vertex_count) throw std::runtime_error{"too many points"};
+        if (!vertex_count) throw std::runtime_error{"too many vertices"};
+        std::optional<size_t> vertex_size = math::check_mul<size_t>(*vertex_count, sizeof(vertex));
+        if (!vertex_size) throw std::runtime_error{"too many vertices"};
 
         std::optional<uint32_t> index_count = math::check_mul(points_x - 1, points_y - 1);
         if (index_count) index_count = math::check_mul(UINT32_C(6), *index_count);
         if (!index_count) throw std::runtime_error{"too many indices"};
+        std::optional<size_t> index_size = math::check_mul<size_t>(*index_count, sizeof(T));
+        if (!index_size) throw std::runtime_error{"too many indices"};
 
-        std::vector<vertex> vertices;
-        std::vector<T> indices;
+        const std::optional<size_t> start_index_offset = math::check_add(offset, *vertex_size);
+        if (!start_index_offset) throw std::runtime_error{"out of memory"};
+        size_t vertex_offset = offset;
+        size_t index_offset = *start_index_offset;
 
         const float step_x = 1.0f / static_cast<float>(points_x - 1);
         const float step_y = 1.0f / static_cast<float>(points_y - 1);
@@ -46,10 +52,11 @@ namespace vgi {
         // Create top points
         for (uint32_t i = 0; i < points_x; ++i) {
             const float fi = static_cast<float>(i);
-            vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f, 0.0f},
-                                      color,
-                                      {step_x * fi, 0.0f},
-                                      {0.0f, 0.0f, 1.0f}});
+            vertex_offset = transfer.write_at(vertex{{step_x * fi - 0.5f, 0.5f, 0.0f},
+                                                     color,
+                                                     {step_x * fi, 0.0f},
+                                                     {0.0f, 0.0f, 1.0f}},
+                                              vertex_offset);
         }
 
         // Create remaining points
@@ -65,30 +72,33 @@ namespace vgi {
                 const T bottom_left = lower_offset + i;
                 const T bottom_right = bottom_left + 1;
 
-                vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
-                                          color,
-                                          {step_x * fi, step_y * fj},
-                                          {0.0f, 0.0f, 1.0f}});
+                vertex_offset =
+                        transfer.write_at(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
+                                                 color,
+                                                 {step_x * fi, step_y * fj},
+                                                 {0.0f, 0.0f, 1.0f}},
+                                          vertex_offset);
 
-                indices.push_back(top_right);
-                indices.push_back(top_left);
-                indices.push_back(bottom_left);
-
-                indices.push_back(bottom_left);
-                indices.push_back(bottom_right);
-                indices.push_back(top_right);
+                index_offset = transfer.template write_at<T>(
+                        {top_right, top_left, bottom_left, bottom_left, bottom_right, top_right},
+                        index_offset);
             }
 
             // Add rightmost vertex
             const float fi = static_cast<float>(points_x - 1);
-            vertices.push_back(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
-                                      color,
-                                      {step_x * fi, step_y * fj},
-                                      {0.0f, 0.0f, 1.0f}});
+            vertex_offset = transfer.write_at(vertex{{step_x * fi - 0.5f, 0.5f - step_y * fj, 0.0f},
+                                                     color,
+                                                     {step_x * fi, step_y * fj},
+                                                     {0.0f, 0.0f, 1.0f}},
+                                              vertex_offset);
         }
 
-        // TODO Write directly to the transfer buffer
-        return mesh{parent, cmdbuf, transfer, vertices, indices};
+        mesh result{parent, *vertex_count, *index_count};
+        cmdbuf.copyBuffer(transfer, result.vertices, vk::BufferCopy{offset, 0, *vertex_size});
+        cmdbuf.copyBuffer(transfer, result.indices,
+                          vk::BufferCopy{*start_index_offset, 0, *index_size});
+
+        return result;
     }
 
     template<index T>
