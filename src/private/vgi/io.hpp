@@ -30,8 +30,7 @@ namespace vgi::priv {
         iostream(const std::filesystem::path::value_type* path,
                  std::ios_base::openmode mode = std::ios_base::in | std::ios_base::out);
         iostream(const std::filesystem::path& path,
-                 std::ios_base::openmode mode = std::ios_base::in | std::ios_base::out) :
-            iostream(path.c_str(), mode) {}
+                 std::ios_base::openmode mode = std::ios_base::in | std::ios_base::out);
 
         iostream(const iostream&) = delete;
         iostream& operator=(const iostream&) = delete;

@@ -110,6 +110,9 @@
         "__split_buffer": "cpp",
         "__locale": "cpp",
         "stacktrace": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "any": "cpp",
+        "complex": "cpp",
+        "numeric": "cpp"
     }
 }
