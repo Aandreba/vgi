@@ -374,7 +374,20 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            for (std::unique_ptr<layer>& s: this->layers.values()) s->on_event(*this, event);
+            // Resize swapchain
+            if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                uint32_t width = static_cast<uint32_t>(event.window.data1);
+                uint32_t height = static_cast<uint32_t>(event.window.data2);
+                this->create_swapchain(
+                        width, height,
+                        this->swapchain_info.presentMode == vk::PresentModeKHR::eFifo,
+                        this->swapchain_info.imageColorSpace != vk::ColorSpaceKHR::eSrgbNonlinear);
+            }
+
+            // Pass event to layers
+            for (std::unique_ptr<layer>& s: this->layers.values()) {
+                s->on_event(*this, event);
+            }
         }
     }
 

@@ -49,7 +49,7 @@ void waves_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
     this->uniforms.write(
             win,
             waves_uniform{
-                    .mvp = this->camera.perspective(900.0f / 600.0f) * this->camera.view() * model,
+                    .mvp = this->camera.perspective(win.draw_size()) * this->camera.view() * model,
             },
             current_frame);
 }

@@ -23,7 +23,8 @@ int main() {
         vgi::log("- {}", device.name());
     }
 
-    vgi::emplace_system<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600)
+    vgi::emplace_system<vgi::window>(vgi::device::all().front(), u8"Hello world!", 900, 600,
+                                     SDL_WINDOW_RESIZABLE)
             .add_layer<waves_scene>();
 
     vgi::run();

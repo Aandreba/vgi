@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <vgi/forward.hpp>
+#include <vgi/vulkan.hpp>
 
 namespace vgi::math {
     /// @brief Helper structure that manages both the view and projection matrices
@@ -55,6 +56,21 @@ namespace vgi::math {
         /// @return The camera's perspective projection matrix
         inline glm::mat4 perspective(float aspect) const noexcept {
             return glm::perspective(this->fovy, aspect, this->z_near, this->z_far);
+        }
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param width Width of the projection region
+        /// @param height Height of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 perspective(uint32_t width, uint32_t height) const noexcept {
+            return this->perspective(static_cast<float>(width) / static_cast<float>(height));
+        }
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param extent Extent of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 perspective(const vk::Extent2D& extent) const noexcept {
+            return this->perspective(extent.width, extent.height);
         }
 
         /// @brief Returns the view matrix of the camera
