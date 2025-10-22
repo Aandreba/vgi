@@ -1,5 +1,7 @@
 #pragma once
 
+#define VGI_VMA_CHECK(expr) ::vk::detail::resultCheck(static_cast<::vk::Result>(expr), __FUNCTION__)
+
 #ifdef __APPLE__
 #define VK_ENABLE_BETA_EXTENSIONS
 #endif

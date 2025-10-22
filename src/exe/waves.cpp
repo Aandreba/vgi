@@ -1,8 +1,12 @@
 #include "waves.hpp"
 
 #include <vgi/fs.hpp>
+#include <vgi/texture.hpp>
 
 void waves_scene::on_attach(vgi::window& win) {
+    vgi::surface surf{VGI_OS("c:/Users/aandr/Pictures/Screenshot 2025-10-17 180616.png")};
+    vgi::texture tex = vgi::texture::upload_and_wait(win, surf);
+
     this->mesh = vgi::mesh<uint32_t>::load_plane_and_wait(win, 1024, 1024);
     this->uniforms = vgi::uniform_buffer<waves_uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
     this->pipeline = vgi::graphics_pipeline{
@@ -37,6 +41,8 @@ void waves_scene::on_attach(vgi::window& win) {
                 },
                 {});
     }
+
+    // std::move(tex).destroy(win);
 }
 
 void waves_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,

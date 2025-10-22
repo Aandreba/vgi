@@ -11,8 +11,6 @@
 #include "texture.hpp"
 #include "vgi.hpp"
 
-#define VMA_CHECK(expr) ::vk::detail::resultCheck(static_cast<::vk::Result>(expr), __FUNCTION__)
-
 // Make sure we only setup the window to use Vulkan.
 constexpr static inline const SDL_WindowFlags EXCLUDED_FLAGS = SDL_WINDOW_OPENGL | SDL_WINDOW_METAL;
 constexpr static inline const SDL_WindowFlags REQUIRED_FLAGS = SDL_WINDOW_VULKAN;
@@ -119,7 +117,7 @@ namespace vgi {
         };
 
         VmaAllocator allocator = VK_NULL_HANDLE;
-        VMA_CHECK(vmaCreateAllocator(&create_info, &allocator));
+        VGI_VMA_CHECK(vmaCreateAllocator(&create_info, &allocator));
         VGI_ASSERT(allocator != VK_NULL_HANDLE);
         return allocator;
     }
@@ -294,8 +292,8 @@ namespace vgi {
 
         VmaAllocationCreateInfo alloc_create_info{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
         VkImage image = VK_NULL_HANDLE;
-        VMA_CHECK(vmaCreateImage(allocator, &create_info, &alloc_create_info, &image,
-                                 &this->allocation, nullptr));
+        VGI_VMA_CHECK(vmaCreateImage(allocator, &create_info, &alloc_create_info, &image,
+                                     &this->allocation, nullptr));
         this->image = image;
 
         vk::ImageViewCreateInfo view_create_info{
@@ -575,9 +573,9 @@ namespace vgi {
             const vk::BufferCreateInfo& create_info,
             const VmaAllocationCreateInfo& alloc_create_info, VmaAllocationInfo* alloc_info) const {
         std::pair<VkBuffer, VmaAllocation> result;
-        VMA_CHECK(vmaCreateBuffer(this->allocator,
-                                  reinterpret_cast<const VkBufferCreateInfo*>(&create_info),
-                                  &alloc_create_info, &result.first, &result.second, alloc_info));
+        VGI_VMA_CHECK(vmaCreateBuffer(
+                this->allocator, reinterpret_cast<const VkBufferCreateInfo*>(&create_info),
+                &alloc_create_info, &result.first, &result.second, alloc_info));
         return result;
     }
 

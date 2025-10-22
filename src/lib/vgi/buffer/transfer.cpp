@@ -51,6 +51,6 @@ namespace vgi {
     }
 
     void transfer_buffer::flush(const window& parent) {
-        VMA_CHECK(vmaFlushAllocation(parent, this->allocation, 0, VK_WHOLE_SIZE));
+        VGI_VMA_CHECK(vmaFlushAllocation(parent, this->allocation, 0, VK_WHOLE_SIZE));
     }
 }  // namespace vgi
