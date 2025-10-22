@@ -2,6 +2,7 @@
 #include <vgi/fs.hpp>
 #include <vgi/log.hpp>
 #include <vgi/main.hpp>
+#include <vgi/texture.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
 
@@ -12,6 +13,7 @@ using namespace std::literals;
 
 int main() {
     vgi::init(u8"Entorn VGI");
+    vgi::surface example{VGI_OS("/Users/aandreba/Downloads/dors_cluc.jpeg")};
 
     vgi::log("Arguments ({}):", vgi::argc());
     for (auto arg: vgi::argv()) {

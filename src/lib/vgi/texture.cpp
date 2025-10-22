@@ -1,12 +1,19 @@
 #include "texture.hpp"
 
+#include <SDL3_image/SDL_image.h>
+#include <vgi/io.hpp>
+
 #include "window.hpp"
 
 namespace vgi {
+    using namespace priv;
+
     surface::surface(int width, int height, SDL_PixelFormat format) :
         handle(sdl::tri(SDL_CreateSurface(width, height, format))) {}
 
-    surface::surface(const std::filesystem::path::value_type* path) : handle() {}
+    surface::surface(const std::filesystem::path::value_type* path) :
+        handle(sdl::tri(
+                IMG_Load_IO(iostream{path, std::ios::binary | std::ios::in}.release(), true))) {}
 
     surface::~surface() noexcept { SDL_DestroySurface(this->handle); }
 

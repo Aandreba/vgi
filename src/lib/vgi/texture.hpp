@@ -12,14 +12,29 @@
 namespace vgi {
     /// @brief An image that resides on host memory
     struct surface {
+        /// @brief Allocates a new surface
+        /// @param width Width of the surface
+        /// @param height Height of the surface
+        /// @param format Pixel format of the surface
         surface(int width, int height, SDL_PixelFormat format = SDL_PIXELFORMAT_RGBA32);
+
+        /// @brief Loads a surface from a file
+        /// @param path Path of the file
         explicit surface(const std::filesystem::path::value_type* path);
+
+        /// @brief Loads a surface from a file
+        /// @param path Path of the file
         explicit surface(const std::filesystem::path& path) : surface(path.c_str()) {}
 
         surface(const surface&) = delete;
         surface& operator=(const surface&) = delete;
 
+        /// @brief Move constructor
+        /// @param other Object to move
         surface(surface&& other) noexcept : handle(std::exchange(other.handle, nullptr)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to move
         surface& operator=(surface&& other) noexcept {
             if (this->handle == other.handle) return *this;
             std::destroy_at(this);
