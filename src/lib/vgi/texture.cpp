@@ -3,6 +3,13 @@
 #include "window.hpp"
 
 namespace vgi {
+    surface::surface(int width, int height, SDL_PixelFormat format) :
+        handle(sdl::tri(SDL_CreateSurface(width, height, format))) {}
+
+    surface::surface(const std::filesystem::path::value_type* path) : handle() {}
+
+    surface::~surface() noexcept { SDL_DestroySurface(this->handle); }
+
     void change_layout(vk::CommandBuffer cmdbuf, vk::Image img, vk::ImageLayout old_layout,
                        vk::ImageLayout new_layout, vk::PipelineStageFlags src_stage,
                        vk::PipelineStageFlags dst_stage, vk::ImageAspectFlags img_aspect) noexcept {

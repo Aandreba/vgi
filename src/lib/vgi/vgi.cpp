@@ -85,6 +85,8 @@ namespace vgi {
     slab<std::unique_ptr<system>> systems;
     std::optional<std::chrono::steady_clock::time_point> first_frame = std::nullopt;
     std::optional<std::chrono::steady_clock::time_point> last_frame = std::nullopt;
+    std::span<const bool, SDL_SCANCODE_COUNT> keyboard_state{
+            reinterpret_cast<const bool*>(alignof(bool)), SDL_SCANCODE_COUNT};
     bool shutdown_requested = false;
 
     // Sets the C++ global locale to the user prefered one.
@@ -260,6 +262,11 @@ namespace vgi {
             SDL_SetLogOutputFunction(sdl_log_callback, nullptr);
             // Setup the global locale
             setup_locale();
+            // Obtain keyboard state array
+            int keystate_count;
+            keyboard_state = std::span<const bool, SDL_SCANCODE_COUNT>{
+                    SDL_GetKeyboardState(&keystate_count), SDL_SCANCODE_COUNT};
+            VGI_ASSERT(keystate_count == SDL_SCANCODE_COUNT);
             // Load the Vulkan driver
             sdl::tri(SDL_Vulkan_LoadLibrary(nullptr));
             try {

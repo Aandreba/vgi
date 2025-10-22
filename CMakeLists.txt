@@ -3,7 +3,6 @@ project(vgi CXX)
 
 # Import CMake modules
 include(FetchContent)
-include("cmake/EnableSVML.cmake")
 include("cmake/BuildShaders.cmake")
 include("cmake/FindGraphViz.cmake")
 include("cmake/Unicode.cmake")
@@ -35,6 +34,7 @@ set(GLM_ENABLE_FAST_MATH ON)
 set(GLM_BUILD_TESTS OFF)
 set(SDL_STATIC ON)
 set(SDL_SHARED ON)
+set(BUILD_SHARED_LIBS OFF)
 #set(SDL_MAIN_USE_CALLBACKS ON)
 
 # Fetch/Dowload libraries
@@ -45,18 +45,24 @@ FetchContent_Declare(
         OVERRIDE_FIND_PACKAGE
 )
 FetchContent_Declare(
+        SDL3_image
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL_image
+        GIT_TAG release-3.2.4
+        OVERRIDE_FIND_PACKAGE
+)
+FetchContent_Declare(
         glm
         GIT_REPOSITORY https://github.com/g-truc/glm
         GIT_TAG 1.0.1
         OVERRIDE_FIND_PACKAGE
 )
-FetchContent_MakeAvailable(SDL3 glm)
+FetchContent_MakeAvailable(SDL3 SDL3_image glm)
 
 # Create a library for the Vulkan Memory Allocator
 add_library(vgi_vma STATIC "src/vma.cpp")
 
 # Create a library for the reusable code
-file(GLOB_RECURSE vgi_lib_sources CONFIGURE_DEPENDS "src/lib/vgi/*.cpp")
+file(GLOB_RECURSE vgi_lib_sources CONFIGURE_DEPENDS "src/lib/vgi/*.cpp" "src/private/vgi/*.cpp")
 add_library(vgi_static STATIC ${vgi_lib_sources})
 add_library(vgi_shared SHARED ${vgi_lib_sources})
 
@@ -74,7 +80,7 @@ target_literal_utf8(vgi_static)
 target_literal_utf8(vgi_shared)
 
 # Create a list with all of the libraries used by vgi (libraries can only be linked all together, at once)
-set(vgi_libraries glm::glm vgi_vma)
+set(vgi_libraries glm::glm vgi_vma SDL3_image::SDL3_image)
 set(vgi_static_libraries SDL3::SDL3-static)
 set(vgi_shared_libraries SDL3::SDL3-shared)
 
@@ -124,19 +130,13 @@ else()
 endif()
 
 # Link the required libraries into VGI
-target_link_libraries(vgi_static PUBLIC ${vgi_libraries} ${vgi_static_libraries})
-target_link_libraries(vgi_shared PUBLIC ${vgi_libraries} ${vgi_shared_libraries})
+target_link_libraries(vgi_static PUBLIC ${vgi_static_libraries} ${vgi_libraries})
+target_link_libraries(vgi_shared PUBLIC ${vgi_shared_libraries} ${vgi_libraries})
 
 # (Windows) Enable preprocessor conformance mode
 if (MSVC)
     target_compile_options(vgi_static PUBLIC /Zc:preprocessor)
     target_compile_options(vgi_shared PUBLIC /Zc:preprocessor)
-endif()
-
-# (x86) Enable Intel SVML
-if (x86)
-    target_enable_svml(vgi_static)
-    target_enable_svml(vgi_shared)
 endif()
 
 # Create the executable

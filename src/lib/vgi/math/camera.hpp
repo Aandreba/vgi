@@ -13,9 +13,9 @@ namespace vgi::math {
         /// @brief Field of view (in radians)
         float fovy = glm::radians(60.0f);
         /// @brief Near plane
-        float z_near = 0.01f;
+        float z_near = 1e-3f;
         /// @brief Far plane
-        float z_far = 1000.0f;
+        float z_far = 1e3f;
         /// @brief Position of the camera
         glm::vec3 origin{0.0f, 0.0f, 0.0f};
         /// @brief Direction at which the camera is looking at
@@ -55,7 +55,9 @@ namespace vgi::math {
         /// @param aspect Aspect ratio of the projection region
         /// @return The camera's perspective projection matrix
         inline glm::mat4 perspective(float aspect) const noexcept {
-            return glm::perspective(this->fovy, aspect, this->z_near, this->z_far);
+            glm::mat4 proj = glm::perspective(this->fovy, aspect, this->z_near, this->z_far);
+            proj[1] = -proj[1];
+            return proj;
         }
 
         /// @brief Returns the camera's perspective projection matrix
