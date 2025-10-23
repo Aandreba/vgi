@@ -78,6 +78,10 @@ namespace vgi {
                            vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
                 features;
 
+        features.get<vk::PhysicalDeviceFeatures2>().features = {
+                // Enable sampler anisotropy (if available)
+                .samplerAnisotropy = physical.feats().samplerAnisotropy,
+        };
         features.get<vk::PhysicalDeviceVulkan13Features>() = {
                 .synchronization2 = vk::True,
                 .dynamicRendering = vk::True,
@@ -314,7 +318,7 @@ namespace vgi {
         vmaDestroyImage(allocator, this->image, this->allocation);
     }
 
-    window::window(const device& device, const char8_t* title, int width, int height,
+    window::window(const vgi::device& device, const char8_t* title, int width, int height,
                    SDL_WindowFlags flags, bool vsync, bool hdr10) :
         handle(sdl::tri(SDL_CreateWindow(reinterpret_cast<const char*>(title), width, height,
                                          (flags & ~EXCLUDED_FLAGS) | REQUIRED_FLAGS))),
@@ -340,8 +344,15 @@ namespace vgi {
 
         // Properties
         this->has_hdr10 = contains(device->getSurfaceFormatsKHR(this->surface), HDR10_FORMAT);
-        this->has_mailbox = contains(device->getSurfacePresentModesKHR(this->surface),
-                                     vk::PresentModeKHR::eMailbox);
+        this->no_vsync_mode = std::nullopt;
+        for (vk::PresentModeKHR mode: device->getSurfacePresentModesKHR(this->surface)) {
+            if (mode == vk::PresentModeKHR::eImmediate) {
+                this->no_vsync_mode = vk::PresentModeKHR::eImmediate;
+            } else if (mode == vk::PresentModeKHR::eMailbox) {
+                this->no_vsync_mode = vk::PresentModeKHR::eMailbox;
+                break;
+            }
+        }
 
         this->logical = create_logical_device(device, queue_family.value());
         this->allocator = create_allocator(device, this->logical);
@@ -372,15 +383,8 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            // Resize swapchain
-            if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-                uint32_t width = static_cast<uint32_t>(event.window.data1);
-                uint32_t height = static_cast<uint32_t>(event.window.data2);
-                this->create_swapchain(
-                        width, height,
-                        this->swapchain_info.presentMode == vk::PresentModeKHR::eFifo,
-                        this->swapchain_info.imageColorSpace != vk::ColorSpaceKHR::eSrgbNonlinear);
-            }
+            // Mark swapchain as ready to resize
+            this->should_resize |= event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
 
             // Pass event to layers
             for (std::unique_ptr<layer>& s: this->layers.values()) {
@@ -390,6 +394,13 @@ namespace vgi {
     }
 
     void window::on_update(const timings& ts) {
+        // Resize the swapchain, if required
+        if (std::exchange(this->should_resize, false)) {
+            this->create_swapchain(
+                    this->swapchain_info.presentMode == vk::PresentModeKHR::eFifo,
+                    this->swapchain_info.imageColorSpace != vk::ColorSpaceKHR::eSrgbNonlinear);
+        }
+
         // Use a fence to wait until the command buffer has finished execution before using it again
         while (true) {
             switch ((*this)->waitForFences(this->in_flight[this->current_frame], vk::True,
@@ -550,17 +561,14 @@ namespace vgi {
             })) {
                 case vk::Result::eSuccess:
                     break;
-                case vk::Result::eSuboptimalKHR: {
-                    log_warn("Window resizing is not yet implemented");
-                    break;
-                }
+                case vk::Result::eSuboptimalKHR:
+                    this->should_resize = true;
                 default:
                     VGI_UNREACHABLE;
                     break;
             }
         } catch (const vk::OutOfDateKHRError&) {
-            log_err("Window resizing not yet implemented");
-            throw;
+            this->should_resize = true;
         } catch (...) {
             throw;
         }
@@ -579,15 +587,30 @@ namespace vgi {
         return result;
     }
 
-    window::~window() noexcept {
+    void window::close() && noexcept {
         if (this->logical) {
-            // We cannot destroy stuff being used by the device, so we must first wait for it to
-            // finish everything it's working on.
-            this->logical.waitIdle();
+            try {
+                // We cannot destroy stuff being used by the device, so we must first wait for it to
+                // finish everything it's working on.
+                this->logical.waitIdle();
+            } catch (const std::exception& e) {
+                vgi::log_warn("Error waiting for device to be idle: {}", e.what());
+            } catch (...) {
+                vgi::log_warn("Unexpected error waiting for device to be idle");
+            }
 
             // Destroy layers
             for (size_t i: this->layers.keys()) {
-                this->layers[i]->on_detach(*this);
+                try {
+                    this->layers[i]->on_detach(*this);
+                } catch (const vgi_error& e) {
+                    vgi::log_err("Error detaching layer at {}({}:{}): {}", e.location.file_name(),
+                                 e.location.line(), e.location.column(), e.what());
+                } catch (const std::exception& e) {
+                    vgi::log_err("Error detaching layer: {}", e.what());
+                } catch (...) {
+                    vgi::log_err("Unexpected error detaching layer");
+                }
                 VGI_ASSERT(this->layers.try_remove(i));
             }
 
@@ -615,12 +638,17 @@ namespace vgi {
             if (this->cmdpool) this->logical.destroyCommandPool(this->cmdpool);
             if (this->swapchain) this->logical.destroySwapchainKHR(this->swapchain);
             if (this->allocator) vmaDestroyAllocator(this->allocator);
-            this->logical.destroy();
+
+            std::exchange(this->logical, nullptr).destroy();
         }
 
+        if (this->surface) {
+            SDL_Vulkan_DestroySurface(instance, std::exchange(this->surface, nullptr), nullptr);
+        }
         if (this->handle) {
-            if (this->surface) SDL_Vulkan_DestroySurface(instance, this->surface, nullptr);
-            SDL_DestroyWindow(this->handle);
+            SDL_DestroyWindow(std::exchange(this->handle, nullptr));
         }
     }
+
+    window::~window() { std::move(*this).close(); }
 }  // namespace vgi

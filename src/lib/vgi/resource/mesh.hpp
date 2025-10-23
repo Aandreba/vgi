@@ -129,39 +129,6 @@ namespace vgi {
             return *total_size;
         }
 
-        /// @brief Computes the minimum remaining space a transfer buffer must have to transfer the
-        /// data to/from the mesh
-        /// @param vertex_count The number of vertices the mesh will store
-        /// @param index_count The number of indices the mesh will store
-        /// @return The minimum remaining space a transfer buffer must have to transfer the data
-        /// to/from the mesh, or `std::nullopt` if a transfer buffer of said size would be too
-        /// large.
-        static inline std::optional<size_t> try_transfer_size(size_t vertex_count,
-                                                              size_t index_count) noexcept {
-            if (std::optional<uint32_t> index_count_32 = math::check_cast<uint32_t>(index_count)) {
-                return try_transfer_size(vertex_count, *index_count_32);
-            } else {
-                return std::nullopt;
-            }
-        }
-
-        /// @brief Computes the minimum remaining space a transfer buffer must have to transfer the
-        /// data to/from the mesh
-        /// @param vertex_count The number of vertices the mesh will store
-        /// @param index_count The number of indices the mesh will store
-        /// @return The minimum remaining space a transfer buffer must have to transfer the data
-        /// to/from the mesh, or `std::nullopt` if a transfer buffer of said size would be too
-        /// large.
-        static inline std::optional<size_t> try_transfer_size(size_t vertex_count,
-                                                              uint32_t index_count) noexcept
-            requires(!std::is_same_v<size_t, uint32_t>)
-        {
-            auto vertex_size = math::check_mul<size_t>(vertex_count, sizeof(vertex));
-            auto index_size = math::check_mul<size_t>(index_count, sizeof(T));
-            if (vertex_size && index_size) return math::check_add(*vertex_size, *index_size);
-            return std::nullopt;
-        }
-
         /// @brief Creates a new mesh, creates a transfer buffer with the required size and sets up
         /// the command for the upload
         /// @param parent Window that will create the mesh

@@ -29,24 +29,31 @@ constexpr static vk::Format sdl_to_vk_format(SDL_PixelFormat format,
             return vk::Format::eG8B8G8R8422Unorm;
         case SDL_PIXELFORMAT_UYVY:
             return vk::Format::eB8G8R8G8422Unorm;
-        case SDL_PIXELFORMAT_YV12:
-        case SDL_PIXELFORMAT_IYUV:
-            return vk::Format::eG8B8R83Plane420Unorm;
-        case SDL_PIXELFORMAT_P010:
-            return vk::Format::eG10X6B10X6R10X62Plane420Unorm3Pack16;
         default:
             return vk::Format::eUndefined;
     }
 }
 
-constexpr static int get_num_planes(vk::Format format) noexcept {
+constexpr static SDL_PixelFormat vk_to_sdl_format(vk::Format format) noexcept {
     switch (format) {
-        case vk::Format::eG8B8R83Plane420Unorm:
-            return 3;
-        case vk::Format::eG10X6B10X6R10X62Plane420Unorm3Pack16:
-            return 2;
+        case vk::Format::eR16G16B16A16Sfloat:
+            return SDL_PIXELFORMAT_RGBA64_FLOAT;
+        case vk::Format::eA2B10G10R10UnormPack32:
+            return SDL_PIXELFORMAT_ABGR2101010;
+        case vk::Format::eB8G8R8A8Srgb:
+        case vk::Format::eB8G8R8A8Unorm:
+            return SDL_PIXELFORMAT_ARGB8888;
+        case vk::Format::eR8G8B8A8Srgb:
+        case vk::Format::eR8G8B8A8Unorm:
+            return SDL_PIXELFORMAT_ABGR8888;
+        case vk::Format::eR8Unorm:
+            return SDL_PIXELFORMAT_INDEX8;
+        case vk::Format::eG8B8G8R8422Unorm:
+            return SDL_PIXELFORMAT_YUY2;
+        case vk::Format::eB8G8R8G8422Unorm:
+            return SDL_PIXELFORMAT_UYVY;
         default:
-            return 1;
+            return SDL_PIXELFORMAT_UNKNOWN;
     }
 }
 
@@ -64,8 +71,6 @@ constexpr static size_t bytes_per_pixel(vk::Format format) noexcept {
             return 4;
         case vk::Format::eR16G16B16A16Sfloat:
             return 8;
-        case vk::Format::eG8B8R83Plane420Unorm:
-            return 1;
         default:
             return 4;
     }
@@ -115,13 +120,14 @@ namespace vgi {
                      vk::ImageUsageFlags usage, vk::ImageAspectFlags aspect_mask,
                      vk::SampleCountFlagBits samples, const vk::ComponentMapping& components) :
         aspect_mask(aspect_mask) {
-        this->init(parent, width, height, format, usage, samples, components);
+        this->init(parent, width, height, format, usage, samples, vk::ImageLayout::eUndefined,
+                   components);
     }
 
     texture::texture(const window& parent, vk::CommandBuffer cmdbuf, transfer_buffer& transfer,
                      const surface& surface, vk::ImageUsageFlags usage,
-                     vk::SampleCountFlagBits samples, size_t offset) :
-        aspect_mask(vk::ImageAspectFlagBits::eColor) {
+                     vk::SampleCountFlagBits samples, vk::ImageLayout initial_layout,
+                     size_t offset) : aspect_mask(vk::ImageAspectFlagBits::eColor) {
         vk::Format format = sdl_to_vk_format(surface->format, parent.colorspace());
         if (format == vk::Format::eUndefined) throw vgi_error{"pixel format not supported"};
         vk::ComponentMapping swizzle = {
@@ -132,7 +138,8 @@ namespace vgi {
         std::optional<uint32_t> height = math::check_cast<uint32_t>(surface->h);
         std::optional<uint32_t> pitch = math::check_cast<uint32_t>(surface->pitch);
         if (!width || !height || !pitch) throw vgi_error{"invalid size"};
-        this->init(parent, *width, *height, format, usage, samples, swizzle);
+        this->init(parent, *width, *height, format, usage, samples, vk::ImageLayout::eUndefined,
+                   swizzle);
 
         try {
             size_t pixel_size = bytes_per_pixel(format);
@@ -174,6 +181,12 @@ namespace vgi {
                             .imageOffset = {0, 0, 0},
                             .imageExtent = {*width, *height, 1},
                     });
+
+            if (initial_layout != vk::ImageLayout::eUndefined) {
+                this->change_layout(cmdbuf, vk::ImageLayout::eTransferDstOptimal, initial_layout,
+                                    vk::PipelineStageFlagBits::eTransfer,
+                                    vk::PipelineStageFlagBits::eAllCommands);
+            }
         } catch (...) {
             std::move(*this).destroy(parent);
             throw;
@@ -182,7 +195,7 @@ namespace vgi {
 
     void texture::init(const window& parent, uint32_t width, uint32_t height, vk::Format format,
                        vk::ImageUsageFlags usage, vk::SampleCountFlagBits samples,
-                       const vk::ComponentMapping& components) {
+                       vk::ImageLayout initial_layout, const vk::ComponentMapping& components) {
         const VmaAllocationCreateInfo alloc_create_info{.usage = VMA_MEMORY_USAGE_AUTO};
         const VkImageCreateInfo create_info = vk::ImageCreateInfo{
                 .imageType = vk::ImageType::e2D,
@@ -195,7 +208,7 @@ namespace vgi {
                 .usage = usage | vk::ImageUsageFlagBits::eTransferSrc |
                          vk::ImageUsageFlagBits::eTransferDst,
                 .sharingMode = vk::SharingMode::eExclusive,
-                .initialLayout = vk::ImageLayout::eUndefined,
+                .initialLayout = initial_layout,
         };
 
         VkImage image;
@@ -236,6 +249,29 @@ namespace vgi {
     void texture::destroy(const window& parent) && noexcept {
         if (this->view) parent->destroyImageView(this->view);
         vmaDestroyImage(parent, this->image, this->allocation);
+    }
+
+    vk::SamplerCreateInfo sampler_options::create_info(const window& parent) const noexcept {
+        return vk::SamplerCreateInfo{
+                .flags = this->flags,
+                .magFilter = this->mag_filter,
+                .minFilter = this->min_filter,
+                .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                .addressModeU = this->address_mode_u,
+                .addressModeV = this->address_mode_v,
+                .addressModeW = this->address_mode_w,
+                .mipLodBias = 0.0f,
+                .anisotropyEnable = parent.device().feats().samplerAnisotropy &&
+                                    this->max_anisotropy.has_value(),
+                .maxAnisotropy = (std::min)(this->max_anisotropy.value_or(0.0f),
+                                            parent.device().props().limits.maxSamplerAnisotropy),
+                .compareEnable = this->compare_op.has_value(),
+                .compareOp = this->compare_op.value_or(vk::CompareOp::eNever),
+                .minLod = 0.0f,
+                .maxLod = 0.0f,
+                .borderColor = this->border_color,
+                .unnormalizedCoordinates = this->unnormalized_coordinates,
+        };
     }
 
     void change_layout(vk::CommandBuffer cmdbuf, vk::Image img, vk::ImageLayout old_layout,

@@ -5,7 +5,7 @@
 
 void waves_scene::on_attach(vgi::window& win) {
     vgi::surface surf{VGI_OS("c:/Users/aandr/Pictures/Screenshot 2025-10-17 180616.png")};
-    vgi::texture tex = vgi::texture::upload_and_wait(win, surf);
+    this->image = vgi::texture_sampler{win, vgi::texture::upload_and_wait(win, surf)};
 
     this->mesh = vgi::mesh<uint32_t>::load_plane_and_wait(win, 1024, 1024);
     this->uniforms = vgi::uniform_buffer<waves_uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
@@ -16,11 +16,18 @@ void waves_scene::on_attach(vgi::window& win) {
                     .cull_mode = vk::CullModeFlagBits::eNone,
                     .fron_face = vk::FrontFace::eCounterClockwise,
                     .bindings = {{vk::DescriptorSetLayoutBinding{
-                            .binding = 0,
-                            .descriptorType = vk::DescriptorType::eUniformBuffer,
-                            .descriptorCount = 1,
-                            .stageFlags = vk::ShaderStageFlagBits::eVertex,
-                    }}},
+                                          .binding = 0,
+                                          .descriptorType = vk::DescriptorType::eUniformBuffer,
+                                          .descriptorCount = 1,
+                                          .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                                  },
+                                  vk::DescriptorSetLayoutBinding{
+                                          .binding = 1,
+                                          .descriptorType =
+                                                  vk::DescriptorType::eCombinedImageSampler,
+                                          .descriptorCount = 1,
+                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                  }}},
             }};
 
     this->desc_pool = vgi::descriptor_pool{win, this->pipeline};
@@ -30,19 +37,25 @@ void waves_scene::on_attach(vgi::window& win) {
                 .offset = sizeof(waves_uniform) * i,
                 .range = sizeof(waves_uniform),
         };
+        const vk::DescriptorImageInfo img_info = this->image.descriptor_info(i);
 
         win->updateDescriptorSets(
-                vk::WriteDescriptorSet{
-                        .dstSet = this->desc_pool[i],
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBuffer,
-                        .pBufferInfo = &buf_info,
-                },
+                {vk::WriteDescriptorSet{
+                         .dstSet = this->desc_pool[i],
+                         .dstBinding = 0,
+                         .descriptorCount = 1,
+                         .descriptorType = vk::DescriptorType::eUniformBuffer,
+                         .pBufferInfo = &buf_info,
+                 },
+                 vk::WriteDescriptorSet{
+                         .dstSet = this->desc_pool[i],
+                         .dstBinding = 1,
+                         .descriptorCount = 1,
+                         .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                         .pImageInfo = &img_info,
+                 }},
                 {});
     }
-
-    // std::move(tex).destroy(win);
 }
 
 void waves_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
@@ -69,6 +82,7 @@ void waves_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
 
 void waves_scene::on_detach(vgi::window& win) {
     win->waitIdle();
+    std::move(this->image).destroy(win);
     std::move(this->uniforms).destroy(win);
     std::move(this->pipeline).destroy(win);
     std::move(this->desc_pool).destroy(win);

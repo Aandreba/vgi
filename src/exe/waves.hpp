@@ -6,6 +6,7 @@
 #include <vgi/pipeline.hpp>
 #include <vgi/pipeline/shader.hpp>
 #include <vgi/resource/mesh.hpp>
+#include <vgi/texture.hpp>
 #include <vgi/vgi.hpp>
 
 struct waves_uniform {
@@ -17,6 +18,7 @@ struct waves_scene : public vgi::layer {
     vgi::uniform_buffer<waves_uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;
+    vgi::texture_sampler image;
     vgi::math::camera camera;
 
     void on_attach(vgi::window& win) override;

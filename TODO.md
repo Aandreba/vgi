@@ -1,1 +1,2 @@
 - Use custom allocator functions for both SDL & Vulkan
+- Look into https://vulkan.lunarg.com/doc/view/1.4.304.0/linux/layer_configuration.html

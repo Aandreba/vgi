@@ -105,7 +105,7 @@ namespace vgi {
             physical(other.physical), logical(std::move(other.logical)),
             allocator(std::move(other.allocator)), queue(std::move(other.queue)),
             cmdpool(std::move(other.cmdpool)), swapchain(std::move(other.swapchain)),
-            has_mailbox(other.has_mailbox), has_hdr10(other.has_hdr10) {}
+            no_vsync_mode(other.no_vsync_mode), has_hdr10(other.has_hdr10) {}
 
         /// @brief Move assignment for `window`
         /// @param other Object to move
@@ -117,6 +117,8 @@ namespace vgi {
             return *this;
         }
 
+        /// @brief Information about the accelerator being used by the window
+        inline const vgi::device& device() const noexcept { return this->physical; }
         /// @brief Color format used by the window to present images
         inline vk::Format format() const noexcept { return this->swapchain_info.imageFormat; }
         /// @brief Colorspace used by the window to present images
@@ -184,10 +186,10 @@ namespace vgi {
                 const VmaAllocationCreateInfo& alloc_create_info,
                 VmaAllocationInfo* alloc_info = nullptr) const;
 
-        /// @brief Closes the window, releasing all it's resources
-        VGI_FORCEINLINE void close() && { window tmp = std::move(*this); }
+        /// @brief Closes the window, releasing all it's resources.
+        void close() && noexcept;
 
-        ~window() noexcept;
+        ~window();
 
     private:
         struct flying_command_buffer {
@@ -207,7 +209,7 @@ namespace vgi {
 
         SDL_Window* handle;
         vk::SurfaceKHR surface;
-        const device& physical;
+        const vgi::device& physical;
         vk::Device logical;
         VmaAllocator allocator;
         vk::Queue queue;
@@ -225,8 +227,9 @@ namespace vgi {
         unique_span<vk::Semaphore> render_complete;
         uint32_t current_frame = 0;
         collections::slab<std::unique_ptr<layer>> layers;
-        bool has_mailbox;
+        std::optional<vk::PresentModeKHR> no_vsync_mode;
         bool has_hdr10;
+        bool should_resize = false;
 
         void create_swapchain(uint32_t width, uint32_t height, bool vsync, bool hdr10);
         void create_swapchain(bool vsync, bool hdr10);

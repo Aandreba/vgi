@@ -97,7 +97,7 @@ namespace vgi {
         /// @brief Access specified descriptor set
         /// @param n Index of the descriptor set
         /// @return A reference to a `vk::DescriptorSet`
-        const vk::DescriptorSet& operator[](uint32_t n) const noexcept {
+        inline const vk::DescriptorSet& operator[](uint32_t n) const noexcept {
             VGI_ASSERT(n < this->sets.size());
             return this->sets[n];
         }
@@ -110,6 +110,9 @@ namespace vgi {
         /// @brief Destroys the descriptor pool
         /// @param parent Window used to create the descriptor pool
         void destroy(const window& parent) &&;
+
+        descriptor_pool(const descriptor_pool&) = delete;
+        descriptor_pool& operator=(const descriptor_pool&) = delete;
 
     private:
         vk::DescriptorPool pool;
