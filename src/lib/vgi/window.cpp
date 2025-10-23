@@ -383,8 +383,19 @@ namespace vgi {
     void window::on_event(const SDL_Event& event) {
         SDL_Window* event_window = SDL_GetWindowFromEvent(&event);
         if (event_window == nullptr || event_window == this->handle) {
-            // Mark swapchain as ready to resize
-            this->should_resize |= event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
+            switch (event.type) {
+                // Detach window if close requested
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                case SDL_EVENT_WINDOW_DESTROYED:
+                    this->detach();
+                    break;
+                // Request window to resize as soon as possible
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                    this->should_resize = true;
+                    break;
+                default:
+                    break;
+            }
 
             // Pass event to layers
             for (std::unique_ptr<layer>& s: this->layers.values()) {
@@ -428,25 +439,21 @@ namespace vgi {
                 result = (*this)->acquireNextImageKHR(this->swapchain, UINT64_MAX,
                                                       this->present_complete[this->current_frame]);
             } catch (const vk::OutOfDateKHRError&) {
-                log_err("Window resizing not yet implemented");
-                throw;
+                this->should_resize = true;
             } catch (...) {
                 throw;
             }
 
             switch (result.result) {
-                case vk::Result::eSuccess: {
+                case vk::Result::eSuboptimalKHR:
+                    this->should_resize = true;
+                    [[fallthrough]];
+                case vk::Result::eSuccess:
                     current_image = result.value;
                     goto updates;
-                }
                 case vk::Result::eNotReady:
-                case vk::Result::eTimeout: {
+                case vk::Result::eTimeout:
                     continue;
-                }
-                case vk::Result::eSuboptimalKHR: {
-                    log_warn("Window resizing is not yet implemented");
-                    break;
-                }
                 default:
                     VGI_UNREACHABLE;
                     break;
@@ -487,48 +494,54 @@ namespace vgi {
         }
 
         // Run scene renders
+        vk::RenderingAttachmentInfo color_attachment{
+                .imageView = view,
+                .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .loadOp = vk::AttachmentLoadOp::eClear,
+                .storeOp = vk::AttachmentStoreOp::eStore,
+                .clearValue = {.color = {.float32 = {{0.0f, 0.0f, 0.0f, 1.0f}}}},
+        };
+
+        vk::RenderingAttachmentInfo depth_attachment{
+                .imageView = depth.view,
+                .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+                .loadOp = vk::AttachmentLoadOp::eClear,
+                .storeOp = vk::AttachmentStoreOp::eDontCare,
+                .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}},
+        };
+
+        cmdbuf.beginRendering(vk::RenderingInfo{
+                // TODO Per-scene render area
+                .renderArea = {.extent = this->swapchain_info.imageExtent},
+                .layerCount = 1,
+                .colorAttachmentCount = 1,
+                .pColorAttachments = &color_attachment,
+                .pDepthAttachment = &depth_attachment,
+                .pStencilAttachment = nullptr,
+        });
+
+        const vk::Extent2D render_size = this->draw_size();
+        const float render_width = render_size.width;
+        const float render_height = render_size.height;
         for (std::unique_ptr<layer>& s: this->layers.values()) {
-            vk::RenderingAttachmentInfo color_attachment{
-                    .imageView = view,
-                    .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                    .loadOp = vk::AttachmentLoadOp::eClear,
-                    .storeOp = vk::AttachmentStoreOp::eStore,
-                    // TODO Per-scene clear color
-                    .clearValue = {.color = {.float32 = {{0.0f, 0.0f, 0.0f, 1.0f}}}},
-            };
+            const int32_t scissor_x = std::ceil(render_width * s->scissor_origin.x);
+            const int32_t scissor_y = std::ceil(render_height * s->scissor_origin.y);
+            const uint32_t scissor_w = std::ceil(render_width * s->scissor_size.x);
+            const uint32_t scissor_h = std::ceil(render_height * s->scissor_size.y);
+            cmdbuf.setScissor(0, vk::Rect2D{.offset = {scissor_x, scissor_y},
+                                            .extent = {scissor_w, scissor_h}});
 
-            vk::RenderingAttachmentInfo depth_attachment{
-                    .imageView = depth.view,
-                    .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-                    .loadOp = vk::AttachmentLoadOp::eClear,
-                    .storeOp = vk::AttachmentStoreOp::eDontCare,
-                    // TODO Per-scene clear color
-                    .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}},
-            };
-
-            cmdbuf.beginRendering(vk::RenderingInfo{
-                    // TODO Per-scene render area
-                    .renderArea = {.extent = this->swapchain_info.imageExtent},
-                    .layerCount = 1,
-                    .colorAttachmentCount = 1,
-                    .pColorAttachments = &color_attachment,
-                    .pDepthAttachment = &depth_attachment,
-                    .pStencilAttachment = nullptr,
-            });
-
-            // TODO Per-scene viewport
-            cmdbuf.setViewport(0, vk::Viewport{
-                                          .width = static_cast<float>(this->draw_size().width),
-                                          .height = static_cast<float>(this->draw_size().height),
-                                          .maxDepth = 1.0f,
-                                  });
-
-            // TODO Per-scene scissor
-            cmdbuf.setScissor(0, vk::Rect2D{.extent = this->draw_size()});
+            cmdbuf.setViewport(0, vk::Viewport{.x = render_width * s->viewport_origin.x,
+                                               .y = render_height * s->viewport_origin.y,
+                                               .width = render_width * s->viewport_size.x,
+                                               .height = render_height * s->viewport_size.y,
+                                               .minDepth = 0.0f,
+                                               .maxDepth = 1.0f});
 
             s->on_render(*this, cmdbuf, this->current_frame);
-            cmdbuf.endRendering();
         }
+
+        cmdbuf.endRendering();
 
         // Present frame to the window
         change_layout(cmdbuf, img, vk::ImageLayout::eColorAttachmentOptimal,
