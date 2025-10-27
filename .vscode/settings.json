@@ -113,6 +113,8 @@
         "numbers": "cpp",
         "any": "cpp",
         "complex": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "memory_resource": "cpp",
+        "stdfloat": "cpp"
     }
 }

@@ -5,7 +5,7 @@
 #include "vgi.hpp"
 
 namespace vgi {
-    command_buffer::command_buffer(window& parent) : parent(parent) {
+    command_buffer::command_buffer(vgi::window& parent) : parent(parent) {
         // Find if any of the flying command buffers has finished already
         for (size_t i = 0; i < parent.flying_cmdbufs.size(); ++i) {
             window::flying_command_buffer& flying = parent.flying_cmdbufs[i];

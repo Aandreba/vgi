@@ -19,6 +19,10 @@ namespace vgi {
         glm::vec2 tex;
         /// @brief Normal vector
         glm::vec3 normal;
+        /// @brief Indices of the joints
+        glm::uvec4 joints{0};
+        /// @brief How strongly the joint influences the vertex
+        glm::vec4 weights{0.0f};
 
         //! @cond Doxygen_Supress
         constexpr static vk::VertexInputBindingDescription input_binding(
@@ -31,32 +35,46 @@ namespace vgi {
             };
         }
 
-        constexpr static std::array<vk::VertexInputAttributeDescription, 4> input_attributes(
+        constexpr static std::array<vk::VertexInputAttributeDescription, 6> input_attributes(
                 uint32_t binding = 0) noexcept {
-            return {{{
-                             .location = 0,
-                             .binding = binding,
-                             .format = vk::Format::eR32G32B32Sfloat,
-                             .offset = offsetof(vertex, origin),
-                     },
-                     {
-                             .location = 1,
-                             .binding = binding,
-                             .format = vk::Format::eR32G32B32A32Sfloat,
-                             .offset = offsetof(vertex, color),
-                     },
-                     {
-                             .location = 2,
-                             .binding = binding,
-                             .format = vk::Format::eR32G32Sfloat,
-                             .offset = offsetof(vertex, tex),
-                     },
-                     {
-                             .location = 3,
-                             .binding = binding,
-                             .format = vk::Format::eR32G32B32Sfloat,
-                             .offset = offsetof(vertex, normal),
-                     }}};
+            return {{
+                    {
+                            .location = 0,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32B32Sfloat,
+                            .offset = offsetof(vertex, origin),
+                    },
+                    {
+                            .location = 1,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32B32A32Sfloat,
+                            .offset = offsetof(vertex, color),
+                    },
+                    {
+                            .location = 2,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32Sfloat,
+                            .offset = offsetof(vertex, tex),
+                    },
+                    {
+                            .location = 3,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32B32Sfloat,
+                            .offset = offsetof(vertex, normal),
+                    },
+                    {
+                            .location = 4,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32B32A32Uint,
+                            .offset = offsetof(vertex, joints),
+                    },
+                    {
+                            .location = 5,
+                            .binding = binding,
+                            .format = vk::Format::eR32G32B32A32Sfloat,
+                            .offset = offsetof(vertex, weights),
+                    },
+            }};
         }
     };
     //! @endcond

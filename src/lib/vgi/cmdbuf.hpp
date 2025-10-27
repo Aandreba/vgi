@@ -14,9 +14,6 @@ namespace vgi {
         /// @param parent Window that will create the command buffer
         command_buffer(window& parent);
 
-        command_buffer(const command_buffer&) = delete;
-        command_buffer& operator=(const command_buffer&) = delete;
-
         /// @brief Casts to the underlying `vk::CommandBuffer`
         constexpr operator vk::CommandBuffer() const noexcept { return this->cmdbuf; }
         /// @brief Casts to the underlying `VkCommandBuffer`
@@ -25,6 +22,10 @@ namespace vgi {
         constexpr const vk::CommandBuffer* operator->() const noexcept { return &this->cmdbuf; }
         /// @brief Dereferences the underlying `vk::CommandBuffer`
         constexpr const vk::CommandBuffer& operator*() const noexcept { return this->cmdbuf; }
+
+        /// @brief Access to the command buffer's parent window
+        /// @return Reference to the command buffer's parent window
+        inline window& window() const noexcept { return this->parent; }
 
         /// @brief Submits the command buffer to the device, begining execution of the commands
         /// @param signal_semaphores List of semaphores to be notified whenever the command buffer
@@ -51,9 +52,11 @@ namespace vgi {
         }
 
         ~command_buffer();
+        command_buffer(const command_buffer&) = delete;
+        command_buffer& operator=(const command_buffer&) = delete;
 
     private:
-        window& parent;
+        vgi::window& parent;
         vk::CommandBuffer cmdbuf;
         vk::Fence fence;
 

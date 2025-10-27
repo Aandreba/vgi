@@ -29,14 +29,15 @@ option(VGI_SHARED "Utilitza la versió dinamica de la llibreria per defecte" OFF
 option(VGI_DOXYGEN "Generar documentacio Doxygen" OFF)
 
 # Define library options
+set(BUILD_SHARED_LIBS OFF)
 set(GLM_ENABLE_CXX_20 ON)
 set(GLM_ENABLE_FAST_MATH ON)
 set(GLM_BUILD_TESTS OFF)
 set(SDL_STATIC ON)
 set(SDL_SHARED ON)
-set(BUILD_SHARED_LIBS OFF)
 set(SDLIMAGE_AVIF OFF)
 set(SDLIMAGE_WEBP OFF)
+set(FASTGLTF_COMPILE_AS_CPP20 ON)
 #set(SDL_MAIN_USE_CALLBACKS ON)
 
 # Fetch/Dowload libraries
@@ -58,7 +59,13 @@ FetchContent_Declare(
         GIT_TAG 1.0.1
         OVERRIDE_FIND_PACKAGE
 )
-FetchContent_MakeAvailable(SDL3 SDL3_image glm)
+FetchContent_Declare(
+        fastgltf
+        GIT_REPOSITORY https://github.com/spnda/fastgltf
+        GIT_TAG v0.9.0
+        OVERRIDE_FIND_PACKAGE
+)
+FetchContent_MakeAvailable(SDL3 SDL3_image glm fastgltf)
 
 # Create a library for the Vulkan Memory Allocator
 add_library(vgi_vma STATIC "src/vma.cpp")
@@ -82,7 +89,7 @@ target_literal_utf8(vgi_static)
 target_literal_utf8(vgi_shared)
 
 # Create a list with all of the libraries used by vgi (libraries can only be linked all together, at once)
-set(vgi_libraries glm::glm vgi_vma SDL3_image::SDL3_image)
+set(vgi_libraries glm::glm vgi_vma SDL3_image::SDL3_image fastgltf::fastgltf)
 set(vgi_static_libraries SDL3::SDL3-static)
 set(vgi_shared_libraries SDL3::SDL3-shared)
 
