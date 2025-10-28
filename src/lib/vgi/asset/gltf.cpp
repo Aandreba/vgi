@@ -42,7 +42,70 @@ static const char* mime_type_to_img_type(fastgltf::MimeType mime_type) noexcept 
     }
 }
 
+static vgi::sampler_options parse_sampler(const fastgltf::Sampler* sampler) noexcept {
+    auto raw_mag_filter = sampler ? sampler->magFilter.value_or(fastgltf::Filter::Linear)
+                                  : fastgltf::Filter::Linear;
+    auto raw_min_filter = sampler ? sampler->minFilter.value_or(fastgltf::Filter::Linear)
+                                  : fastgltf::Filter::Linear;
+    auto raw_wrap_u = sampler ? sampler->wrapS : fastgltf::Wrap::Repeat;
+    auto raw_wrap_v = sampler ? sampler->wrapT : fastgltf::Wrap::Repeat;
+
+    vgi::sampler_options options;
+    switch (raw_mag_filter) {
+        case fastgltf::Filter::Linear:
+        case fastgltf::Filter::LinearMipMapLinear:
+        case fastgltf::Filter::LinearMipMapNearest:
+            options.mag_filter = vk::Filter::eLinear;
+            break;
+        case fastgltf::Filter::Nearest:
+        case fastgltf::Filter::NearestMipMapLinear:
+        case fastgltf::Filter::NearestMipMapNearest:
+            options.mag_filter = vk::Filter::eNearest;
+            break;
+    }
+    // TODO Mipmaps
+    switch (raw_min_filter) {
+        case fastgltf::Filter::Linear:
+        case fastgltf::Filter::LinearMipMapLinear:
+        case fastgltf::Filter::LinearMipMapNearest:
+            options.min_filter = vk::Filter::eLinear;
+            break;
+        case fastgltf::Filter::Nearest:
+        case fastgltf::Filter::NearestMipMapLinear:
+        case fastgltf::Filter::NearestMipMapNearest:
+            options.min_filter = vk::Filter::eNearest;
+            break;
+    }
+    switch (raw_wrap_u) {
+        case fastgltf::Wrap::ClampToEdge:
+            options.address_mode_u = vk::SamplerAddressMode::eClampToEdge;
+            break;
+        case fastgltf::Wrap::MirroredRepeat:
+            options.address_mode_u = vk::SamplerAddressMode::eMirroredRepeat;
+            break;
+        case fastgltf::Wrap::Repeat:
+            options.address_mode_u = vk::SamplerAddressMode::eRepeat;
+            break;
+    }
+    switch (raw_wrap_v) {
+        case fastgltf::Wrap::ClampToEdge:
+            options.address_mode_v = vk::SamplerAddressMode::eClampToEdge;
+            break;
+        case fastgltf::Wrap::MirroredRepeat:
+            options.address_mode_v = vk::SamplerAddressMode::eMirroredRepeat;
+            break;
+        case fastgltf::Wrap::Repeat:
+            options.address_mode_v = vk::SamplerAddressMode::eRepeat;
+            break;
+    }
+
+    return options;
+}
+
 namespace vgi::asset::gltf {
+    static material parse_material(const fastgltf::Material& mat) noexcept {
+        return material{.name = mat.name};
+    }
 
     struct TransferOffset {
         size_t buffer;
@@ -51,14 +114,15 @@ namespace vgi::asset::gltf {
     };
 
     struct asset_parser {
+        window& parent;
         fastgltf::Parser& parser;
         fastgltf::Asset& asset;
-        std::vector<surface> images;
+        std::vector<std::shared_ptr<surface>> images;
         std::vector<size_t> transfer_buffers;
         size_t transfer_size = 0;
 
-        asset_parser(fastgltf::Parser& parser, fastgltf::Asset& asset) :
-            parser(parser), asset(asset) {
+        asset_parser(window& parent, fastgltf::Parser& parser, fastgltf::Asset& asset) :
+            parent(parent), parser(parser), asset(asset) {
             this->images.reserve(asset.images.size());
             for (fastgltf::Image& img: asset.images) {
                 if (img.name.empty()) {
@@ -66,7 +130,7 @@ namespace vgi::asset::gltf {
                 } else {
                     vgi::log_dbg("Found image '{}'", img.name);
                 }
-                // TODO
+                this->images.push_back(std::make_shared<surface>(load_image(img.data)));
             }
         }
 
@@ -110,8 +174,6 @@ namespace vgi::asset::gltf {
             }
         }
 
-        surface load_image(fastgltf::Image& img) { return load_image(img.data); }
-
         surface load_image(fastgltf::DataSource& source) {
             if (fastgltf::sources::BufferView* buf_view =
                         std::get_if<fastgltf::sources::BufferView>(&source)) {
@@ -135,7 +197,7 @@ namespace vgi::asset::gltf {
 
         surface load_image(fastgltf::BufferView& buf_view,
                            fastgltf::MimeType mime_type = fastgltf::MimeType::None) {
-            if (buf_view.byteStride == 0) {
+            if (buf_view.byteStride.has_value()) {
                 throw vgi_error{"Invalid image data"};
             } else if (buf_view.meshoptCompression != nullptr) {
                 throw vgi_error{"'EXT_meshopt_compression' is not supported for image data"};
@@ -167,14 +229,9 @@ namespace vgi::asset::gltf {
                 throw vgi_error{"Could not import data from image"};
             }
 
-            const size_t offset = std::min(bytes.size(), buf_view.byteOffset);
-            const size_t stride = buf_view.byteStride.value_or(1);
-
-            if (stride == 1) {
-                return surface{bytes.subspan()};
-            } else {
-                // TODO
-            }
+            return surface{bytes.subspan(std::min(bytes.size(), buf_view.byteOffset),
+                                         std::min(bytes.size(), buf_view.byteLength)),
+                           mime_type_to_img_type(mime_type)};
         }
 
         surface load_image(fastgltf::URI& uri, size_t offset = 0,
@@ -218,6 +275,22 @@ namespace vgi::asset::gltf {
             return buf->subspan(transfer.offset, transfer.byte_size);
         }
 
+        /// @brief Registers the transfer on the command buffer.
+        /// @param transfer Transfer information
+        /// @param src Surface to upload
+        /// @return The new texture with it's data upload already set up
+        vgi::texture upload(TransferOffset transfer, const surface& src) noexcept {
+            transfer_buffer& buf = this->transfer_buffers[transfer.buffer];
+            return vgi::texture{this->parent(),
+                                this->cmdbuf,
+                                buf,
+                                src,
+                                vk::ImageUsageFlagBits::eSampled,
+                                vk::SampleCountFlagBits::e1,
+                                vk::ImageLayout::eShaderReadOnlyOptimal,
+                                transfer.offset};
+        }
+
         ~asset_uploader() {
             for (auto& buf: this->transfer_buffers) {
                 std::move(buf).destroy(cmdbuf.window());
@@ -234,6 +307,7 @@ namespace vgi::asset::gltf {
         fastgltf::Accessor* color = nullptr;
         fastgltf::Accessor* joints = nullptr;
         fastgltf::Accessor* weights = nullptr;
+        vk::PrimitiveTopology topology;
         TransferOffset index_transfer;
         TransferOffset vertex_transfer;
 
@@ -253,8 +327,32 @@ namespace vgi::asset::gltf {
                     this->index_transfer = asset.reserve(*this->indices);
                 }
             }
+
             if (this->position) {
                 this->vertex_transfer = asset.template reserve<vertex>(this->position->count);
+            }
+
+            switch (primitive.type) {
+                case fastgltf::PrimitiveType::Points:
+                    this->topology = vk::PrimitiveTopology::ePointList;
+                    break;
+                case fastgltf::PrimitiveType::Lines:
+                    this->topology = vk::PrimitiveTopology::eLineList;
+                    break;
+                case fastgltf::PrimitiveType::LineStrip:
+                    this->topology = vk::PrimitiveTopology::eLineStrip;
+                    break;
+                case fastgltf::PrimitiveType::Triangles:
+                    this->topology = vk::PrimitiveTopology::eTriangleList;
+                    break;
+                case fastgltf::PrimitiveType::TriangleStrip:
+                    this->topology = vk::PrimitiveTopology::eTriangleStrip;
+                    break;
+                case fastgltf::PrimitiveType::TriangleFan:
+                    this->topology = vk::PrimitiveTopology::eTriangleFan;
+                    break;
+                default:
+                    throw vgi_error{"Unsupported primitive topology"};
             }
         }
 
@@ -358,8 +456,8 @@ namespace vgi::asset::gltf {
     };
 
     struct mesh_parser {
-        std::vector<primitive_parser> primitives;
         std::string name;
+        std::vector<primitive_parser> primitives;
 
         mesh_parser(asset_parser& asset, fastgltf::Mesh& mesh) : name(mesh.name) {
             if (mesh.name.empty()) {
@@ -389,13 +487,38 @@ namespace vgi::asset::gltf {
 
     struct texture_parser {
         std::string name;
+        std::shared_ptr<surface> image;
+        sampler_options sampler;
+        TransferOffset transfer;
 
-        texture_parser(asset_parser& asset, fastgltf::Texture& tex) : name(tex.name) {
+        texture_parser(asset_parser& asset, fastgltf::Texture& tex) :
+            name(tex.name),
+            sampler(parse_sampler(tex.samplerIndex ? &asset->samplers[*tex.samplerIndex]
+                                                   : nullptr)) {
             if (tex.name.empty()) {
                 vgi::log_dbg("Found anonymous texture");
             } else {
                 vgi::log_dbg("Found texture '{}'", tex.name);
             }
+
+            std::optional<size_t> image_index = tex.imageIndex;
+            if (!image_index) image_index = tex.webpImageIndex;
+            if (!image_index) image_index = tex.ddsImageIndex;
+            if (!image_index) image_index = tex.basisuImageIndex;
+            if (!image_index) throw vgi_error{"Texure has no valid image"};
+            this->image = asset.images[*image_index];
+            this->transfer = asset.template reserve<std::byte>(
+                    vgi::texture::transfer_size(asset.parent, *this->image));
+        }
+
+        texture upload(asset_uploader& asset) {
+            vgi::texture tex = asset.upload(this->transfer, *this->image);
+            if (!this->name.empty()) vmaSetAllocationName(asset.parent(), tex, this->name.c_str());
+
+            return texture{
+                    .texture = texture_sampler{asset.parent(), std::move(tex), this->sampler},
+                    .name = std::move(this->name),
+            };
         }
     };
 
@@ -411,10 +534,16 @@ namespace vgi::asset::gltf {
         }
         vgi::log_dbg(VGI_OS("Importing GLTF asset at '{}'"), path.native());
 
-        asset_parser parser{gltf_parser, asset.get()};
+        asset_parser parser{win, gltf_parser, asset.get()};
         std::vector<mesh_parser> meshes;
+        std::vector<texture_parser> textures;
 
         // Setup uploaders
+        textures.reserve(asset->textures.size());
+        for (fastgltf::Texture& tex: asset->textures) {
+            textures.emplace_back(parser, tex);
+        }
+
         meshes.reserve(asset->meshes.size());
         for (fastgltf::Mesh& mesh: asset->meshes) {
             meshes.emplace_back(parser, mesh);
@@ -423,6 +552,11 @@ namespace vgi::asset::gltf {
         // Register uploads
         struct asset result;
         asset_uploader uploader{win, std::move(parser)};
+
+        result.textures.reserve(textures.size());
+        for (texture_parser& tex: textures) {
+            result.textures.push_back(tex.upload(uploader));
+        }
 
         result.meshes.reserve(meshes.size());
         for (mesh_parser& mesh: meshes) {
