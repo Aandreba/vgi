@@ -190,6 +190,12 @@ namespace vgi::asset::gltf {
         return result;
     }
 
+    static scene parse_scene(const fastgltf::Scene& s) {
+        scene result{.name = std::string{s.name}};
+        result.roots.insert(result.roots.cend(), s.nodeIndices.cbegin(), s.nodeIndices.cend());
+        return result;
+    }
+
     struct TransferOffset {
         size_t buffer;
         size_t offset;
@@ -200,6 +206,7 @@ namespace vgi::asset::gltf {
         window& parent;
         fastgltf::Parser& parser;
         fastgltf::Asset& asset;
+        std::vector<scene> scenes;
         std::vector<node> nodes;
         std::vector<std::string> skins;
         std::vector<std::shared_ptr<surface>> images;
@@ -209,6 +216,16 @@ namespace vgi::asset::gltf {
 
         asset_parser(window& parent, fastgltf::Parser& parser, fastgltf::Asset& asset) :
             parent(parent), parser(parser), asset(asset) {
+            this->scenes.reserve(asset.scenes.size());
+            for (fastgltf::Scene& scene: asset.scenes) {
+                if (scene.name.empty()) {
+                    vgi::log_dbg("Found anonymous scene");
+                } else {
+                    vgi::log_dbg("Found scene '{}'", scene.name);
+                }
+                this->scenes.push_back(parse_scene(scene));
+            }
+
             this->nodes.reserve(asset.nodes.size());
             for (fastgltf::Node& node: asset.nodes) {
                 if (node.name.empty()) {
@@ -221,6 +238,11 @@ namespace vgi::asset::gltf {
 
             this->skins.reserve(asset.skins.size());
             for (size_t i = 0; i < asset.skins.size(); ++i) {
+                if (asset.skins[i].name.empty()) {
+                    vgi::log_dbg("Found anonymous skin");
+                } else {
+                    vgi::log_dbg("Found skin '{}'", asset.skins[i].name);
+                }
                 this->skins.push_back(this->parse_skin(i));
             }
 
@@ -709,6 +731,7 @@ namespace vgi::asset::gltf {
 
         // Wait for uploads to complete
         std::move(uploader.cmdbuf).submit_and_wait();
+        result.scenes = std::move(parser.scenes);
         result.nodes = std::move(parser.nodes);
         result.skins = std::move(parser.skins);
 
