@@ -17,6 +17,7 @@
 #include <vgi/log.hpp>
 #include <vgi/math.hpp>
 #include <vgi/vgi.hpp>
+#include <vgi/window.hpp>
 
 #define COPY_VERTEX_FIELD(__field, ...)                                \
     this->template copy_vertex_field<decltype(::vgi::vertex::__field), \
@@ -28,17 +29,46 @@
 constexpr fastgltf::Options LOAD_OPTIONS =
         fastgltf::Options::DecomposeNodeMatrices | fastgltf::Options::GenerateMeshIndices;
 
+static const char* mime_type_to_img_type(fastgltf::MimeType mime_type) noexcept {
+    switch (mime_type) {
+        case fastgltf::MimeType::JPEG:
+            return "JPG";
+        case fastgltf::MimeType::PNG:
+            return "PNG";
+        case fastgltf::MimeType::WEBP:
+            return "WEBP";
+        default:
+            return nullptr;
+    }
+}
+
 namespace vgi::asset::gltf {
+
     struct TransferOffset {
         size_t buffer;
         size_t offset;
         size_t byte_size;
     };
 
-    struct AssetParser {
+    struct asset_parser {
+        fastgltf::Parser& parser;
         fastgltf::Asset& asset;
+        std::vector<surface> images;
         std::vector<size_t> transfer_buffers;
         size_t transfer_size = 0;
+
+        asset_parser(fastgltf::Parser& parser, fastgltf::Asset& asset) :
+            parser(parser), asset(asset) {
+            this->images.reserve(asset.images.size());
+            for (fastgltf::Image& img: asset.images) {
+                if (img.name.empty()) {
+                    vgi::log_dbg("Found anonymous image");
+                } else {
+                    vgi::log_dbg("Found image '{}'", img.name);
+                }
+                // TODO
+            }
+        }
 
         inline fastgltf::Asset* operator->() noexcept { return std::addressof(this->asset); }
         inline const fastgltf::Asset* operator->() const noexcept {
@@ -49,7 +79,7 @@ namespace vgi::asset::gltf {
         /// @param count Number of elements to reserve memory for
         /// @return The transfer information of the reserved memory
         template<class T>
-        inline TransferOffset reserve(size_t count) {
+        TransferOffset reserve(size_t count) {
             std::optional<size_t> byte_size = math::check_mul<size_t>(sizeof(T), count);
             if (!byte_size) throw vgi_error{"arithmetic overflow"};
             if (auto new_transfer_size = math::check_add(this->transfer_size, *byte_size)) {
@@ -65,7 +95,7 @@ namespace vgi::asset::gltf {
         /// @brief Reserves device mapped memory for a later upload
         /// @param accessor GLTF accessor describing the memory to be reserved
         /// @return The transfer information of the reserved memory
-        inline TransferOffset reserve(const fastgltf::Accessor& accessor) {
+        TransferOffset reserve(const fastgltf::Accessor& accessor) {
             size_t element_size =
                     fastgltf::getElementByteSize(accessor.type, accessor.componentType);
             std::optional<size_t> byte_size = math::check_mul(element_size, accessor.count);
@@ -80,17 +110,89 @@ namespace vgi::asset::gltf {
             }
         }
 
-        void parse() {
-            // TODO
+        surface load_image(fastgltf::Image& img) { return load_image(img.data); }
+
+        surface load_image(fastgltf::DataSource& source) {
+            if (fastgltf::sources::BufferView* buf_view =
+                        std::get_if<fastgltf::sources::BufferView>(&source)) {
+                return load_image(this->asset.bufferViews[buf_view->bufferViewIndex],
+                                  buf_view->mimeType);
+            } else if (fastgltf::sources::URI* uri = std::get_if<fastgltf::sources::URI>(&source)) {
+                return load_image(uri->uri, uri->fileByteOffset, uri->mimeType);
+            } else if (fastgltf::sources::Array* array =
+                               std::get_if<fastgltf::sources::Array>(&source)) {
+                return surface{array->bytes, mime_type_to_img_type(array->mimeType)};
+            } else if (fastgltf::sources::Vector* vec =
+                               std::get_if<fastgltf::sources::Vector>(&source)) {
+                return surface{vec->bytes, mime_type_to_img_type(vec->mimeType)};
+            } else if (fastgltf::sources::ByteView* buf =
+                               std::get_if<fastgltf::sources::ByteView>(&source)) {
+                return surface{buf->bytes, mime_type_to_img_type(buf->mimeType)};
+            } else {
+                throw vgi_error{"Could not import data from image"};
+            }
+        }
+
+        surface load_image(fastgltf::BufferView& buf_view,
+                           fastgltf::MimeType mime_type = fastgltf::MimeType::None) {
+            if (buf_view.byteStride == 0) {
+                throw vgi_error{"Invalid image data"};
+            } else if (buf_view.meshoptCompression != nullptr) {
+                throw vgi_error{"'EXT_meshopt_compression' is not supported for image data"};
+            }
+
+            fastgltf::Buffer& buf = asset.buffers[buf_view.bufferIndex];
+            VGI_ASSERT(!std::holds_alternative<fastgltf::sources::BufferView>(buf.data));
+            unique_span<std::byte> byte_buf;
+            std::span<std::byte> bytes;
+
+            if (fastgltf::sources::URI* uri = std::get_if<fastgltf::sources::URI>(&buf.data)) {
+                if (uri->uri.isLocalPath()) {
+                    byte_buf = read_file<std::byte>(uri->uri.fspath());
+                    bytes = byte_buf;
+                    bytes = bytes.subspan(std::min(byte_buf.size(), uri->fileByteOffset));
+                } else {
+                    throw vgi_error{"Data URIs are not supported yet"};
+                }
+            } else if (fastgltf::sources::Array* array =
+                               std::get_if<fastgltf::sources::Array>(&buf.data)) {
+                bytes = array->bytes;
+            } else if (fastgltf::sources::Vector* vec =
+                               std::get_if<fastgltf::sources::Vector>(&buf.data)) {
+                bytes = array->bytes;
+            } else if (fastgltf::sources::ByteView* view =
+                               std::get_if<fastgltf::sources::ByteView>(&buf.data)) {
+                bytes = array->bytes;
+            } else {
+                throw vgi_error{"Could not import data from image"};
+            }
+
+            const size_t offset = std::min(bytes.size(), buf_view.byteOffset);
+            const size_t stride = buf_view.byteStride.value_or(1);
+
+            if (stride == 1) {
+                return surface{bytes.subspan()};
+            } else {
+                // TODO
+            }
+        }
+
+        surface load_image(fastgltf::URI& uri, size_t offset = 0,
+                           fastgltf::MimeType mime_type = fastgltf::MimeType::None) {
+            if (uri.isLocalPath()) {
+                return surface{uri.fspath(), mime_type_to_img_type(mime_type)};
+            } else {
+                throw vgi_error{"Data URIs are not supported yet"};
+            }
         }
     };
 
-    struct AssetUploader {
+    struct asset_uploader {
         fastgltf::Asset& asset;
         command_buffer cmdbuf;
         std::vector<transfer_buffer> transfer_buffers;
 
-        AssetUploader(window& win, AssetParser&& parser) : asset(parser.asset), cmdbuf(win) {
+        asset_uploader(window& win, asset_parser&& parser) : asset(parser.asset), cmdbuf(win) {
             if (parser.transfer_size > 0) parser.transfer_buffers.push_back(parser.transfer_size);
             this->transfer_buffers.reserve(parser.transfer_buffers.size());
             for (size_t size: parser.transfer_buffers) {
@@ -116,14 +218,14 @@ namespace vgi::asset::gltf {
             return buf->subspan(transfer.offset, transfer.byte_size);
         }
 
-        ~AssetUploader() {
+        ~asset_uploader() {
             for (auto& buf: this->transfer_buffers) {
                 std::move(buf).destroy(cmdbuf.window());
             }
         }
     };
 
-    struct PrimitiveParser {
+    struct primitive_parser {
         fastgltf::Accessor* indices = nullptr;
         fastgltf::Accessor* position = nullptr;
         fastgltf::Accessor* normal = nullptr;
@@ -135,7 +237,7 @@ namespace vgi::asset::gltf {
         TransferOffset index_transfer;
         TransferOffset vertex_transfer;
 
-        PrimitiveParser(AssetParser& asset, fastgltf::Primitive& primitive) :
+        primitive_parser(asset_parser& asset, fastgltf::Primitive& primitive) :
             indices(find_accessor(asset, primitive.indicesAccessor)),
             position(find_accessor(asset, primitive, "POSITION")),
             normal(find_accessor(asset, primitive, "NORMAL")),
@@ -156,7 +258,7 @@ namespace vgi::asset::gltf {
             }
         }
 
-        primitive upload(AssetUploader& asset) {
+        primitive upload(asset_uploader& asset) {
             VGI_ASSERT(this->indices != nullptr);
             VGI_ASSERT(this->position != nullptr);
             primitive result;
@@ -165,8 +267,9 @@ namespace vgi::asset::gltf {
             vertex_buffer* vertices = nullptr;
             switch (this->indices->componentType) {
                 case fastgltf::ComponentType::UnsignedShort: {
-                    auto& value = result.mesh.template emplace<mesh<uint16_t>>(
-                            asset.parent(), this->position->count, this->indices->count);
+                    auto& value = result.mesh.template emplace<vgi::mesh<uint16_t>>(
+                            asset.parent(), this->position->count,
+                            static_cast<uint32_t>(this->indices->count));
                     std::span<std::byte> dest = asset.upload(this->index_transfer, value.indices);
                     fastgltf::copyFromAccessor<uint16_t>(asset.asset, *this->indices,
                                                          static_cast<void*>(dest.data()));
@@ -174,8 +277,9 @@ namespace vgi::asset::gltf {
                     break;
                 }
                 case fastgltf::ComponentType::UnsignedInt: {
-                    auto& value = result.mesh.template emplace<mesh<uint32_t>>(
-                            asset.parent(), this->position->count, this->indices->count);
+                    auto& value = result.mesh.template emplace<vgi::mesh<uint32_t>>(
+                            asset.parent(), this->position->count,
+                            static_cast<uint32_t>(this->indices->count));
                     std::span<std::byte> dest = asset.upload(this->index_transfer, value.indices);
                     fastgltf::copyFromAccessor<uint32_t>(asset.asset, *this->indices,
                                                          static_cast<void*>(dest.data()));
@@ -220,13 +324,14 @@ namespace vgi::asset::gltf {
             return result;
         }
 
-        static fastgltf::Accessor* find_accessor(AssetParser& asset,
+        static fastgltf::Accessor* find_accessor(asset_parser& asset,
                                                  std::optional<size_t> index) noexcept {
             if (!index.has_value()) return nullptr;
             return std::addressof(asset->accessors[*index]);
         }
 
-        static fastgltf::Accessor* find_accessor(AssetParser& asset, fastgltf::Primitive& primitive,
+        static fastgltf::Accessor* find_accessor(asset_parser& asset,
+                                                 fastgltf::Primitive& primitive,
                                                  std::string_view name) noexcept {
             auto prim = primitive.findAttribute(name);
             if (prim == primitive.attributes.end()) return nullptr;
@@ -234,7 +339,7 @@ namespace vgi::asset::gltf {
         }
 
         template<class T, size_t offset>
-        void copy_vertex_field(AssetUploader& asset, fastgltf::Accessor& accessor,
+        void copy_vertex_field(asset_uploader& asset, fastgltf::Accessor& accessor,
                                std::byte* vertices) {
             for (size_t i = 0; i < (std::min)(accessor.count, this->position->count); ++i) {
                 std::byte* dest = vertices + i * sizeof(vertex) + offset;
@@ -252,10 +357,11 @@ namespace vgi::asset::gltf {
         }
     };
 
-    struct MeshParser {
-        std::vector<PrimitiveParser> primitives;
+    struct mesh_parser {
+        std::vector<primitive_parser> primitives;
+        std::string name;
 
-        MeshParser(AssetParser& asset, fastgltf::Mesh& mesh) {
+        mesh_parser(asset_parser& asset, fastgltf::Mesh& mesh) : name(mesh.name) {
             if (mesh.name.empty()) {
                 vgi::log_dbg("Found anonymous mesh");
             } else {
@@ -264,31 +370,82 @@ namespace vgi::asset::gltf {
 
             this->primitives.reserve(mesh.primitives.size());
             for (fastgltf::Primitive& primitive: mesh.primitives) {
-                PrimitiveParser parser{asset, primitive};
+                primitive_parser parser{asset, primitive};
                 if (!parser.indices || !parser.position)
                     throw vgi_error{"Mesh has invalid primitive"};
                 this->primitives.push_back(parser);
             }
         }
 
-        void upload(AssetUploader& asset) {
-            for (PrimitiveParser& primitive: this->primitives) {
-                primitive.upload(asset);
+        mesh upload(asset_uploader& asset) {
+            mesh result{.name = std::move(this->name)};
+            result.primitives.reserve(this->primitives.size());
+            for (primitive_parser& primitive: this->primitives) {
+                result.primitives.push_back(primitive.upload(asset));
+            }
+            return result;
+        }
+    };
+
+    struct texture_parser {
+        std::string name;
+
+        texture_parser(asset_parser& asset, fastgltf::Texture& tex) : name(tex.name) {
+            if (tex.name.empty()) {
+                vgi::log_dbg("Found anonymous texture");
+            } else {
+                vgi::log_dbg("Found texture '{}'", tex.name);
             }
         }
     };
 
-    asset import(const std::filesystem::path& path, const std::filesystem::path& directory) {
-        fastgltf::Parser parser;
+    asset import(window& win, const std::filesystem::path& path,
+                 const std::filesystem::path& directory) {
+        fastgltf::Parser gltf_parser;
         fastgltf::GltfFileStream stream{path};
         if (!stream.isOpen()) throw vgi_error{"Error opening file"};
 
-        auto asset = parser.loadGltf(stream, directory, LOAD_OPTIONS);
+        auto asset = gltf_parser.loadGltf(stream, directory, LOAD_OPTIONS);
         if (auto error = asset.error(); error != fastgltf::Error::None) {
             throw vgi_error{fastgltf::getErrorMessage(error).data()};
         }
-
         vgi::log_dbg(VGI_OS("Importing GLTF asset at '{}'"), path.native());
-        return {};
+
+        asset_parser parser{gltf_parser, asset.get()};
+        std::vector<mesh_parser> meshes;
+
+        // Setup uploaders
+        meshes.reserve(asset->meshes.size());
+        for (fastgltf::Mesh& mesh: asset->meshes) {
+            meshes.emplace_back(parser, mesh);
+        }
+
+        // Register uploads
+        struct asset result;
+        asset_uploader uploader{win, std::move(parser)};
+
+        result.meshes.reserve(meshes.size());
+        for (mesh_parser& mesh: meshes) {
+            result.meshes.push_back(mesh.upload(uploader));
+        }
+
+        // Wait for uploads to complete
+        std::move(uploader.cmdbuf).submit_and_wait();
+        return result;
+    }
+
+    void primitive::destroy(window& parent) && {
+        std::visit([&](auto& mesh) { std::move(mesh).destroy(parent); }, this->mesh);
+    }
+
+    void mesh::destroy(window& parent) && {
+        for (primitive& primitive: this->primitives) std::move(primitive).destroy(parent);
+    }
+
+    void texture::destroy(window& parent) && { std::move(this->texture).destroy(parent); }
+
+    void asset::destroy(window& parent) && {
+        for (mesh& mesh: this->meshes) std::move(mesh).destroy(parent);
+        for (texture& tex: this->textures) std::move(tex).destroy(parent);
     }
 }  // namespace vgi::asset::gltf

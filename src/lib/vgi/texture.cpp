@@ -82,13 +82,16 @@ namespace vgi {
     surface::surface(int width, int height, SDL_PixelFormat format) :
         handle(sdl::tri(SDL_CreateSurface(width, height, format))) {}
 
-    surface::surface(const std::filesystem::path::value_type* path) :
-        handle(sdl::tri(
-                IMG_Load_IO(iostream{path, std::ios::binary | std::ios::in}.release(), true))) {}
+    surface::surface(const std::filesystem::path::value_type* path, const char* type) :
+        handle(sdl::tri(IMG_LoadTyped_IO(iostream{path, std::ios::binary | std::ios::in}.release(),
+                                         true, type))) {}
 
-    surface::surface(const std::filesystem::path& path) :
-        handle(sdl::tri(
-                IMG_Load_IO(iostream{path, std::ios::binary | std::ios::in}.release(), true))) {}
+    surface::surface(const std::filesystem::path& path, const char* type) :
+        handle(sdl::tri(IMG_LoadTyped_IO(iostream{path, std::ios::binary | std::ios::in}.release(),
+                                         true, type))) {}
+
+    surface::surface(std::span<const std::byte> bytes, const char* type) :
+        handle(sdl::tri(IMG_LoadTyped_IO(iostream{bytes}.release(), true, type))) {}
 
     surface surface::converted(SDL_PixelFormat format) const {
         return sdl::tri(SDL_ConvertSurface(this->handle, format));

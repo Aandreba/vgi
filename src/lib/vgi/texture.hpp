@@ -23,11 +23,18 @@ namespace vgi {
 
         /// @brief Loads a surface from a file
         /// @param path Path of the file
-        explicit surface(const std::filesystem::path::value_type* path);
+        /// @param type Filename extension that represent this data ("BMP", "GIF", "PNG", etc)
+        explicit surface(const std::filesystem::path::value_type* path, const char* type = nullptr);
 
         /// @brief Loads a surface from a file
         /// @param path Path of the file
-        explicit surface(const std::filesystem::path& path);
+        /// @param type Filename extension that represent this data ("BMP", "GIF", "PNG", etc)
+        explicit surface(const std::filesystem::path& path, const char* type = nullptr);
+
+        /// @brief Loads a surface from a byte array
+        /// @param bytes Byte data of the image
+        /// @param type Filename extension that represent this data ("BMP", "GIF", "PNG", etc)
+        explicit surface(std::span<const std::byte> bytes, const char* type = nullptr);
 
         surface(const surface&) = delete;
         surface& operator=(const surface&) = delete;
