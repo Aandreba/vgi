@@ -278,8 +278,7 @@ namespace vgi::asset::gltf {
         }
     };
 
-    static void importGltf(const std::filesystem::path& path,
-                           const std::filesystem::path& directory) {
+    asset import(const std::filesystem::path& path, const std::filesystem::path& directory) {
         fastgltf::Parser parser;
         fastgltf::GltfFileStream stream{path};
         if (!stream.isOpen()) throw vgi_error{"Error opening file"};
@@ -290,5 +289,6 @@ namespace vgi::asset::gltf {
         }
 
         vgi::log_dbg(VGI_OS("Importing GLTF asset at '{}'"), path.native());
+        return {};
     }
 }  // namespace vgi::asset::gltf

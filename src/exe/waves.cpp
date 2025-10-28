@@ -1,9 +1,11 @@
 #include "waves.hpp"
 
+#include <vgi/asset/gltf.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/texture.hpp>
 
 void waves_scene::on_attach(vgi::window& win) {
+    auto asset = vgi::asset::gltf::import(VGI_OS("D:\\Projects\\vgi\\src\\exe\\assets"));
     vgi::surface surf{VGI_OS("c:/Users/aandr/Pictures/Screenshot 2025-10-17 180616.png")};
     this->image = vgi::texture_sampler{win, vgi::texture::upload_and_wait(win, surf)};
 
