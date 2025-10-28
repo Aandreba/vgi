@@ -10,18 +10,16 @@
 namespace vgi::math {
     /// @brief Helper structure that manages both the view and projection matrices
     struct camera {
-        /// @brief Field of view (in radians)
-        float fovy = glm::radians(60.0f);
-        /// @brief Near plane
-        float z_near = 1e-3f;
-        /// @brief Far plane
-        float z_far = 1e3f;
         /// @brief Position of the camera
         glm::vec3 origin{0.0f, 0.0f, 0.0f};
         /// @brief Direction at which the camera is looking at
         glm::vec3 direction{0.0f, 0.0f, -1.0f};
         /// @brief The camera's upward direction
         glm::vec3 up{0.0f, 1.0f, 0.0f};
+        /// @brief Near plane
+        float z_near = 1e-3f;
+        /// @brief Far plane
+        float z_far = 1e3f;
 
         /// @brief Translates the camera
         /// @param offset Offset by which the camera is moved
@@ -51,30 +49,6 @@ namespace vgi::math {
             this->up = up;
         }
 
-        /// @brief Returns the camera's perspective projection matrix
-        /// @param aspect Aspect ratio of the projection region
-        /// @return The camera's perspective projection matrix
-        inline glm::mat4 perspective(float aspect) const noexcept {
-            glm::mat4 proj = glm::perspective(this->fovy, aspect, this->z_near, this->z_far);
-            proj[1] = -proj[1];
-            return proj;
-        }
-
-        /// @brief Returns the camera's perspective projection matrix
-        /// @param width Width of the projection region
-        /// @param height Height of the projection region
-        /// @return The camera's perspective projection matrix
-        inline glm::mat4 perspective(uint32_t width, uint32_t height) const noexcept {
-            return this->perspective(static_cast<float>(width) / static_cast<float>(height));
-        }
-
-        /// @brief Returns the camera's perspective projection matrix
-        /// @param extent Extent of the projection region
-        /// @return The camera's perspective projection matrix
-        inline glm::mat4 perspective(const vk::Extent2D& extent) const noexcept {
-            return this->perspective(extent.width, extent.height);
-        }
-
         /// @brief Returns the view matrix of the camera
         /// @return View matrix of the camera
         inline glm::mat4 view() const noexcept {
@@ -99,6 +73,63 @@ namespace vgi::math {
             Result[3][2] = glm::dot(f, eye);
 
             return Result;
+        }
+
+    protected:
+        /// @brief Default constructor
+        constexpr camera() = default;
+    };
+
+    /// @brief A camera with perspective projection
+    struct perspective_camera : public camera {
+        /// @brief Field of view (in radians)
+        float fovy = glm::radians(60.0f);
+
+        /// @brief Default constructor
+        constexpr perspective_camera() = default;
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param aspect Aspect ratio of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 projection(float aspect) const noexcept {
+            glm::mat4 proj = glm::perspective(this->fovy, aspect, this->z_near, this->z_far);
+            proj[1] = -proj[1];
+            return proj;
+        }
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param width Width of the projection region
+        /// @param height Height of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 projection(uint32_t width, uint32_t height) const noexcept {
+            return this->projection(static_cast<float>(width) / static_cast<float>(height));
+        }
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param extent Extent of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 projection(const vk::Extent2D& extent) const noexcept {
+            return this->projection(extent.width, extent.height);
+        }
+    };
+
+    /// @brief A camera with orthographic projection
+    struct ortho_camera : public camera {
+        /// @brief Left coordinate of the frustum
+        float left;
+        /// @brief Right coordinate of the frustum
+        float right;
+        /// @brief Top coordinate of the frustum
+        float top;
+        /// @brief Bottom coordinate of the frustum
+        float bottom;
+
+        /// @brief Returns the camera's perspective projection matrix
+        /// @param aspect Aspect ratio of the projection region
+        /// @return The camera's perspective projection matrix
+        inline glm::mat4 projection() const noexcept {
+            return glm::ortho(this->left, this->right, this->top, this->bottom, this->z_near,
+                              this->z_far);
         }
     };
 }  // namespace vgi::math

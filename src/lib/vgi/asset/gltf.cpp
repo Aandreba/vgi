@@ -1,6 +1,7 @@
 #include "gltf.hpp"
 
 #include <bit>
+#include <concepts>
 #include <fastgltf/core.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/math.hpp>
@@ -9,6 +10,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <ranges>
+#include <type_traits>
 #include <vgi/buffer/index.hpp>
 #include <vgi/buffer/transfer.hpp>
 #include <vgi/buffer/vertex.hpp>
@@ -102,9 +104,90 @@ static vgi::sampler_options parse_sampler(const fastgltf::Sampler* sampler) noex
     return options;
 }
 
+template<class T, glm::qualifier Q = glm::defaultp>
+constexpr glm::vec<2, T, Q> to_glm(const fastgltf::math::vec<T, 2>& lhs) noexcept {
+    return glm::vec<2, T, Q>{lhs[0], lhs[1]};
+}
+template<class T, glm::qualifier Q = glm::defaultp>
+constexpr glm::vec<3, T, Q> to_glm(const fastgltf::math::vec<T, 3>& lhs) noexcept {
+    return glm::vec<3, T, Q>{lhs[0], lhs[1], lhs[2]};
+}
+template<class T, glm::qualifier Q = glm::defaultp>
+constexpr glm::vec<4, T, Q> to_glm(const fastgltf::math::vec<T, 4>& lhs) noexcept {
+    return glm::vec<4, T, Q>{lhs[0], lhs[1], lhs[2], lhs[3]};
+}
+template<class T, glm::qualifier Q = glm::defaultp>
+constexpr glm::qua<T, Q> to_glm(const fastgltf::math::quat<T>& lhs) noexcept {
+    return glm::qua<T, Q>{lhs.w(), lhs.x(), lhs.y(), lhs.z()};
+}
+
 namespace vgi::asset::gltf {
-    static material parse_material(const fastgltf::Material& mat) noexcept {
-        return material{.name = mat.name};
+    static material parse_material(const fastgltf::Material& mat) {
+        material result;
+
+        if (mat.normalTexture) {
+            if (mat.normalTexture->texCoordIndex != 0) {
+                throw vgi_error{"Invalid texture coordinate index"};
+            } else if (mat.normalTexture->transform != nullptr) {
+                throw vgi_error{"'KHR_texture_transform' is not supported"};
+            } else {
+                result.normal = normal_texture{.texture = mat.normalTexture->textureIndex,
+                                               .scale = mat.normalTexture->scale};
+            }
+        }
+
+        if (mat.occlusionTexture) {
+            if (mat.occlusionTexture->texCoordIndex != 0) {
+                throw vgi_error{"Invalid texture coordinate index"};
+            } else if (mat.occlusionTexture->transform != nullptr) {
+                throw vgi_error{"'KHR_texture_transform' is not supported"};
+            } else {
+                result.occlusion = occlusion_texture{.texture = mat.occlusionTexture->textureIndex,
+                                                     .strength = mat.occlusionTexture->strength};
+            }
+        }
+
+        if (mat.emissiveTexture) {
+            if (mat.emissiveTexture->texCoordIndex != 0) {
+                throw vgi_error{"Invalid texture coordinate index"};
+            } else if (mat.emissiveTexture->transform != nullptr) {
+                throw vgi_error{"'KHR_texture_transform' is not supported"};
+            } else {
+                result.emissive = emissive_texture{.texture = mat.emissiveTexture->textureIndex,
+                                                   .factor = to_glm(mat.emissiveFactor)};
+            }
+        }
+
+        switch (mat.alphaMode) {
+            case fastgltf::AlphaMode::Opaque:
+                result.alpha_mode = alpha_mode::opaque;
+                break;
+            case fastgltf::AlphaMode::Mask:
+                result.alpha_mode = alpha_mode::mask;
+                break;
+            case fastgltf::AlphaMode::Blend:
+                result.alpha_mode = alpha_mode::blend;
+                break;
+        }
+
+        result.alpha_cutoff = mat.alphaCutoff;
+        result.double_sided = mat.doubleSided;
+        return result;
+    }
+
+    static node parse_node(const fastgltf::Node& n) {
+        const fastgltf::TRS* trs = std::get_if<fastgltf::TRS>(std::addressof(n.transform));
+        VGI_ASSERT(trs != nullptr);
+        node result{
+                .local_transform = {to_glm(trs->translation), to_glm(trs->rotation),
+                                    to_glm(trs->scale)},
+                .mesh = n.meshIndex,
+                .skin = n.skinIndex,
+                .name = std::string{n.name},
+        };
+
+        result.children.insert(result.children.cend(), n.children.cbegin(), n.children.cend());
+        return result;
     }
 
     struct TransferOffset {
@@ -117,12 +200,30 @@ namespace vgi::asset::gltf {
         window& parent;
         fastgltf::Parser& parser;
         fastgltf::Asset& asset;
+        std::vector<node> nodes;
+        std::vector<std::string> skins;
         std::vector<std::shared_ptr<surface>> images;
+        std::vector<std::shared_ptr<material>> materials;
         std::vector<size_t> transfer_buffers;
         size_t transfer_size = 0;
 
         asset_parser(window& parent, fastgltf::Parser& parser, fastgltf::Asset& asset) :
             parent(parent), parser(parser), asset(asset) {
+            this->nodes.reserve(asset.nodes.size());
+            for (fastgltf::Node& node: asset.nodes) {
+                if (node.name.empty()) {
+                    vgi::log_dbg("Found anonymous node");
+                } else {
+                    vgi::log_dbg("Found node '{}'", node.name);
+                }
+                this->nodes.push_back(parse_node(node));
+            }
+
+            this->skins.reserve(asset.skins.size());
+            for (size_t i = 0; i < asset.skins.size(); ++i) {
+                this->skins.push_back(this->parse_skin(i));
+            }
+
             this->images.reserve(asset.images.size());
             for (fastgltf::Image& img: asset.images) {
                 if (img.name.empty()) {
@@ -131,6 +232,16 @@ namespace vgi::asset::gltf {
                     vgi::log_dbg("Found image '{}'", img.name);
                 }
                 this->images.push_back(std::make_shared<surface>(load_image(img.data)));
+            }
+
+            this->materials.reserve(asset.images.size());
+            for (fastgltf::Material& mat: asset.materials) {
+                if (mat.name.empty()) {
+                    vgi::log_dbg("Found anonymous material");
+                } else {
+                    vgi::log_dbg("Found material '{}'", mat.name);
+                }
+                this->materials.push_back(std::make_shared<material>(parse_material(mat)));
             }
         }
 
@@ -242,6 +353,33 @@ namespace vgi::asset::gltf {
                 throw vgi_error{"Data URIs are not supported yet"};
             }
         }
+
+        std::string parse_skin(size_t index) {
+            const fastgltf::Skin& skin = this->asset.skins[index];
+
+            if (skin.inverseBindMatrices) {
+                auto range = fastgltf::iterateAccessor<glm::mat4>(
+                        this->asset, this->asset.accessors[*skin.inverseBindMatrices]);
+
+                auto it = range.begin();
+                for (size_t i = 0; i < skin.joints.size(); ++i, ++it) {
+                    if (it == range.end()) throw vgi_error{"Invalid skin data"};
+                    this->nodes[skin.joints[i]].attachments.emplace_back(index, i, *it);
+                }
+            } else {
+                for (size_t i = 0; i < skin.joints.size(); ++i) {
+                    this->nodes[skin.joints[i]].attachments.emplace_back(index, i);
+                }
+            }
+
+            return std::string{skin.name};
+        }
+
+        template<std::ranges::range R>
+            requires(std::is_same_v<std::ranges::range_value_t<R>, glm::mat4>)
+        std::string parse_skin(std::string_view name, std::span<const size_t> joints, R&& r) {
+            return name;
+        }
     };
 
     struct asset_uploader {
@@ -249,7 +387,7 @@ namespace vgi::asset::gltf {
         command_buffer cmdbuf;
         std::vector<transfer_buffer> transfer_buffers;
 
-        asset_uploader(window& win, asset_parser&& parser) : asset(parser.asset), cmdbuf(win) {
+        asset_uploader(window& win, asset_parser& parser) : asset(parser.asset), cmdbuf(win) {
             if (parser.transfer_size > 0) parser.transfer_buffers.push_back(parser.transfer_size);
             this->transfer_buffers.reserve(parser.transfer_buffers.size());
             for (size_t size: parser.transfer_buffers) {
@@ -307,6 +445,7 @@ namespace vgi::asset::gltf {
         fastgltf::Accessor* color = nullptr;
         fastgltf::Accessor* joints = nullptr;
         fastgltf::Accessor* weights = nullptr;
+        std::shared_ptr<material> material;
         vk::PrimitiveTopology topology;
         TransferOffset index_transfer;
         TransferOffset vertex_transfer;
@@ -319,7 +458,9 @@ namespace vgi::asset::gltf {
             texcoord(find_accessor(asset, primitive, "TEXCOORD_0")),
             color(find_accessor(asset, primitive, "COLOR_0")),
             joints(find_accessor(asset, primitive, "JOINTS_0")),
-            weights(find_accessor(asset, primitive, "WEIGHTS_0")) {
+            weights(find_accessor(asset, primitive, "WEIGHTS_0")),
+            material(primitive.materialIndex ? asset.materials[*primitive.materialIndex]
+                                             : nullptr) {
             if (this->indices) {
                 if (this->indices->count > static_cast<size_t>(UINT32_MAX)) {
                     throw vgi_error{"Primitive has too many indices"};
@@ -359,7 +500,10 @@ namespace vgi::asset::gltf {
         primitive upload(asset_uploader& asset) {
             VGI_ASSERT(this->indices != nullptr);
             VGI_ASSERT(this->position != nullptr);
+
             primitive result;
+            result.material = this->material;
+            result.topology = this->topology;
 
             // Upload indices
             vertex_buffer* vertices = nullptr;
@@ -551,7 +695,7 @@ namespace vgi::asset::gltf {
 
         // Register uploads
         struct asset result;
-        asset_uploader uploader{win, std::move(parser)};
+        asset_uploader uploader{win, parser};
 
         result.textures.reserve(textures.size());
         for (texture_parser& tex: textures) {
@@ -565,6 +709,9 @@ namespace vgi::asset::gltf {
 
         // Wait for uploads to complete
         std::move(uploader.cmdbuf).submit_and_wait();
+        result.nodes = std::move(parser.nodes);
+        result.skins = std::move(parser.skins);
+
         return result;
     }
 

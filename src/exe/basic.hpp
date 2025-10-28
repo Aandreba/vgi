@@ -19,7 +19,7 @@ struct basic_scene : public vgi::layer {
     vgi::uniform_buffer<uniform> uniforms;
     vgi::graphics_pipeline pipeline;
     vgi::descriptor_pool desc_pool;
-    vgi::math::camera camera;
+    vgi::math::perspective_camera camera;
 
     void on_attach(vgi::window& win) override;
     void on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,

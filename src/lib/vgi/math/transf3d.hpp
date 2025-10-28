@@ -46,6 +46,14 @@ namespace vgi::math {
         constexpr transf3d(const glm::vec3& origin, float scale) noexcept :
             basis(scale), origin(origin) {}
 
+        /// @brief Creates a transformation from an origin, rotation and scale
+        /// @param origin Origin of the transformation
+        /// @param quat Quaternion representing the transform's rotation
+        /// @param scale Scale factor of the transformation
+        inline transf3d(const glm::vec3& origin, const glm::quat& quat,
+                        const glm::vec3& scale) noexcept :
+            basis(glm::scale(glm::mat4_cast(quat), scale)), origin(origin) {}
+
         /// @brief Creates a transformation from a rotation
         /// @param quat Quaternion representing the transform's rotation
         inline transf3d(const glm::quat& quat) noexcept :
@@ -55,7 +63,7 @@ namespace vgi::math {
         /// @param quat Quaternion representing the transform's rotation
         /// @param scale Scale factor of the transformation
         inline transf3d(const glm::quat& quat, const glm::vec3& scale) noexcept :
-            transf3d(glm::scale(glm::mat4_cast(quat), scale)) {}
+            basis(glm::scale(glm::mat4_cast(quat), scale)), origin(0.0f) {}
 
         /// @brief Creates a transformation from a rotation and scaling factor
         /// @param quat Quaternion representing the transform's rotation
