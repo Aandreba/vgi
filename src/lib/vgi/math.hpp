@@ -294,7 +294,7 @@ namespace vgi::math {
         }
 
         if constexpr (unsigned_integral<T>) {
-            return L::min();
+            return L::max();
         } else if (lhs < 0) {
             return L::min();
         } else {
@@ -317,7 +317,7 @@ namespace vgi::math {
         }
 
         if constexpr (unsigned_integral<T>) {
-            return L::max();
+            return L::min();
         } else if (lhs < 0) {
             return L::min();
         } else {

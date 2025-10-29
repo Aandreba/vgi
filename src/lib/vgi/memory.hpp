@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -15,6 +16,11 @@
 #include "math.hpp"
 
 namespace vgi {
+    template<class U, class T>
+    concept unique_span_move_constructor = std::same_as<std::remove_cv_t<U>, std::remove_cv_t<T>> &&
+                                           (!std::is_const_v<U> || std::is_const_v<T>) &&
+                                           (!std::is_volatile_v<U> || std::is_volatile_v<T>);
+
     /// A simple host buffer with constant size, usefull as an unresizable 'std::vector'
     template<class T>
     struct unique_span {
@@ -39,10 +45,32 @@ namespace vgi {
         /// @param len Number of elements stored
         constexpr unique_span(pointer VGI_RESTRICT ptr, size_t len) noexcept : ptr(ptr), len(len) {}
 
+        /// @brief Move constructor
+        /// @param other Object to move
+        template<class U>
+            requires(unique_span_move_constructor<U, T>)
+        constexpr unique_span(unique_span<U>&& other) noexcept :
+            ptr(std::exchange(other.ptr, nullptr)), len(std::exchange(other.len, 0)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to move
+        template<class U>
+            requires(unique_span_move_constructor<U, T>)
+        constexpr unique_span& operator=(unique_span<U>&& other) noexcept {
+            if constexpr (std::is_same_v<T, U>) {
+                if (this == &other) [[unlikely]]
+                    return *this;
+            }
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
         /// @brief Creates a new span by moving the values from `other` into it
         /// @param other Vector with elements to move to the span
         template<class R>
-            requires(std::ranges::sized_range<R> && std::ranges::input_range<R> &&
+            requires(!unique_span_move_constructor<R, T> && std::ranges::sized_range<R> &&
+                     std::ranges::input_range<R> &&
                      std::constructible_from<value_type, std::ranges::range_rvalue_reference_t<R>>)
         explicit unique_span(R&& other) {
             size_t size = std::ranges::size(other);
@@ -51,7 +79,7 @@ namespace vgi {
             if (size == 0) return;
 
             value_type* VGI_RESTRICT data =
-                    static_cast<pointer>(::operator new(byte_size, alignment));
+                    static_cast<value_type*>(::operator new(byte_size, alignment));
             try {
                 std::ranges::uninitialized_move(std::ranges::begin(other), std::ranges::end(other),
                                                 data, data + size);
@@ -64,30 +92,14 @@ namespace vgi {
             this->len = size;
         }
 
-        // Make the struct non-copyable
-        unique_span(const unique_span&) = delete;
-        unique_span& operator=(const unique_span&) = delete;
-
-        //! @cond Doxygen_Suppress
-        constexpr unique_span(unique_span&& other) noexcept :
-            ptr(std::exchange(other.ptr, nullptr)), len(std::exchange(other.len, 0)) {}
-
-        constexpr unique_span& operator=(unique_span&& other) noexcept {
-            if (this == &other) [[unlikely]]
-                return *this;
-            std::destroy_at(this);
-            std::construct_at(this, std::move(other));
-            return *this;
-        }
-
         template<class R>
-            requires(std::ranges::sized_range<R> && std::ranges::input_range<R> &&
+            requires(!unique_span_move_constructor<R, T> && std::ranges::sized_range<R> &&
+                     std::ranges::input_range<R> &&
                      std::constructible_from<value_type, std::ranges::range_rvalue_reference_t<R>>)
         constexpr unique_span& operator=(R&& other) {
             std::ignore = std::exchange(*this, unique_span{std::move(other)});
             return *this;
         }
-        //! @endcond
 
         /// @return The number of elements stored by the span
         constexpr size_type size() const noexcept { return this->ptr ? this->len : 0; }
@@ -196,9 +208,15 @@ namespace vgi {
                               static_cast<std::align_val_t>(alignof(T)));
         }
 
+        unique_span(const unique_span&) = delete;
+        unique_span& operator=(const unique_span&) = delete;
+
     private:
         value_type* VGI_RESTRICT ptr = nullptr;
         size_t len = 0;
+
+        template<class U>
+        friend struct unique_span;
     };
 
     /// @brief Allocate a `unique_span` without initializing the values

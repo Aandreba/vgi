@@ -179,8 +179,9 @@ namespace vgi::asset::gltf {
         const fastgltf::TRS* trs = std::get_if<fastgltf::TRS>(std::addressof(n.transform));
         VGI_ASSERT(trs != nullptr);
         node result{
-                .local_transform = {to_glm(trs->translation), to_glm(trs->rotation),
-                                    to_glm(trs->scale)},
+                .local_origin = to_glm(trs->translation),
+                .local_rotation = to_glm(trs->rotation),
+                .local_scale = to_glm(trs->scale),
                 .mesh = n.meshIndex,
                 .skin = n.skinIndex,
                 .name = std::string{n.name},
@@ -209,6 +210,7 @@ namespace vgi::asset::gltf {
         std::vector<scene> scenes;
         std::vector<node> nodes;
         std::vector<std::string> skins;
+        std::vector<animation> animations;
         std::vector<std::shared_ptr<surface>> images;
         std::vector<std::shared_ptr<material>> materials;
         std::vector<size_t> transfer_buffers;
@@ -244,6 +246,16 @@ namespace vgi::asset::gltf {
                     vgi::log_dbg("Found skin '{}'", asset.skins[i].name);
                 }
                 this->skins.push_back(this->parse_skin(i));
+            }
+
+            this->animations.reserve(asset.skins.size());
+            for (size_t i = 0; i < asset.animations.size(); ++i) {
+                if (asset.animations[i].name.empty()) {
+                    vgi::log_dbg("Found anonymous animation");
+                } else {
+                    vgi::log_dbg("Found animation '{}'", asset.animations[i].name);
+                }
+                this->animations.push_back(this->parse_animation(i));
             }
 
             this->images.reserve(asset.images.size());
@@ -401,6 +413,139 @@ namespace vgi::asset::gltf {
             requires(std::is_same_v<std::ranges::range_value_t<R>, glm::mat4>)
         std::string parse_skin(std::string_view name, std::span<const size_t> joints, R&& r) {
             return name;
+        }
+
+        animation_sampler parse_animation_sampler(const fastgltf::AnimationSampler& sampler) {
+            animation_sampler result;
+            switch (sampler.interpolation) {
+                case fastgltf::AnimationInterpolation::Step:
+                    result.interpolation = interpolation::step;
+                    break;
+                case fastgltf::AnimationInterpolation::Linear:
+                    result.interpolation = interpolation::linear;
+                    break;
+                case fastgltf::AnimationInterpolation::CubicSpline:
+                    result.interpolation = interpolation::cubic_spline;
+                    break;
+            }
+
+            const fastgltf::Accessor& input = this->asset.accessors[sampler.inputAccessor];
+            unique_span<float> keyframes = make_unique_span_for_overwrite<float>(input.count);
+            fastgltf::copyFromAccessor<float>(this->asset, input, keyframes.data());
+
+            const fastgltf::Accessor& output = this->asset.accessors[sampler.outputAccessor];
+            unique_span<float> values = make_unique_span_for_overwrite<float>(
+                    fastgltf::getNumComponents(output.type) * output.count);
+
+            switch (output.componentType) {
+                case fastgltf::ComponentType::Float:
+                    fastgltf::copyComponentsFromAccessor<float>(this->asset, output, values.data());
+                    break;
+                case fastgltf::ComponentType::Byte: {
+                    float* ptr = values.data();
+                    for (auto val: fastgltf::iterateAccessor<glm::i8vec4>(this->asset, output)) {
+                        glm::vec4 norm = glm::max(glm::vec4{val} / 127.0f, -1.0f);
+                        ptr[0] = norm.x;
+                        ptr[1] = norm.y;
+                        ptr[2] = norm.z;
+                        ptr[3] = norm.w;
+                        ptr += 4;
+                    }
+                    break;
+                }
+                case fastgltf::ComponentType::UnsignedByte: {
+                    float* ptr = values.data();
+                    for (auto val: fastgltf::iterateAccessor<glm::u8vec4>(this->asset, output)) {
+                        glm::vec4 norm = glm::vec4{val} / 255.0f;
+                        ptr[0] = norm.x;
+                        ptr[1] = norm.y;
+                        ptr[2] = norm.z;
+                        ptr[3] = norm.w;
+                        ptr += 4;
+                    }
+                    break;
+                }
+                case fastgltf::ComponentType::Short: {
+                    float* ptr = values.data();
+                    for (auto val: fastgltf::iterateAccessor<glm::i16vec4>(this->asset, output)) {
+                        glm::vec4 norm = glm::max(glm::vec4{val} / 32767.0f, -1.0f);
+                        ptr[0] = norm.x;
+                        ptr[1] = norm.y;
+                        ptr[2] = norm.z;
+                        ptr[3] = norm.w;
+                        ptr += 4;
+                    }
+                    break;
+                }
+                case fastgltf::ComponentType::UnsignedShort: {
+                    float* ptr = values.data();
+                    for (auto val: fastgltf::iterateAccessor<glm::u16vec4>(this->asset, output)) {
+                        glm::vec4 norm = glm::vec4{val} / 65535.0f;
+                        ptr[0] = norm.x;
+                        ptr[1] = norm.y;
+                        ptr[2] = norm.z;
+                        ptr[3] = norm.w;
+                        ptr += 4;
+                    }
+                    break;
+                }
+                default:
+                    throw vgi_error{"Animation sampler value type is not supported"};
+            }
+
+            result.keyframes = std::move(keyframes);
+            result.values = std::move(values);
+            return result;
+        }
+
+        animation parse_animation(size_t index) {
+            const fastgltf::Animation& anim = this->asset.animations[index];
+            animation result{.name = std::string{anim.name}};
+
+            result.samplers.reserve(anim.samplers.size());
+            for (const fastgltf::AnimationSampler& sampler: anim.samplers) {
+                result.samplers.push_back(this->parse_animation_sampler(sampler));
+            }
+
+            for (const fastgltf::AnimationChannel& channel: anim.channels) {
+                if (!channel.nodeIndex.has_value()) continue;
+                node& node = this->nodes[*channel.nodeIndex];
+                node_animation& result = node.animations[index];
+                switch (channel.path) {
+                    case fastgltf::AnimationPath::Translation: {
+                        if (result.origin.has_value()) {
+                            throw vgi_error{
+                                    "Node translation has multiple samplers for the same "
+                                    "animation"};
+                        }
+                        result.origin = channel.samplerIndex;
+                        break;
+                    }
+                    case fastgltf::AnimationPath::Rotation: {
+                        if (result.rotation.has_value()) {
+                            throw vgi_error{
+                                    "Node rotation has multiple samplers for the same "
+                                    "animation"};
+                        }
+                        result.rotation = channel.samplerIndex;
+                        break;
+                    }
+                    case fastgltf::AnimationPath::Scale: {
+                        if (result.scale.has_value()) {
+                            throw vgi_error{
+                                    "Node scale has multiple samplers for the same "
+                                    "animation"};
+                        }
+                        result.scale = channel.samplerIndex;
+                        break;
+                    }
+                    case fastgltf::AnimationPath::Weights:
+                        log_warn("Morph target animations are not supported");
+                        break;
+                }
+            }
+
+            return result;
         }
     };
 
@@ -688,7 +833,7 @@ namespace vgi::asset::gltf {
         }
     };
 
-    asset import(window& win, const std::filesystem::path& path,
+    asset::asset(window& win, const std::filesystem::path& path,
                  const std::filesystem::path& directory) {
         fastgltf::Parser gltf_parser;
         fastgltf::GltfFileStream stream{path};
@@ -716,26 +861,154 @@ namespace vgi::asset::gltf {
         }
 
         // Register uploads
-        struct asset result;
         asset_uploader uploader{win, parser};
 
-        result.textures.reserve(textures.size());
+        this->textures.reserve(textures.size());
         for (texture_parser& tex: textures) {
-            result.textures.push_back(tex.upload(uploader));
+            this->textures.push_back(tex.upload(uploader));
         }
 
-        result.meshes.reserve(meshes.size());
+        this->meshes.reserve(meshes.size());
         for (mesh_parser& mesh: meshes) {
-            result.meshes.push_back(mesh.upload(uploader));
+            this->meshes.push_back(mesh.upload(uploader));
         }
 
         // Wait for uploads to complete
         std::move(uploader.cmdbuf).submit_and_wait();
-        result.scenes = std::move(parser.scenes);
-        result.nodes = std::move(parser.nodes);
-        result.skins = std::move(parser.skins);
+        this->scenes = std::move(parser.scenes);
+        this->nodes = std::move(parser.nodes);
+        this->skins = std::move(parser.skins);
+        this->animations = std::move(parser.animations);
+    }
 
-        return result;
+    template<>
+    glm::vec3 animation_sampler::sample<glm::vec3>(duration_type time) const {
+        VGI_ASSERT(this->values.size() > 0);
+        VGI_ASSERT(this->values.size() % 3 == 0);
+
+        size_t lower_bound =
+                std::ranges::lower_bound(this->keyframes, time.count()) - this->keyframes.data();
+        size_t upper_bound = math::sat_add<size_t>(lower_bound, 1);
+        float dur, t;
+
+        if (upper_bound >= this->keyframes.size()) {
+            upper_bound = this->keyframes.size() - 1;
+            lower_bound = math::sat_sub<size_t>(upper_bound, 1);
+            dur = this->keyframes[upper_bound] - this->keyframes[lower_bound];
+            t = 1.0f;
+        } else {
+            dur = this->keyframes[upper_bound] - this->keyframes[lower_bound];
+            t = (time.count() - this->keyframes[lower_bound]) / dur;
+        }
+
+        switch (this->interpolation) {
+            case interpolation::step: {
+                const float* xyz = this->values.data() + 3 * lower_bound;
+                return glm::vec3{xyz[0], xyz[1], xyz[2]};
+            }
+            case interpolation::linear: {
+                const float* lhs = this->values.data() + 3 * lower_bound;
+                const float* rhs = this->values.data() + 3 * upper_bound;
+                return glm::mix(glm::vec3{lhs[0], lhs[1], lhs[2]},
+                                glm::vec3{rhs[0], rhs[1], rhs[2]}, t);
+            }
+            case interpolation::cubic_spline: {
+                const float* in = this->values.data() + 0 * 3 * this->keyframes.size();
+                const float* val = this->values.data() + 1 * 3 * this->keyframes.size();
+                const float* out = this->values.data() + 2 * 3 * this->keyframes.size();
+
+                const float* lhs = in + 3 * lower_bound;
+                glm::vec3 lhs_in{lhs[0], lhs[1], lhs[2]};
+                lhs = val + 3 * lower_bound;
+                glm::vec3 lhs_val{lhs[0], lhs[1], lhs[2]};
+                lhs = out + 3 * lower_bound;
+                glm::vec3 lhs_out{lhs[0], lhs[1], lhs[2]};
+
+                const float* rhs = in + 3 * upper_bound;
+                glm::vec3 rhs_in{rhs[0], rhs[1], rhs[2]};
+                rhs = val + 3 * upper_bound;
+                glm::vec3 rhs_val{rhs[0], rhs[1], rhs[2]};
+                rhs = out + 3 * upper_bound;
+                glm::vec3 rhs_out{rhs[0], rhs[1], rhs[2]};
+
+                const float t3 = t * t * t;
+                const float t2 = t * t;
+
+                glm::vec3 res = (2.0f * t3 - 3.0f * t2 + 1.0f) * lhs_val;
+                res += dur * (t3 - 2.0f * t2 + t) * lhs_out;
+                res += (-2.0f * t3 + 3.0f * t2) * rhs_val;
+                res += dur * (t3 - t2) * rhs_in;
+
+                return res;
+            }
+            default:
+                VGI_UNREACHABLE;
+        }
+    }
+
+    template<>
+    glm::quat animation_sampler::sample<glm::quat>(duration_type time) const {
+        VGI_ASSERT(this->values.size() > 0);
+        VGI_ASSERT(this->values.size() % 4 == 0);
+
+        size_t lower_bound =
+                std::ranges::lower_bound(this->keyframes, time.count()) - this->keyframes.data();
+        size_t upper_bound = math::sat_add<size_t>(lower_bound, 1);
+        float dur, t;
+
+        if (upper_bound >= this->keyframes.size()) {
+            upper_bound = this->keyframes.size() - 1;
+            lower_bound = math::sat_sub<size_t>(upper_bound, 1);
+            dur = this->keyframes[upper_bound] - this->keyframes[lower_bound];
+            t = 1.0f;
+        } else {
+            dur = this->keyframes[upper_bound] - this->keyframes[lower_bound];
+            t = (time.count() - this->keyframes[lower_bound]) / dur;
+        }
+
+        switch (this->interpolation) {
+            case interpolation::step: {
+                const float* xyzw = this->values.data() + 4 * lower_bound;
+                return glm::quat{xyzw[3], xyzw[0], xyzw[1], xyzw[2]};
+            }
+            case interpolation::linear: {
+                const float* lhs = this->values.data() + 4 * lower_bound;
+                const float* rhs = this->values.data() + 4 * upper_bound;
+                return glm::slerp(glm::quat{lhs[3], lhs[0], lhs[1], lhs[2]},
+                                  glm::quat{rhs[3], rhs[0], rhs[1], rhs[2]}, t);
+            }
+            case interpolation::cubic_spline: {
+                const float* in = this->values.data() + 0 * 4 * this->keyframes.size();
+                const float* val = this->values.data() + 1 * 4 * this->keyframes.size();
+                const float* out = this->values.data() + 2 * 4 * this->keyframes.size();
+
+                const float* lhs = in + 4 * lower_bound;
+                glm::quat lhs_in{lhs[3], lhs[0], lhs[1], lhs[2]};
+                lhs = val + 4 * lower_bound;
+                glm::quat lhs_val{lhs[3], lhs[0], lhs[1], lhs[2]};
+                lhs = out + 4 * lower_bound;
+                glm::quat lhs_out{lhs[3], lhs[0], lhs[1], lhs[2]};
+
+                const float* rhs = in + 4 * upper_bound;
+                glm::quat rhs_in{rhs[3], rhs[0], rhs[1], rhs[2]};
+                rhs = val + 4 * upper_bound;
+                glm::quat rhs_val{rhs[3], rhs[0], rhs[1], rhs[2]};
+                rhs = out + 4 * upper_bound;
+                glm::quat rhs_out{rhs[3], rhs[0], rhs[1], rhs[2]};
+
+                const float t3 = t * t * t;
+                const float t2 = t * t;
+
+                glm::quat res = (2.0f * t3 - 3.0f * t2 + 1.0f) * lhs_val;
+                res += dur * (t3 - 2.0f * t2 + t) * lhs_out;
+                res += (-2.0f * t3 + 3.0f * t2) * rhs_val;
+                res += dur * (t3 - t2) * rhs_in;
+
+                return glm::normalize(res);
+            }
+            default:
+                VGI_UNREACHABLE;
+        }
     }
 
     void primitive::destroy(window& parent) && {
