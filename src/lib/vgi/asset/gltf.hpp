@@ -186,7 +186,7 @@ namespace vgi::asset::gltf {
     struct scene {
         /// @brief The indices of each root node
         std::vector<size_t> roots;
-        /// @brief The name of the node
+        /// @brief The name of the scene
         std::string name;
     };
 
@@ -201,9 +201,10 @@ namespace vgi::asset::gltf {
         std::vector<scene> scenes;
         /// @brief An array of all the names of the skins of the asset
         std::vector<std::string> skins;
-        /// @brief An array of all the names of the animations of the asset
+        /// @brief An array of all the animations of the asset
         std::vector<animation> animations;
 
+        asset() = default;
         asset(window& parent, const std::filesystem::path& path,
               const std::filesystem::path& directory);
 

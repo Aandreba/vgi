@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vgi/asset/gltf.hpp>
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/math/camera.hpp>
@@ -14,11 +15,8 @@ struct waves_uniform {
 };
 
 struct waves_scene : public vgi::layer {
-    vgi::mesh<uint32_t> mesh;
-    vgi::uniform_buffer<waves_uniform> uniforms;
+    vgi::asset::gltf::asset asset;
     vgi::graphics_pipeline pipeline;
-    vgi::descriptor_pool desc_pool;
-    vgi::texture_sampler image;
     vgi::math::perspective_camera camera;
 
     void on_attach(vgi::window& win) override;
