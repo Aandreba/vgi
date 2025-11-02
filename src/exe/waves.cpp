@@ -5,7 +5,7 @@
 #include <vgi/texture.hpp>
 
 void waves_scene::on_attach(vgi::window& win) {
-    this->asset = {win, VGI_OS("D:\\Projects\\vgi\\src\\exe\\assets\\Knight.glb")};
+    this->asset = {win, std::filesystem::current_path() / VGI_OS("src/exe/assets/Knight.glb")};
     this->pipeline = vgi::graphics_pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"waves.vert.spv"},
             vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"waves.frag.spv"},

@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/build/vgi_exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb"
@@ -23,7 +23,7 @@
             "program": "${workspaceFolder}/build/Debug/vgi_exe.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal"
         }
