@@ -8,7 +8,7 @@ void basic_scene::on_attach(vgi::window& win) {
     // this->mesh = vgi::mesh<uint16_t>::load_sphere_and_wait(win, 16, 16);
     // this->mesh = vgi::mesh<uint16_t>::load_plane_and_wait(win, 16, 16);
 
-    this->uniforms = vgi::uniform_buffer<uniform>{win, vgi::window::MAX_FRAMES_IN_FLIGHT};
+    this->uniforms = vgi::uniform_buffer<uniform>{win};
     this->pipeline = vgi::graphics_pipeline{
             win, vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"basic.vert.spv"},
             vgi::shader_stage{win, vgi::base_path / u8"shaders" / u8"basic.frag.spv"},
@@ -24,24 +24,7 @@ void basic_scene::on_attach(vgi::window& win) {
             }};
 
     this->desc_pool = vgi::descriptor_pool{win, this->pipeline};
-    for (uint32_t i = 0; i < this->desc_pool.size(); ++i) {
-        const vk::DescriptorBufferInfo buf_info{
-                .buffer = uniforms,
-                .offset = sizeof(uniform) * i,
-                .range = sizeof(uniform),
-        };
-
-        win->updateDescriptorSets(
-                vk::WriteDescriptorSet{
-                        .dstSet = this->desc_pool[i],
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBuffer,
-                        .pBufferInfo = &buf_info,
-                },
-                {});
-    }
-
+    this->uniforms.updateDescriptors(win, this->desc_pool, 0);
     this->camera = vgi::math::perspective_camera{};
 }
 

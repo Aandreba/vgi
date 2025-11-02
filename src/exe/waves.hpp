@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vgi/asset/gltf.hpp>
+#include <vgi/buffer/storage.hpp>
 #include <vgi/buffer/uniform.hpp>
 #include <vgi/buffer/vertex.hpp>
 #include <vgi/math/camera.hpp>
@@ -18,6 +19,7 @@ struct waves_scene : public vgi::layer {
     vgi::asset::gltf::asset asset;
     vgi::graphics_pipeline pipeline;
     vgi::math::perspective_camera camera;
+    std::vector<vgi::storage_buffer<glm::mat4>> skins;
 
     void on_attach(vgi::window& win) override;
     void on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,

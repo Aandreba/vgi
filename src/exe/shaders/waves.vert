@@ -10,14 +10,14 @@ layout (location = 5) in vec4 inWeights;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTex;
 
-layout (binding = 0) uniform UBO {
+layout (std430, push_constant) uniform PC {
 	mat4 mvp;
-} ubo;
-layout (binding = 2) uniform JointMatrix {
+};
+layout (std430, binding = 2) readonly buffer JointMatrix {
 	mat4 mat[];
 } joints;
 
-void main()  {
+void main() {
 	outColor = inColor;
     outTex = inTex;
 
@@ -27,5 +27,5 @@ void main()  {
         inWeights.z * joints.mat[inJoints.z] +
         inWeights.w * joints.mat[inJoints.w];
 
-	gl_Position = ubo.mvp * skin_mat * vec4(inPos.xyz, 1.0);
+	gl_Position = mvp * skin_mat * vec4(inPos.xyz, 1.0);
 }

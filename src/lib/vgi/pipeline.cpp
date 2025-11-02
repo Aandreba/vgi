@@ -6,9 +6,13 @@
 
 namespace vgi {
     pipeline::pipeline(const window& parent,
-                       std::span<const vk::DescriptorSetLayoutBinding> bindings) {
+                       std::span<const vk::DescriptorSetLayoutBinding> bindings,
+                       std::span<const vk::PushConstantRange> push_constants) {
         std::optional<uint32_t> binding_count = math::check_cast<uint32_t>(bindings.size());
         if (!binding_count) throw vgi_error{"too many bindings"};
+        std::optional<uint32_t> push_constant_count =
+                math::check_cast<uint32_t>(push_constants.size());
+        if (!push_constant_count) throw vgi_error{"too many push constants"};
 
         std::vector<vk::DescriptorPoolSize> pool_sizes;
         pool_sizes.reserve(bindings.size());
@@ -32,6 +36,8 @@ namespace vgi {
         this->layout = parent->createPipelineLayout(vk::PipelineLayoutCreateInfo{
                 .setLayoutCount = 1,
                 .pSetLayouts = &this->set_layout,
+                .pushConstantRangeCount = push_constant_count.value(),
+                .pPushConstantRanges = push_constants.data(),
         });
     }
 
@@ -44,7 +50,7 @@ namespace vgi {
     graphics_pipeline::graphics_pipeline(const window& parent, const shader_stage& vertex,
                                          const shader_stage& fragment,
                                          const graphics_pipeline_options& options) :
-        pipeline(parent, options.bindings) {
+        pipeline(parent, options.bindings, options.push_constants) {
         const vk::PipelineShaderStageCreateInfo stages[] = {
                 vertex.stage_info(vk::ShaderStageFlagBits::eVertex),
                 fragment.stage_info(vk::ShaderStageFlagBits::eFragment)};
@@ -151,8 +157,9 @@ namespace vgi {
     }
 
     compute_pipeline::compute_pipeline(const window& parent, const shader_stage& shader,
-                                       std::span<const vk::DescriptorSetLayoutBinding> bindings) :
-        pipeline(parent, bindings) {
+                                       std::span<const vk::DescriptorSetLayoutBinding> bindings,
+                                       std::span<const vk::PushConstantRange> push_constants) :
+        pipeline(parent, bindings, push_constants) {
         this->handle = parent->createComputePipeline(
                                      nullptr,
                                      {.stage = shader.stage_info(vk::ShaderStageFlagBits::eCompute),

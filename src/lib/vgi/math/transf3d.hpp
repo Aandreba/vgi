@@ -127,6 +127,13 @@ namespace vgi::math {
         }
 
         /// @brief Applies the transformation
+        /// @param other Matrix to which the left transformation is applied
+        /// @return The new transformation
+        constexpr glm::mat4 operator*(const glm::mat4& other) const noexcept {
+            return static_cast<glm::mat4>(*this) * other;
+        }
+
+        /// @brief Applies the transformation
         constexpr transf3d& operator*=(const transf3d& other) noexcept {
             this->origin += this->basis * other.origin;
             this->basis *= other.basis;
@@ -146,4 +153,12 @@ namespace vgi::math {
 
         constexpr transf3d(const glm::mat4& mat) noexcept : basis(mat), origin(mat[3]) {}
     };
+
+    /// @brief Multiplies the transformation by the matrix
+    /// @param lhs Matrix to which the left transformation is applied
+    /// @param rhs Transformation to which the matrix is applied
+    /// @return The new matrix
+    constexpr glm::mat4 operator*(const glm::mat4& lhs, const transf3d& rhs) noexcept {
+        return lhs * static_cast<glm::mat4>(rhs);
+    }
 }  // namespace vgi::math

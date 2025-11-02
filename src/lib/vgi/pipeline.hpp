@@ -48,8 +48,10 @@ namespace vgi {
         /// @brief Creates a new pipeline with the provided bindings
         /// @param parent Window that will create the pipeline
         /// @param bindings Bindings that will be used througout the pipeline
+        /// @param push_constants Push constant ranges used througout the pipeline
         pipeline(const window& parent,
-                 std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
+                 std::span<const vk::DescriptorSetLayoutBinding> bindings = {},
+                 std::span<const vk::PushConstantRange> push_constants = {});
 
     private:
         vk::DescriptorSetLayout set_layout;
@@ -137,6 +139,8 @@ namespace vgi {
         bool color_blending = true;
         /// @brief The bindings used throughout the pipeline
         std::span<const vk::DescriptorSetLayoutBinding> bindings = {};
+        /// @brief The push constant ranges used throughout the pipeline
+        std::span<const vk::PushConstantRange> push_constants = {};
     };
 
     /// @brief A graphics pipeline, mainly used to rasterize images.
@@ -183,8 +187,10 @@ namespace vgi {
         /// @param parent Window that will create the pipeline
         /// @param shader Shader the compute pipeline will execute
         /// @param bindings The bindings used throughout by the pipeline
+        /// @param push_constants Push constant ranges used througout the pipeline
         compute_pipeline(const window& parent, const shader_stage& shader,
-                         std::span<const vk::DescriptorSetLayoutBinding> bindings = {});
+                         std::span<const vk::DescriptorSetLayoutBinding> bindings = {},
+                         std::span<const vk::PushConstantRange> push_constants = {});
 
         /// @brief Creates a new compute pipeline
         /// @param parent Window that will create the pipeline

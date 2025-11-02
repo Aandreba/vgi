@@ -6,6 +6,7 @@
 #include <span>
 #include <type_traits>
 #include <vgi/math.hpp>
+#include <vgi/pipeline.hpp>
 #include <vgi/resource.hpp>
 #include <vgi/vulkan.hpp>
 #include <vgi/window.hpp>
@@ -24,12 +25,11 @@ namespace vgi {
 
         /// @brief Creates a new uniform buffer
         /// @param parent Window that creates the buffer
-        /// @param size Number of uniform objects the buffer can store
-        explicit uniform_buffer(const window& parent, vk::DeviceSize size = 1) {
-            std::optional<vk::DeviceSize> byte_size =
-                    math::check_mul<vk::DeviceSize>(sizeof(T), size);
-            if (!byte_size) throw vgi_error{"too many uniform objects"};
+        explicit uniform_buffer(const window& parent) {
+            auto byte_size =
+                    math::check_mul<vk::DeviceSize>(sizeof(T), window::MAX_FRAMES_IN_FLIGHT);
 
+            if (!byte_size) throw vgi_error{"too many uniform objects"};
             auto [buffer, allocation] = parent.create_buffer(
                     vk::BufferCreateInfo{
                             .size = byte_size.value(),
@@ -47,9 +47,6 @@ namespace vgi {
             this->allocation = allocation;
         }
 
-        uniform_buffer(const uniform_buffer&) = delete;
-        uniform_buffer& operator=(const uniform_buffer&) = delete;
-
         /// @brief Move constructor
         /// @param other Object to be moved
         uniform_buffer(uniform_buffer&& other) noexcept :
@@ -65,72 +62,49 @@ namespace vgi {
             return *this;
         }
 
+        /// @brief Updates a descriptor pool's bindings so that they use this uniform buffer
+        /// @param parent Window used to create the descriptor pool and the buffer
+        /// @param pool Descriptor pool to update
+        /// @param binding Slot to which bind the uniform buffer
+        void updateDescriptors(const window& parent, vgi::descriptor_pool& pool, uint32_t binding) {
+            const vk::DeviceSize stride = static_cast<vk::DeviceSize>(sizeof(T));
+
+            for (uint32_t i = 0; i < pool.size(); ++i) {
+                const vk::DescriptorBufferInfo buf_info{
+                        .buffer = this->buffer,
+                        .offset = stride * static_cast<vk::DeviceSize>(i),
+                        .range = stride,
+                };
+
+                parent->updateDescriptorSets(
+                        vk::WriteDescriptorSet{
+                                .dstSet = pool[i],
+                                .dstBinding = binding,
+                                .descriptorCount = 1,
+                                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                                .pBufferInfo = &buf_info,
+                        },
+                        {});
+            }
+        }
+
         /// @brief Upload uniform objects to the GPU
         /// @param parent Window used to create the buffer
         /// @param src Elements to be uploaded
-        /// @param offset Offset within the buffer where to write copied data
-        inline void write(const window& parent, std::span<const T> src, vk::DeviceSize offset = 0) {
-            std::optional<vk::DeviceSize> byte_offset =
-                    math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw vgi_error{"offset is too large"};
-
+        /// @param current_frame Frame for which the uniform buffer information will be updated
+        inline void write(const window& parent, const T& src, uint32_t current_frame) {
+            VGI_ASSERT(current_frame < window::MAX_FRAMES_IN_FLIGHT);
             vk::detail::resultCheck(static_cast<vk::Result>(vmaCopyMemoryToAllocation(
-                                            parent, src.data(), this->allocation,
-                                            byte_offset.value(), src.size_bytes())),
+                                            parent, std::addressof(src), this->allocation,
+                                            static_cast<vk::DeviceSize>(current_frame) *
+                                                    static_cast<vk::DeviceSize>(sizeof(T)),
+                                            sizeof(T))),
                                     __FUNCTION__);
-        }
-
-        /// @brief Upload uniform object to the GPU
-        /// @param parent Window used to create the buffer
-        /// @param src Element to be uploaded
-        /// @param offset Offset within the buffer where to write copied data
-        inline void write(const window& parent, const T& src, vk::DeviceSize offset = 0) {
-            return write(parent, std::span<const T>(std::addressof(src), 1), offset);
-        }
-
-        /// @brief Download uniform objects from the GPU
-        /// @param parent Window used to create the buffer
-        /// @param dest Host memory where data will be written
-        /// @param offset Offset within the buffer where to read copied data
-        inline void read(const window& parent, std::span<T> dest, vk::DeviceSize offset = 0) {
-            std::optional<vk::DeviceSize> byte_offset =
-                    math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw vgi_error{"offset is too large"};
-
-            vk::detail::resultCheck(static_cast<vk::Result>(vmaCopyAllocationToMemory(
-                                            parent, this->allocation, byte_offset.value(),
-                                            dest.data(), dest.size_bytes())),
-                                    __FUNCTION__);
-        }
-
-        /// @brief Download uniform objects from the GPU
-        /// @param parent Window used to create the buffer
-        /// @param src Host memory where data will be written
-        /// @param offset Offset within the buffer where to read copied data
-        inline void read(const window& parent, T& src, vk::DeviceSize offset = 0) {
-            return read(parent, std::span<T>(std::addressof(src), 1), offset);
-        }
-
-        /// @brief Download uniform objects from the GPU
-        /// @param parent Window used to create the buffer
-        /// @param offset Offset within the buffer where to read copied data
-        inline T read(const window& parent, vk::DeviceSize offset = 0) {
-            std::optional<vk::DeviceSize> byte_offset =
-                    math::check_mul<vk::DeviceSize>(sizeof(T), offset);
-            if (!byte_offset) throw vgi_error{"offset is too large"};
-
-            std::byte bytes[sizeof(T)];
-            vk::detail::resultCheck(
-                    static_cast<vk::Result>(vmaCopyAllocationToMemory(
-                            parent, this->allocation, byte_offset.value(), bytes, sizeof(T))),
-                    __FUNCTION__);
-
-            return std::bit_cast<T>(bytes);
         }
 
         /// @brief Destroys the buffer
         /// @param parent Window used to create the buffer
-        inline void destroy(const window& parent) && {
+        inline void destroy(const window& parent) && noexcept {
             vmaDestroyBuffer(parent, this->buffer, this->allocation);
         }
 
@@ -140,6 +114,9 @@ namespace vgi {
         inline operator VkBuffer() const noexcept { return this->buffer; }
         /// @brief Casts to the underlying `VmaAllocation`
         constexpr operator VmaAllocation() const noexcept { return this->allocation; }
+
+        uniform_buffer(const uniform_buffer&) = delete;
+        uniform_buffer& operator=(const uniform_buffer&) = delete;
 
     private:
         vk::Buffer buffer;
