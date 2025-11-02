@@ -109,18 +109,18 @@ namespace vgi::priv {
         }
     }
 #else
-    iostream::iostream(const std::filesystem::path& path, std::ios_base::openmode mode) {
-        auto utf8_path = path.u8string();
-        this->handle = sdl::tri(SDL_IOFromFile(utf8_path.c_str(), file_mode(mode)));
+    iostream::iostream(const std::filesystem::path& path, std::ios_base::openmode mode) :
+        iostream(path.c_str(), mode) {}
+
+    iostream::iostream(const std::filesystem::path::value_type* path,
+                       std::ios_base::openmode mode) {
+        this->handle = sdl::tri(SDL_IOFromFile(path, file_mode(mode)));
         if (mode & std::ios_base::ate) {
             if (SDL_SeekIO(this->handle, 0, SDL_IO_SEEK_END) < 0) {
                 throw sdl_error{};
             }
         }
     }
-
-    iostream::iostream(const std::filesystem::path::value_type* path,
-                       std::ios_base::openmode mode) : path(std::filesystem::path{path}, mode) {}
 #endif
 
     void iostream::close() && { sdl::tri(SDL_CloseIO(std::exchange(this->handle, nullptr))); }

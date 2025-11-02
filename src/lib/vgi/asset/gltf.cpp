@@ -409,12 +409,6 @@ namespace vgi::asset::gltf {
             return std::string{skin.name};
         }
 
-        template<std::ranges::range R>
-            requires(std::is_same_v<std::ranges::range_value_t<R>, glm::mat4>)
-        std::string parse_skin(std::string_view name, std::span<const size_t> joints, R&& r) {
-            return name;
-        }
-
         animation_sampler parse_animation_sampler(const fastgltf::AnimationSampler& sampler) {
             animation_sampler result;
             switch (sampler.interpolation) {
@@ -750,7 +744,7 @@ namespace vgi::asset::gltf {
         template<class T, size_t offset>
         void copy_vertex_field(asset_uploader& asset, fastgltf::Accessor& accessor,
                                std::byte* vertices) {
-            for (size_t i = 0; i < (std::min)(accessor.count, this->position->count); ++i) {
+            for (size_t i = 0; i < (std::min) (accessor.count, this->position->count); ++i) {
                 std::byte* dest = vertices + i * sizeof(vertex) + offset;
                 T value = fastgltf::getAccessorElement<T>(asset.asset, accessor, i);
                 std::memcpy(dest, std::addressof(value), sizeof(T));

@@ -199,7 +199,7 @@ namespace vgi {
                 vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1,
                 size_t min_size = 0) {
             vgi::transfer_buffer_guard transfer{
-                    parent, (std::max)(transfer_size(parent, surface), min_size)};
+                    parent, (std::max) (transfer_size(parent, surface), min_size)};
             texture result{parent, cmdbuf, transfer, surface, usage, samples};
             return std::make_pair<texture, transfer_buffer_guard>(std::move(result),
                                                                   std::move(transfer));
@@ -308,8 +308,8 @@ namespace vgi {
         /// @param parent Window that created the texture and will create the samplers
         /// @param texture Texture to combine with samplers
         /// @param options Options used to create the samplers
-        texture_sampler(const window& parent, texture&& texture,
-                        const sampler_options& options = {}) : texture(std::move(texture)) {
+        texture_sampler(const window& parent, vgi::texture&& texture,
+                        const sampler_options& options = {}) : vgi::texture(std::move(texture)) {
             const vk::SamplerCreateInfo create_info = options.create_info(parent);
             for (size_t i = 0; i < window::MAX_FRAMES_IN_FLIGHT; ++i) {
                 this->samplers[i] = parent->createSampler(create_info);
