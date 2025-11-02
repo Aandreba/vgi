@@ -7,6 +7,9 @@
 namespace vgi::math {
     /// @brief Halper class to handle 3D transformation.
     struct transf3d {
+        /// @brief Creates an identity transform
+        constexpr transf3d() noexcept : basis(1.0f), origin(0.0f) {}
+
         /// @brief Creates a transform from a basis matrix and an origin
         /// @param basis 3x3 basis matrix
         /// @param origin origin of the transformation
@@ -120,7 +123,14 @@ namespace vgi::math {
         /// @param other Transformation to which the left transformation is applied
         /// @return The new transformation
         constexpr transf3d operator*(const transf3d& other) const noexcept {
-            return static_cast<glm::mat4>(*this) * static_cast<glm::mat4>(other);
+            return transf3d{this->basis * other.basis, (this->basis * other.origin) + this->origin};
+        }
+
+        /// @brief Applies the transformation
+        constexpr transf3d& operator*=(const transf3d& other) noexcept {
+            this->origin += this->basis * other.origin;
+            this->basis *= other.basis;
+            return *this;
         }
 
         /// @brief Applies the transformation

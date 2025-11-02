@@ -153,7 +153,7 @@ namespace vgi {
     /// @brief Helper class to properly align the values of a uniform buffer object.
     /// @details Vulkan uniform buffers follow the [`std140` memory
     /// layout](https://ptgmedia.pearsoncmg.com/images/9780321552624/downloads/0321552628_AppL.pdf),
-    /// which has some weird alignment rules. To help with programebility, this struct can be used
+    /// which has some weird alignment rules. To help with programability, this struct can be used
     /// to automatically align the fields of a struct to the alignment and size that would be used
     /// with the std140 layout.
     template<class T>
