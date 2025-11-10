@@ -10,22 +10,22 @@ layout (location = 5) in vec4 inWeights;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTex;
 
-layout (std430, push_constant) uniform PC {
+layout (std140, binding = 0) uniform PC {
 	mat4 mvp;
 };
 layout (std430, binding = 2) readonly buffer JointMatrix {
-	mat4 mat[];
-} joints;
+	mat4 joints[];
+};
 
 void main() {
 	outColor = inColor;
     outTex = inTex;
 
     mat4 skin_mat =
-        inWeights.x * joints.mat[inJoints.x] +
-        inWeights.y * joints.mat[inJoints.y] +
-        inWeights.z * joints.mat[inJoints.z] +
-        inWeights.w * joints.mat[inJoints.w];
+        inWeights.x * joints[inJoints.x] +
+        inWeights.y * joints[inJoints.y] +
+        inWeights.z * joints[inJoints.z] +
+        inWeights.w * joints[inJoints.w];
 
 	gl_Position = mvp * skin_mat * vec4(inPos.xyz, 1.0);
 }

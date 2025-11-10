@@ -121,7 +121,7 @@ constexpr glm::qua<T, Q> to_glm(const fastgltf::math::quat<T>& lhs) noexcept {
     return glm::qua<T, Q>{lhs.w(), lhs.x(), lhs.y(), lhs.z()};
 }
 
-namespace vgi::asset::gltf {
+namespace vgi::gltf {
     static material parse_material(const fastgltf::Material& mat) {
         material result;
 
@@ -1016,7 +1016,7 @@ namespace vgi::asset::gltf {
     void texture::destroy(window& parent) && { std::move(this->texture).destroy(parent); }
 
     void asset::destroy(window& parent) && {
-        for (mesh& mesh: this->meshes) std::move(mesh).destroy(parent);
-        for (texture& tex: this->textures) std::move(tex).destroy(parent);
+        for (gltf::mesh& mesh: this->meshes) std::move(mesh).destroy(parent);
+        for (gltf::texture& tex: this->textures) std::move(tex).destroy(parent);
     }
-}  // namespace vgi::asset::gltf
+}  // namespace vgi::gltf

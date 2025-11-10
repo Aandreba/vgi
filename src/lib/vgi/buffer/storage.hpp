@@ -15,15 +15,15 @@ namespace vgi {
     template<class T>
     concept storage = std::is_trivially_copyable_v<T> && std::is_trivially_destructible_v<T>;
 
-    /// @brief A buffer used to store uniform objects
+    /// @brief A buffer used to store objects
     template<storage T>
     struct storage_buffer {
         /// @brief Default constructor.
         storage_buffer() = default;
 
-        /// @brief Creates a new uniform buffer
+        /// @brief Creates a new buffer
         /// @param parent Window that creates the buffer
-        /// @param size Number of uniform objects the buffer can store
+        /// @param size Number of objects the buffer can store
         explicit storage_buffer(const window& parent, vk::DeviceSize size = 1) : size(size) {
             auto byte_size = math::check_mul<vk::DeviceSize>(sizeof(T), size);
             if (byte_size) {
@@ -31,7 +31,7 @@ namespace vgi {
                         math::check_mul<vk::DeviceSize>(*byte_size, window::MAX_FRAMES_IN_FLIGHT);
             }
 
-            if (!byte_size) throw vgi_error{"too many uniform objects"};
+            if (!byte_size) throw vgi_error{"too many objects"};
             auto [buffer, allocation] = parent.create_buffer(
                     vk::BufferCreateInfo{
                             .size = byte_size.value(),
@@ -65,11 +65,12 @@ namespace vgi {
             return *this;
         }
 
-        /// @brief Updates a descriptor pool's bindings so that they use this uniform buffer
+        /// @brief Updates a descriptor pool's bindings so that they use this buffer
         /// @param parent Window used to create the descriptor pool and the buffer
         /// @param pool Descriptor pool to update
-        /// @param binding Slot to which bind the uniform buffer
-        void updateDescriptors(const window& parent, descriptor_pool& pool, uint32_t binding) {
+        /// @param binding Slot to which bind the buffer
+        void update_descriptors(const window& parent, descriptor_pool& pool,
+                                uint32_t binding) const {
             const vk::DeviceSize stride = static_cast<vk::DeviceSize>(this->size) *
                                           static_cast<vk::DeviceSize>(sizeof(T));
 
@@ -92,10 +93,10 @@ namespace vgi {
             }
         }
 
-        /// @brief Upload uniform objects to the GPU
+        /// @brief Upload objects to the GPU
         /// @param parent Window used to create the buffer
         /// @param src Elements to be uploaded
-        /// @param current_frame Frame for which the uniform buffer information will be updated
+        /// @param current_frame Frame for which the buffer information will be updated
         /// @param offset Offset within the buffer where to write copied data
         inline void write(const window& parent, std::span<const T> src, uint32_t current_frame,
                           vk::DeviceSize offset = 0) {
@@ -111,10 +112,10 @@ namespace vgi {
                                     __FUNCTION__);
         }
 
-        /// @brief Upload uniform object to the GPU
+        /// @brief Upload object to the GPU
         /// @param parent Window used to create the buffer
         /// @param src Element to be uploaded
-        /// @param current_frame Frame for which the uniform buffer information will be updated
+        /// @param current_frame Frame for which the buffer information will be updated
         /// @param offset Offset within the buffer where to write copied data
         inline void write(const window& parent, const T& src, uint32_t current_frame,
                           vk::DeviceSize offset = 0) {

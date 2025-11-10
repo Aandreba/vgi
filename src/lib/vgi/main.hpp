@@ -1,4 +1,4 @@
-// This header file helps us set up the context so that we cen handle thinks like arguments, for
+// This header file helps us set up the context so that we can handle thinks like arguments, for
 // example
 #ifdef __VGI_MAIN_
 #error "'vgi/main.hpp' should only be included once!"

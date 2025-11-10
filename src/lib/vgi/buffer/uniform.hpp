@@ -66,7 +66,8 @@ namespace vgi {
         /// @param parent Window used to create the descriptor pool and the buffer
         /// @param pool Descriptor pool to update
         /// @param binding Slot to which bind the uniform buffer
-        void updateDescriptors(const window& parent, vgi::descriptor_pool& pool, uint32_t binding) {
+        void update_descriptors(const window& parent, vgi::descriptor_pool& pool,
+                                uint32_t binding) const {
             const vk::DeviceSize stride = static_cast<vk::DeviceSize>(sizeof(T));
 
             for (uint32_t i = 0; i < pool.size(); ++i) {

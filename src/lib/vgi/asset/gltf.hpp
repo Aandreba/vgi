@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <filesystem>
+#include <ranges>
 #include <tuple>
 #include <unordered_map>
 #include <variant>
@@ -9,7 +10,7 @@
 #include <vgi/resource/mesh.hpp>
 #include <vgi/texture.hpp>
 
-namespace vgi::asset::gltf {
+namespace vgi::gltf {
     enum struct alpha_mode {
         opaque,
         mask,
@@ -67,6 +68,39 @@ namespace vgi::asset::gltf {
         std::shared_ptr<material> material;
         /// @brief The topology type of primitives to render
         vk::PrimitiveTopology topology;
+
+        /// @brief Binds both the vertex and index buffers
+        /// @param cmdbuf Command buffer into which the command is recorded.
+        /// @param vertex_binding Index of the vertex input binding whose state is updated by the
+        /// command
+        /// @sa vgi::mesh::bind
+        void bind(vk::CommandBuffer cmdbuf, uint32_t vertex_binding = 0) const noexcept {
+            std::visit([=](const auto& mesh) { mesh.bind(cmdbuf, vertex_binding); }, this->mesh);
+        }
+
+        /// @brief Draws the mesh using the bounded properties of the command buffer
+        /// @param cmdbuf Command buffer into which the command is recorded.
+        /// @param instance_count Number of instances to draw
+        /// @warning This method assumes that this mesh is the one currently bound. Call `bind` or
+        /// `bind_and_draw` before calling this.
+        /// @sa vgi::mesh::draw
+        void draw(vk::CommandBuffer cmdbuf, uint32_t instance_count = 1) const noexcept {
+            std::visit([=](const auto& mesh) { mesh.draw(cmdbuf, instance_count); }, this->mesh);
+        }
+
+        /// @brief Binds and draws the mesh.
+        /// @details This is equivalent to calling `bind` and `draw` in sequence
+        /// @sa vgi::mesh::bind_and_draw
+        /// @sa vgi::mesh::bind
+        /// @sa vgi::mesh::draw
+        void bind_and_draw(vk::CommandBuffer cmdbuf, uint32_t instance_count = 1,
+                           uint32_t vertex_binding = 0) const noexcept {
+            std::visit(
+                    [=](const auto& mesh) {
+                        mesh.bind_and_draw(cmdbuf, instance_count, vertex_binding);
+                    },
+                    this->mesh);
+        }
 
         /// @brief Destroys the resource
         /// @param parent Window that created the resource
@@ -169,6 +203,7 @@ namespace vgi::asset::gltf {
         /// @brief Scale of the node relative to it's parent
         glm::vec3 local_scale;
         /// @brief Animations attached to this node, and the properties of the attachment.
+        // TODO Do not store animations inside nodes, very unflexible
         std::unordered_map<size_t, node_animation> animations;
         /// @brief The index of the mesh in this node, if any
         std::optional<size_t> mesh;
@@ -204,10 +239,19 @@ namespace vgi::asset::gltf {
         /// @brief An array of all the animations of the asset
         std::vector<animation> animations;
 
+        /// @brief Creates a new empty asset
         asset() = default;
+
+        /// @brief Loads a new asset from the provided path
+        /// @param parent Window that will create all device resources
+        /// @param path Path of the gltf/glb file to load
+        /// @param directory Directory from which subresources (e.g textures) will be searched
         asset(window& parent, const std::filesystem::path& path,
               const std::filesystem::path& directory);
 
+        /// @brief Loads a new asset from the provided path
+        /// @param parent Window that will create all device resources
+        /// @param path Path of the gltf/glb file to load
         inline asset(window& parent, const std::filesystem::path& path) :
             asset(parent, path, path.parent_path()) {}
 
@@ -216,4 +260,4 @@ namespace vgi::asset::gltf {
         void destroy(window& parent) &&;
     };
 
-}  // namespace vgi::asset::gltf
+}  // namespace vgi::gltf
