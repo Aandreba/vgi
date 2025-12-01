@@ -79,19 +79,18 @@ namespace skeleton {
         // Animation
         if (animation) {
             auto entry = animation->nodes.find(node_index);
+            std::chrono::duration<float> time{std::fmod(ts.start, animation->duration.count())};
+
             if (entry != animation->nodes.end()) {
                 const vgi::gltf::node_animation& anim = entry->second;
                 if (anim.origin) {
-                    origin = animation->samplers.at(*anim.origin)
-                                     .sample<glm::vec3>(std::chrono::duration<float>{ts.start});
+                    origin = animation->samplers.at(*anim.origin).sample<glm::vec3>(time);
                 }
                 if (anim.rotation) {
-                    rotation = animation->samplers.at(*anim.rotation)
-                                       .sample<glm::quat>(std::chrono::duration<float>{ts.start});
+                    rotation = animation->samplers.at(*anim.rotation).sample<glm::quat>(time);
                 }
                 if (anim.scale) {
-                    scale = animation->samplers.at(*anim.scale)
-                                    .sample<glm::vec3>(std::chrono::duration<float>{ts.start});
+                    scale = animation->samplers.at(*anim.scale).sample<glm::vec3>(time);
                 }
             }
         }
@@ -121,6 +120,7 @@ namespace skeleton {
 
     void scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
                           const vgi::timings& ts) {
+        printf("%f FPS\n", 1.0f / ts.delta);
         this->camera.origin = glm::vec3{0.0f, 1.0f, 2.5f};
     }
 
@@ -130,7 +130,7 @@ namespace skeleton {
         for (size_t root: this->asset.scenes[0].roots) {
             process_node(win, pipeline, cmdbuf, current_frame, this->asset, root, {},
                          this->camera.projection(win.draw_size()) * this->camera.view(),
-                         this->skins, nullptr, ts);
+                         this->skins, &this->asset.animations[0], ts);
         }
     }
 

@@ -21,6 +21,8 @@
 #include <vgi/vgi.hpp>
 #include <vgi/window.hpp>
 
+using namespace std::literals;
+
 #define COPY_VERTEX_FIELD(__field, ...)                                \
     this->template copy_vertex_field<decltype(::vgi::vertex::__field), \
                                      offsetof(::vgi::vertex, __field)>(asset, __VA_ARGS__, dest)
@@ -494,11 +496,14 @@ namespace vgi::gltf {
 
         animation parse_animation(size_t index) {
             const fastgltf::Animation& anim = this->asset.animations[index];
-            animation result{.name = std::string{anim.name}};
+            animation result{.duration = 0.0s, .name = std::string{anim.name}};
 
             result.samplers.reserve(anim.samplers.size());
             for (const fastgltf::AnimationSampler& sampler: anim.samplers) {
-                result.samplers.push_back(this->parse_animation_sampler(sampler));
+                result.duration = std::max(
+                        result.duration,
+                        result.samplers.emplace_back(this->parse_animation_sampler(sampler))
+                                .ends_at());
             }
 
             for (const fastgltf::AnimationChannel& channel: anim.channels) {
@@ -967,8 +972,8 @@ namespace vgi::gltf {
             case interpolation::linear: {
                 const float* lhs = this->values.data() + 4 * lower_bound;
                 const float* rhs = this->values.data() + 4 * upper_bound;
-                return glm::slerp(glm::quat{lhs[3], lhs[0], lhs[1], lhs[2]},
-                                  glm::quat{rhs[3], rhs[0], rhs[1], rhs[2]}, t);
+                return math::slerp(glm::quat{lhs[3], lhs[0], lhs[1], lhs[2]},
+                                   glm::quat{rhs[3], rhs[0], rhs[1], rhs[2]}, t);
             }
             case interpolation::cubic_spline: {
                 const float* in = this->values.data() + 0 * 4 * this->keyframes.size();

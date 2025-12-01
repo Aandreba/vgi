@@ -210,6 +210,8 @@ namespace vgi::gltf {
 
     /// @brief A keyframe animation
     struct animation {
+        /// @brief The duration of the animation
+        std::chrono::duration<float> duration;
         /// @brief An array with all the samplers of the animation
         std::vector<animation_sampler> samplers;
         /// @brief Nodes that are affected by this animation

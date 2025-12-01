@@ -430,6 +430,34 @@ namespace vgi::math {
         return check_add<T>(lhs, rhs - r.value());
     }
 
+    // For animations, glm's slerp is not precise enough, so this is ported from the implementation
+    // of three.js
+    // (https://github.com/mrdoob/three.js/blob/4c1941f94391acab665ed73e3c81e80b1e6e3975/src/math/Quaternion.js#L517)
+    template<std::floating_point T, glm::qualifier Q = glm::qualifier::defaultp>
+    inline glm::qua<T, Q> slerp(glm::qua<T, Q> from, glm::qua<T, Q> to, T t) {
+        if (t <= T(0.0)) return from;
+        if (t >= T(1.0)) return to;
+
+        T cos_half_theta = glm::dot(from, to);
+        if (cos_half_theta < T(0.0)) {
+            to = -to;
+            cos_half_theta = -cos_half_theta;
+        }
+        if (cos_half_theta >= T(1.0)) return from;
+
+        T sqr_sin_half_theta = T(1.0) - cos_half_theta * cos_half_theta;
+        if (sqr_sin_half_theta <= std::numeric_limits<T>::epsilon()) {
+            T s = T(1.0) - t;
+            return glm::normalize(from * s + to * t);
+        }
+
+        T sin_half_theta = std::sqrt(sqr_sin_half_theta);
+        T half_theta = std::atan2(sin_half_theta, cos_half_theta);
+        T ratio_a = std::sin((T(1.0) - t) * half_theta) / sin_half_theta;
+        T ratio_b = std::sin(t * half_theta) / sin_half_theta;
+        return from * ratio_a + to * ratio_b;
+    }
+
     namespace chrono {
         template<class T>
         struct is_duration : public std::bool_constant<false> {};
