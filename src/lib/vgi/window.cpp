@@ -575,7 +575,9 @@ namespace vgi {
                 case vk::Result::eSuccess:
                     break;
                 case vk::Result::eSuboptimalKHR:
+                case vk::Result::eErrorOutOfDateKHR:
                     this->should_resize = true;
+                    break;
                 default:
                     VGI_UNREACHABLE;
                     break;
