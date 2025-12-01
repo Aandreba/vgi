@@ -56,7 +56,9 @@ namespace vgi {
         /// @param cmdbuf Command buffer where the rendering commands must be recorded
         /// @param current_frame Index of the current frame. Useful for cyclic structures, such as
         /// `vgi::uniform_buffer` or `vgi::descriptor_pool`.
-        virtual void on_render(window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) {}
+        /// @param ts Frame timings
+        virtual void on_render(window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
+                               const vgi::timings& ts) {}
 
         /// @brief Notifies the layer is being detached from a window
         /// @param win The window from which the layer is being detached

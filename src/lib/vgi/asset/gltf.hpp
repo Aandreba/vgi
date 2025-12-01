@@ -198,14 +198,6 @@ namespace vgi::gltf {
         }
     };
 
-    /// @brief A keyframe animation
-    struct animation {
-        /// @brief An array with all the samplers of the animation
-        std::vector<animation_sampler> samplers;
-        /// @brief The name of the animation
-        std::string name;
-    };
-
     /// @brief Properties of the attachment between an animation and a joint
     struct node_animation {
         /// @brief Index of the sampler used for the translation, if any
@@ -216,6 +208,16 @@ namespace vgi::gltf {
         std::optional<size_t> scale = std::nullopt;
     };
 
+    /// @brief A keyframe animation
+    struct animation {
+        /// @brief An array with all the samplers of the animation
+        std::vector<animation_sampler> samplers;
+        /// @brief Nodes that are affected by this animation
+        std::unordered_map<size_t, node_animation> nodes;
+        /// @brief The name of the animation
+        std::string name;
+    };
+
     struct node {
         /// @brief Translation of the node relative to it's parent
         glm::vec3 local_origin;
@@ -223,9 +225,6 @@ namespace vgi::gltf {
         glm::quat local_rotation;
         /// @brief Scale of the node relative to it's parent
         glm::vec3 local_scale;
-        /// @brief Animations attached to this node, and the properties of the attachment.
-        // TODO Do not store animations inside nodes, very unflexible
-        std::unordered_map<size_t, node_animation> animations;
         /// @brief The index of the mesh in this node, if any
         std::optional<size_t> mesh;
         /// @brief The index of the skin referenced by this node, if any

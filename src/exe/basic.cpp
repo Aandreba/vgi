@@ -45,7 +45,8 @@ void basic_scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t
                          current_frame);
 }
 
-void basic_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) {
+void basic_scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
+                            const vgi::timings& ts) {
     cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipeline, 0,
                               this->desc_pool[current_frame], {});
     cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);

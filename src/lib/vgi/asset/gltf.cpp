@@ -503,34 +503,33 @@ namespace vgi::gltf {
 
             for (const fastgltf::AnimationChannel& channel: anim.channels) {
                 if (!channel.nodeIndex.has_value()) continue;
-                node& node = this->nodes[*channel.nodeIndex];
-                node_animation& result = node.animations[index];
+                node_animation& anim = result.nodes[*channel.nodeIndex];
                 switch (channel.path) {
                     case fastgltf::AnimationPath::Translation: {
-                        if (result.origin.has_value()) {
+                        if (anim.origin.has_value()) {
                             throw vgi_error{
                                     "Node translation has multiple samplers for the same "
                                     "animation"};
                         }
-                        result.origin = channel.samplerIndex;
+                        anim.origin = channel.samplerIndex;
                         break;
                     }
                     case fastgltf::AnimationPath::Rotation: {
-                        if (result.rotation.has_value()) {
+                        if (anim.rotation.has_value()) {
                             throw vgi_error{
                                     "Node rotation has multiple samplers for the same "
                                     "animation"};
                         }
-                        result.rotation = channel.samplerIndex;
+                        anim.rotation = channel.samplerIndex;
                         break;
                     }
                     case fastgltf::AnimationPath::Scale: {
-                        if (result.scale.has_value()) {
+                        if (anim.scale.has_value()) {
                             throw vgi_error{
                                     "Node scale has multiple samplers for the same "
                                     "animation"};
                         }
-                        result.scale = channel.samplerIndex;
+                        anim.scale = channel.samplerIndex;
                         break;
                     }
                     case fastgltf::AnimationPath::Weights:

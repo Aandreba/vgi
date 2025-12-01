@@ -538,7 +538,7 @@ namespace vgi {
                                                .minDepth = 0.0f,
                                                .maxDepth = 1.0f});
 
-            s->on_render(*this, cmdbuf, this->current_frame);
+            s->on_render(*this, cmdbuf, this->current_frame, ts);
         }
 
         cmdbuf.endRendering();

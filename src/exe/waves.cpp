@@ -66,20 +66,42 @@ namespace skeleton {
 
     static void process_node(const vgi::window& win, const vgi::graphics_pipeline& pipeline,
                              vk::CommandBuffer cmdbuf, uint32_t current_frame,
-                             vgi::gltf::asset& asset, vgi::gltf::node& node,
+                             vgi::gltf::asset& asset, size_t node_index,
                              vgi::math::transf3d parent_transf, glm::mat4 camera,
-                             std::span<skin> skinning) {
+                             std::span<skin> skinning, const vgi::gltf::animation* animation,
+                             const vgi::timings& ts) {
+        const vgi::gltf::node& node = asset.nodes.at(node_index);
+
         glm::vec3 origin = node.local_origin;
         glm::quat rotation = node.local_rotation;
         glm::vec3 scale = node.local_scale;
-        // TODO Animation
+
+        // Animation
+        if (animation) {
+            auto entry = animation->nodes.find(node_index);
+            if (entry != animation->nodes.end()) {
+                const vgi::gltf::node_animation& anim = entry->second;
+                if (anim.origin) {
+                    origin = animation->samplers.at(*anim.origin)
+                                     .sample<glm::vec3>(std::chrono::duration<float>{ts.start});
+                }
+                if (anim.rotation) {
+                    rotation = animation->samplers.at(*anim.rotation)
+                                       .sample<glm::quat>(std::chrono::duration<float>{ts.start});
+                }
+                if (anim.scale) {
+                    scale = animation->samplers.at(*anim.scale)
+                                    .sample<glm::vec3>(std::chrono::duration<float>{ts.start});
+                }
+            }
+        }
 
         // Compute node's full transformation
         vgi::math::transf3d local_transf{origin, rotation, scale};
         vgi::math::transf3d model_transf = parent_transf * local_transf;
 
         // Update attached joints
-        for (vgi::gltf::joint& joint: node.attachments) {
+        for (const vgi::gltf::joint& joint: node.attachments) {
             skinning[joint.skin].buffer.write(win, model_transf * joint.inv_bind, current_frame,
                                               joint.index);
         }
@@ -92,8 +114,8 @@ namespace skeleton {
 
         // Process children
         for (size_t child: node.children) {
-            process_node(win, pipeline, cmdbuf, current_frame, asset, asset.nodes.at(child),
-                         model_transf, camera, skinning);
+            process_node(win, pipeline, cmdbuf, current_frame, asset, child, model_transf, camera,
+                         skinning, animation, ts);
         }
     }
 
@@ -102,14 +124,13 @@ namespace skeleton {
         this->camera.origin = glm::vec3{0.0f, 1.0f, 2.5f};
     }
 
-    void scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) {
-        // this->camera.origin = glm::vec3{0.0f, 0.0f, std::sin()};
+    void scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
+                          const vgi::timings& ts) {
         this->pipeline.bind(cmdbuf);
         for (size_t root: this->asset.scenes[0].roots) {
-            process_node(win, pipeline, cmdbuf, current_frame, this->asset, this->asset.nodes[root],
-                         vgi::math::transf3d{glm::vec3{0.0f, 0.0f, 0.0f}},
+            process_node(win, pipeline, cmdbuf, current_frame, this->asset, root, {},
                          this->camera.projection(win.draw_size()) * this->camera.view(),
-                         this->skins);
+                         this->skins, nullptr, ts);
         }
     }
 
