@@ -40,7 +40,9 @@ namespace skeleton {
 
         this->skins.reserve(this->asset.skins.size());
         for (size_t i = 0; i < this->asset.skins.size(); ++i) {
-            this->skins.emplace_back(win, this->pipeline);
+            // FIXME: This code assumes we have a single texture used by the model, which may not
+            // always be true.
+            this->skins.emplace_back(win, this->pipeline, this->asset.textures.at(0).texture);
         }
     }
 
@@ -52,8 +54,8 @@ namespace skeleton {
                              vk::ArrayProxy<const glm::mat4>{transform});
 
         if (skin.has_value()) {
-            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, 0,
-                                      skinning[*skin].descriptor[current_frame], {});
+            const vk::DescriptorSet& set = skinning[*skin].descriptor[current_frame];
+            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, 0, set, {});
         }
 
         for (const vgi::gltf::primitive& gltf_prim: asset.meshes.at(mesh).primitives) {
@@ -102,18 +104,21 @@ namespace skeleton {
         this->pipeline.bind(cmdbuf);
         for (size_t root: this->asset.scenes[0].roots) {
             process_node(win, pipeline, cmdbuf, current_frame, this->asset, this->asset.nodes[root],
-                         {}, {});
+                         {}, this->skins);
         }
     }
 
     void scene::on_detach(vgi::window& win) {
         win->waitIdle();
         std::move(this->pipeline).destroy(win);
+        for (skin& skin: this->skins) std::move(skin).destroy(win);
         std::move(this->asset).destroy(win);
     }
 
-    skin::skin(vgi::window& win, const vgi::graphics_pipeline& pipeline) :
-        descriptor(win, pipeline), buffer(win) {
+    skin::skin(vgi::window& win, const vgi::graphics_pipeline& pipeline,
+               const vgi::gltf::skin& info, const vgi::texture_sampler& tex) :
+        descriptor(win, pipeline), buffer(win, info.joints) {
+        tex.update_descriptors(win, this->descriptor, 0);
         this->buffer.update_descriptors(win, this->descriptor, 1);
     }
 

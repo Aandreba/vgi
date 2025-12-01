@@ -129,6 +129,13 @@ namespace vgi::gltf {
         void destroy(window& parent) &&;
     };
 
+    struct skin {
+        /// @brief Number of joints the skin contains
+        size_t joints;
+        /// @brief Name of the skin
+        std::string name;
+    };
+
     struct joint {
         /// @brief Node to which this joint is attached
         size_t skin;
@@ -249,7 +256,7 @@ namespace vgi::gltf {
         /// @brief An array of all the scenes of the asset
         std::vector<scene> scenes;
         /// @brief An array of all the names of the skins of the asset
-        std::vector<std::string> skins;
+        std::vector<skin> skins;
         /// @brief An array of all the animations of the asset
         std::vector<animation> animations;
 

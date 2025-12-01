@@ -9,6 +9,7 @@
 #include "cmdbuf.hpp"
 #include "defs.hpp"
 #include "forward.hpp"
+#include "pipeline.hpp"
 #include "resource.hpp"
 #include "vulkan.hpp"
 
@@ -380,6 +381,26 @@ namespace vgi {
                 vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) const noexcept {
             VGI_ASSERT(index < window::MAX_FRAMES_IN_FLIGHT);
             return {.sampler = this->samplers[index], .imageView = *this, .imageLayout = layout};
+        }
+
+        /// @brief Updates a descriptor pool's bindings so that they use this texture
+        /// @param parent Window used to create the descriptor pool and the buffer
+        /// @param pool Descriptor pool to update
+        /// @param binding Slot to which bind the buffer
+        void update_descriptors(const window& parent, descriptor_pool& pool,
+                                uint32_t binding) const {
+            for (uint32_t i = 0; i < pool.size(); ++i) {
+                const vk::DescriptorImageInfo img_info = this->descriptor_info(i);
+                parent->updateDescriptorSets(
+                        vk::WriteDescriptorSet{
+                                .dstSet = pool[i],
+                                .dstBinding = binding,
+                                .descriptorCount = 1,
+                                .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                .pImageInfo = &img_info,
+                        },
+                        {});
+            }
         }
 
         /// @brief Destroys the resource

@@ -209,7 +209,7 @@ namespace vgi::gltf {
         fastgltf::Asset& asset;
         std::vector<scene> scenes;
         std::vector<node> nodes;
-        std::vector<std::string> skins;
+        std::vector<skin> skins;
         std::vector<animation> animations;
         std::vector<std::shared_ptr<surface>> images;
         std::vector<std::shared_ptr<material>> materials;
@@ -388,7 +388,7 @@ namespace vgi::gltf {
             }
         }
 
-        std::string parse_skin(size_t index) {
+        skin parse_skin(size_t index) {
             const fastgltf::Skin& skin = this->asset.skins[index];
 
             if (skin.inverseBindMatrices) {
@@ -406,7 +406,7 @@ namespace vgi::gltf {
                 }
             }
 
-            return std::string{skin.name};
+            return {.joints = skin.joints.size(), .name = std::string{skin.name}};
         }
 
         animation_sampler parse_animation_sampler(const fastgltf::AnimationSampler& sampler) {

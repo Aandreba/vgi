@@ -16,7 +16,8 @@ namespace skeleton {
         vgi::descriptor_pool descriptor;
         vgi::storage_buffer<glm::mat4> buffer;
 
-        skin(vgi::window& win, const vgi::graphics_pipeline& pipeline);
+        skin(vgi::window& win, const vgi::graphics_pipeline& pipeline, const vgi::gltf::skin& info,
+             const vgi::texture_sampler& tex);
         void destroy(vgi::window& win) &&;
     };
 
