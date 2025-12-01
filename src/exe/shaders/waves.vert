@@ -10,10 +10,10 @@ layout (location = 5) in vec4 inWeights;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTex;
 
-layout (std140, binding = 0) uniform PC {
+layout (push_constant, std430) uniform PC {
 	mat4 mvp;
 };
-layout (std430, binding = 2) readonly buffer JointMatrix {
+layout (std430, binding = 1) readonly buffer JointMatrix {
 	mat4 joints[];
 };
 

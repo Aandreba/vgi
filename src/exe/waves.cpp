@@ -6,17 +6,6 @@
 #include <vgi/texture.hpp>
 
 namespace skeleton {
-    primitive::primitive(const vgi::window& win, const vgi::pipeline& pipeline,
-                         const skin_buffer* skin) :
-        pool(win, pipeline), uniform(win), has_skin(skin != nullptr) {
-        if (skin) skin->update_descriptors(win, this->pool, 2);
-    }
-
-    mesh::mesh(const vgi::window& win, const vgi::pipeline& pipeline, size_t count) {
-        this->primitives.reserve(count);
-        for (size_t i = 0; i < count; ++i) this->primitives.emplace_back(win, pipeline);
-    }
-
     // https://www.khronos.org/files/gltf20-reference-guide.pdf
     void scene::on_attach(vgi::window& win) {
         this->asset = {win, std::filesystem::current_path() / VGI_OS("src/exe/assets/Knight.glb")};
@@ -26,21 +15,22 @@ namespace skeleton {
                 vgi::graphics_pipeline_options{
                         .cull_mode = vk::CullModeFlagBits::eNone,
                         .fron_face = vk::FrontFace::eCounterClockwise,
+                        .push_constants = {{
+                                vk::PushConstantRange{
+                                        .offset = 0,
+                                        .size = sizeof(glm::mat4),
+                                        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                                },
+                        }},
                         .bindings = {{
                                 vk::DescriptorSetLayoutBinding{
                                         .binding = 0,
-                                        .descriptorType = vk::DescriptorType::eUniformBuffer,
-                                        .descriptorCount = 1,
-                                        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-                                },
-                                vk::DescriptorSetLayoutBinding{
-                                        .binding = 1,
                                         .descriptorType = vk::DescriptorType::eCombinedImageSampler,
                                         .descriptorCount = 1,
                                         .stageFlags = vk::ShaderStageFlagBits::eFragment,
                                 },
                                 vk::DescriptorSetLayoutBinding{
-                                        .binding = 2,
+                                        .binding = 1,
                                         .descriptorType = vk::DescriptorType::eStorageBuffer,
                                         .descriptorCount = 1,
                                         .stageFlags = vk::ShaderStageFlagBits::eVertex,
@@ -48,19 +38,33 @@ namespace skeleton {
                         }},
                 }};
 
-        // TODO Create descriptors
+        this->skins.reserve(this->asset.skins.size());
+        for (size_t i = 0; i < this->asset.skins.size(); ++i) {
+            this->skins.emplace_back(win, this->pipeline);
+        }
     }
 
-    static void draw_mesh(const vgi::window& win, uint32_t current_frame, vgi::gltf::asset& asset,
-                          std::span<const mesh> meshes, size_t mesh, std::optional<size_t> skin,
-                          vgi::math::transf3d transform) {
-        std::span<const vgi::gltf::primitive> gltf_prim = asset.meshes.at(mesh).primitives;
+    static void draw_mesh(const vgi::window& win, const vgi::graphics_pipeline& pipeline,
+                          vk::CommandBuffer cmdbuf, uint32_t current_frame, vgi::gltf::asset& asset,
+                          size_t mesh, std::optional<size_t> skin, glm::mat4 transform,
+                          std::span<struct skin> skinning) {
+        cmdbuf.pushConstants(pipeline, vk::ShaderStageFlagBits::eVertex, UINT32_C(0),
+                             vk::ArrayProxy<const glm::mat4>{transform});
+
+        if (skin.has_value()) {
+            cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline, 0,
+                                      skinning[*skin].descriptor[current_frame], {});
+        }
+
+        for (const vgi::gltf::primitive& gltf_prim: asset.meshes.at(mesh).primitives) {
+            gltf_prim.bind_and_draw(cmdbuf);
+        }
     }
 
-    static void process_node(const vgi::window& win, uint32_t current_frame,
-                             vgi::gltf::asset& asset, std::span<const mesh> meshes,
-                             vgi::gltf::node& node, vgi::math::transf3d parent_transf,
-                             std::span<vgi::storage_buffer<glm::mat4>> skinning) {
+    static void process_node(const vgi::window& win, const vgi::graphics_pipeline& pipeline,
+                             vk::CommandBuffer cmdbuf, uint32_t current_frame,
+                             vgi::gltf::asset& asset, vgi::gltf::node& node,
+                             vgi::math::transf3d parent_transf, std::span<skin> skinning) {
         glm::vec3 origin = node.local_origin;
         glm::quat rotation = node.local_rotation;
         glm::vec3 scale = node.local_scale;
@@ -72,19 +76,20 @@ namespace skeleton {
 
         // Update attached joints
         for (vgi::gltf::joint& joint: node.attachments) {
-            skinning[joint.skin].write(win, model_transf * joint.inv_bind, current_frame,
-                                       joint.index);
+            skinning[joint.skin].buffer.write(win, model_transf * joint.inv_bind, current_frame,
+                                              joint.index);
         }
 
         // If this node has a mesh, submit a draw command
         if (node.mesh) {
-            draw_mesh(win, current_frame, asset, meshes, *node.mesh, node.skin, model_transf);
+            draw_mesh(win, pipeline, cmdbuf, current_frame, asset, *node.mesh, node.skin,
+                      model_transf, skinning);
         }
 
         // Process children
         for (size_t child: node.children) {
-            process_node(win, current_frame, asset, meshes, asset.nodes.at(child), model_transf,
-                         skinning);
+            process_node(win, pipeline, cmdbuf, current_frame, asset, asset.nodes.at(child),
+                         model_transf, skinning);
         }
     }
 
@@ -94,24 +99,26 @@ namespace skeleton {
     }
 
     void scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame) {
+        this->pipeline.bind(cmdbuf);
         for (size_t root: this->asset.scenes[0].roots) {
-            process_node(win, current_frame, this->asset, this->asset.nodes[root], {}, {});
+            process_node(win, pipeline, cmdbuf, current_frame, this->asset, this->asset.nodes[root],
+                         {}, {});
         }
     }
 
     void scene::on_detach(vgi::window& win) {
         win->waitIdle();
-        for (mesh& mesh: this->meshes) std::move(mesh).destroy(win);
         std::move(this->pipeline).destroy(win);
         std::move(this->asset).destroy(win);
     }
 
-    void mesh::destroy(const vgi::window& win) && {
-        for (primitive& prim: this->primitives) std::move(prim).destroy(win);
+    skin::skin(vgi::window& win, const vgi::graphics_pipeline& pipeline) :
+        descriptor(win, pipeline), buffer(win) {
+        this->buffer.update_descriptors(win, this->descriptor, 1);
     }
 
-    void primitive::destroy(const vgi::window& win) && {
-        std::move(this->pool).destroy(win);
-        std::move(this->uniform).destroy(win);
+    void skin::destroy(vgi::window& win) && {
+        std::move(this->descriptor).destroy(win);
+        std::move(this->buffer).destroy(win);
     }
 }  // namespace skeleton

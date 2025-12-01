@@ -24,7 +24,7 @@ void basic_scene::on_attach(vgi::window& win) {
             }};
 
     this->desc_pool = vgi::descriptor_pool{win, this->pipeline};
-    this->uniforms.updateDescriptors(win, this->desc_pool, 0);
+    this->uniforms.update_descriptors(win, this->desc_pool, 0);
     this->camera = vgi::math::perspective_camera{};
 }
 

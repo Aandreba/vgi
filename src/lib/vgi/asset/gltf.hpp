@@ -147,6 +147,20 @@ namespace vgi::gltf {
         unique_span<const float> keyframes;
         unique_span<const float> values;
 
+        /// @brief Indicates the time at which this animation starts
+        /// @return The relative time at which the animation starts playing
+        inline duration_type starts_at() const noexcept {
+            VGI_ASSERT(this->keyframes.size() > 0);
+            return duration_type{this->keyframes.front()};
+        }
+
+        /// @brief Indicates the time at which this animation stops
+        /// @return The relative time at which the animation stops playing
+        inline duration_type ends_at() const noexcept {
+            VGI_ASSERT(this->keyframes.size() > 0);
+            return duration_type{this->keyframes.back()};
+        }
+
         /// @brief Returns the duration of the sampler
         /// @returns Duration of the sampler
         /// @warning Note that the sampler may not start at time zero, so this value may not equal
