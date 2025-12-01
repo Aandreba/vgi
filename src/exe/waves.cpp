@@ -39,10 +39,10 @@ namespace skeleton {
                 }};
 
         this->skins.reserve(this->asset.skins.size());
-        for (size_t i = 0; i < this->asset.skins.size(); ++i) {
+        for (const vgi::gltf::skin& skin: this->asset.skins) {
             // FIXME: This code assumes we have a single texture used by the model, which may not
             // always be true.
-            this->skins.emplace_back(win, this->pipeline, this->asset.textures.at(0).texture);
+            this->skins.emplace_back(win, this->pipeline, skin, this->asset.textures.at(0).texture);
         }
     }
 
