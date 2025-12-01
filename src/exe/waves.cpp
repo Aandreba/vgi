@@ -130,7 +130,7 @@ namespace skeleton {
         for (size_t root: this->asset.scenes[0].roots) {
             process_node(win, pipeline, cmdbuf, current_frame, this->asset, root, {},
                          this->camera.projection(win.draw_size()) * this->camera.view(),
-                         this->skins, &this->asset.animations[0], ts);
+                         this->skins, &this->asset.animations[35], ts);
         }
     }
 

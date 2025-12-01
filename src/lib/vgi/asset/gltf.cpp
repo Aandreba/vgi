@@ -972,8 +972,8 @@ namespace vgi::gltf {
             case interpolation::linear: {
                 const float* lhs = this->values.data() + 4 * lower_bound;
                 const float* rhs = this->values.data() + 4 * upper_bound;
-                return math::slerp(glm::quat{lhs[3], lhs[0], lhs[1], lhs[2]},
-                                   glm::quat{rhs[3], rhs[0], rhs[1], rhs[2]}, t);
+                return glm::slerp(glm::quat{lhs[3], lhs[0], lhs[1], lhs[2]},
+                                  glm::quat{rhs[3], rhs[0], rhs[1], rhs[2]}, t);
             }
             case interpolation::cubic_spline: {
                 const float* in = this->values.data() + 0 * 4 * this->keyframes.size();

@@ -446,7 +446,7 @@ namespace vgi::math {
         if (cos_half_theta >= T(1.0)) return from;
 
         T sqr_sin_half_theta = T(1.0) - cos_half_theta * cos_half_theta;
-        if (sqr_sin_half_theta <= std::numeric_limits<T>::epsilon()) {
+        if (sqr_sin_half_theta <= std::numeric_limits<double>::epsilon()) {
             T s = T(1.0) - t;
             return glm::normalize(from * s + to * t);
         }
