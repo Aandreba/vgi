@@ -21,11 +21,18 @@ void main() {
 	outColor = inColor;
     outTex = inTex;
 
-    mat4 skin_mat =
-        inWeights.x * joints[inJoints.x] +
-        inWeights.y * joints[inJoints.y] +
-        inWeights.z * joints[inJoints.z] +
-        inWeights.w * joints[inJoints.w];
+    vec4 pos;
+    if (inWeights == vec4(0.0f)) {
+        pos = mvp * vec4(inPos.xyz, 1.0);
+    } else {
+        mat4 skin_mat =
+            inWeights.x * joints[inJoints.x] +
+            inWeights.y * joints[inJoints.y] +
+            inWeights.z * joints[inJoints.z] +
+            inWeights.w * joints[inJoints.w];
 
-	gl_Position = mvp * skin_mat * vec4(inPos.xyz, 1.0);
+        pos = mvp * skin_mat * vec4(inPos.xyz, 1.0);
+    }
+
+	gl_Position = vec4(pos.x, pos.y, pos.z, pos.w);
 }
