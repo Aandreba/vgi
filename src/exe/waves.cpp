@@ -121,7 +121,7 @@ namespace skeleton {
     void scene::on_update(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
                           const vgi::timings& ts) {
         printf("%f FPS\n", 1.0f / ts.delta);
-        this->camera.origin = glm::vec3{0.0f, 1.0f, 2.5f};
+        this->camera.origin = glm::vec3{0.0f, 1.0f, 3.0f};
     }
 
     void scene::on_render(vgi::window& win, vk::CommandBuffer cmdbuf, uint32_t current_frame,
@@ -130,7 +130,7 @@ namespace skeleton {
         for (size_t root: this->asset.scenes[0].roots) {
             process_node(win, pipeline, cmdbuf, current_frame, this->asset, root, {},
                          this->camera.projection(win.draw_size()) * this->camera.view(),
-                         this->skins, &this->asset.animations[35], ts);
+                         this->skins, &this->asset.animations[0], ts);
         }
     }
 
