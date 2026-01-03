@@ -15,13 +15,6 @@ namespace skeleton {
                 vgi::graphics_pipeline_options{
                         .cull_mode = vk::CullModeFlagBits::eNone,
                         .fron_face = vk::FrontFace::eCounterClockwise,
-                        .push_constants = {{
-                                vk::PushConstantRange{
-                                        .offset = 0,
-                                        .size = sizeof(glm::mat4),
-                                        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-                                },
-                        }},
                         .bindings = {{
                                 vk::DescriptorSetLayoutBinding{
                                         .binding = 0,
@@ -34,6 +27,13 @@ namespace skeleton {
                                         .descriptorType = vk::DescriptorType::eStorageBuffer,
                                         .descriptorCount = 1,
                                         .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                                },
+                        }},
+                        .push_constants = {{
+                                vk::PushConstantRange{
+                                        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                                        .offset = 0,
+                                        .size = sizeof(glm::mat4),
                                 },
                         }},
                 }};

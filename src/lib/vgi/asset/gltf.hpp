@@ -154,6 +154,27 @@ namespace vgi::gltf {
         unique_span<const float> keyframes;
         unique_span<const float> values;
 
+        /// @brief Default constructor
+        animation_sampler() = default;
+
+        /// @brief Move constructor
+        /// @param other Object to move
+        animation_sampler(animation_sampler&& other) noexcept :
+            interpolation(other.interpolation), keyframes(std::move(other.keyframes)),
+            values(std::move(other.values)) {}
+
+        /// @brief Move assignment
+        /// @param other Object to move
+        animation_sampler& operator=(animation_sampler&& other) noexcept {
+            static_assert(std::is_nothrow_destructible_v<animation_sampler> &&
+                          std::is_nothrow_move_constructible_v<animation_sampler>);
+
+            if (this == std::addressof(other)) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
+
         /// @brief Indicates the time at which this animation starts
         /// @return The relative time at which the animation starts playing
         inline duration_type starts_at() const noexcept {
@@ -171,7 +192,7 @@ namespace vgi::gltf {
         /// @brief Returns the duration of the sampler
         /// @returns Duration of the sampler
         /// @warning Note that the sampler may not start at time zero, so this value may not equal
-        /// `keyframes.back()`
+        /// `ends_at()`
         inline duration_type duration() const noexcept {
             VGI_ASSERT(this->keyframes.size() > 0);
             return duration_type{this->keyframes.back() - this->keyframes.front()};
@@ -218,6 +239,23 @@ namespace vgi::gltf {
         std::unordered_map<size_t, node_animation> nodes;
         /// @brief The name of the animation
         std::string name;
+
+        animation() = default;
+
+        animation(animation&& other) noexcept :
+            duration(std::exchange(other.duration, std::chrono::duration<float>{0.0f})),
+            samplers(std::move(other.samplers)), nodes(std::move(other.nodes)),
+            name(std::move(other.name)) {}
+
+        animation& operator=(animation&& other) noexcept {
+            static_assert(std::is_nothrow_destructible_v<animation> &&
+                          std::is_nothrow_move_constructible_v<animation>);
+
+            if (this == std::addressof(other)) return *this;
+            std::destroy_at(this);
+            std::construct_at(this, std::move(other));
+            return *this;
+        }
     };
 
     struct node {

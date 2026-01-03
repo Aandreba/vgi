@@ -496,7 +496,9 @@ namespace vgi::gltf {
 
         animation parse_animation(size_t index) {
             const fastgltf::Animation& anim = this->asset.animations[index];
-            animation result{.duration = 0.0s, .name = std::string{anim.name}};
+            animation result;
+            result.duration = 0.0s;
+            result.name = std::string{anim.name};
 
             result.samplers.reserve(anim.samplers.size());
             for (const fastgltf::AnimationSampler& sampler: anim.samplers) {

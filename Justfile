@@ -43,3 +43,7 @@ docs: (build "Debug" "ON")
 
 clean:
     cmake --build build -t clean
+
+[working-directory: 'docs']
+book:
+    mdbook serve --open
