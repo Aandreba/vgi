@@ -68,7 +68,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(SDL3 SDL3_image glm fastgltf)
 
 # Create a library for the Vulkan Memory Allocator
-add_library(vgi_vma STATIC "src/vma.cpp")
+add_library(vgi_vma STATIC EXCLUDE_FROM_ALL "src/vma.cpp")
 
 # Create a library for the reusable code
 file(GLOB_RECURSE vgi_lib_sources CONFIGURE_DEPENDS "src/lib/vgi/*.cpp" "src/private/vgi/*.cpp")
@@ -150,7 +150,7 @@ endif()
 
 # Create the executable
 file(GLOB_RECURSE vgi_exe_sources CONFIGURE_DEPENDS "src/exe/*.cpp")
-add_executable(vgi_exe ${vgi_exe_sources})
+add_executable(vgi_exe EXCLUDE_FROM_ALL ${vgi_exe_sources})
 target_link_libraries(vgi_exe PRIVATE vgi::vgi)
 
 # Compile the shaders before compiling the executable
