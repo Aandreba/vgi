@@ -46,9 +46,9 @@ Custom layers are implemented by subclassing `vgi::layer`. Layers have a richer 
 
 - `on_attach(vgi::window& win)` -- Called when the layer is attached to a window. Use this to initialize resources (e.g. load textures, create pipelines) using the provided window (which gives access to Vulkan device, etc.).
 - `on_event(vgi::window& win, const SDL_Event& event)` -- Called for each event relevant to that window. Use this to handle input for the layer (e.g. camera controls on key/mouse events).
-- `on_update(vgi::window& win, vk::CommandBuffer cmd, uint32_t current_frame, const vgi::timings& ts)` -- Called every frame **before rendering**, to update logic or GPU resources. You are given the Vulkan command buffer for the frame, the index of the current frame (for managing frame-local resources in double/triple buffering), and timing info.
+- `on_update(vgi::window& win, vk::CommandBuffer cmd, uint32_t frame_id, const vgi::timings& ts)` -- Called every frame **before rendering**, to update logic or GPU resources. You are given the Vulkan command buffer for the frame, the index of the current frame (for managing frame-local resources in double/triple buffering), and timing info.
  You can record non-draw commands here (e.g. updating uniform buffers).
-- `on_render(vgi::window& win, vk::CommandBuffer cmd, uint32_t current_frame, const vgi::timings& ts)`-- Called every frame to record **rendering** commands for this layer. This is where you issue draw calls via the provided command buffer. The engine sets the appropriate render pass, viewport, and scissor for your layer before calling this method.
+- `on_render(vgi::window& win, vk::CommandBuffer cmd, uint32_t frame_id, const vgi::timings& ts)`-- Called every frame to record **rendering** commands for this layer. This is where you issue draw calls via the provided command buffer. The engine sets the appropriate render pass, viewport, and scissor for your layer before calling this method.
 - `on_detach(vgi::window& win)` -- Called when the layer is removed from the window (either via explicit removal or when the window is closing). Clean up any resources here (e.g. free GPU resources, detach event listeners).
 
 All of these methods have default no-op implementations, so you only override what you need. For example, a custom layer might be defined as:
@@ -76,3 +76,32 @@ struct MyGameLayer : public vgi::layer {
     }
 };
 ```
+
+### Layer Transitions
+
+Similar to systems, a layer can replace itself or remove itself at runtime. Call `layer::transition_to<NewLayer>()` to schedule swapping this layer with a new one at the end of the frame. The engine will call the old layer's `on_detach`, attach the new layer (calling its `on_attach`), and from the next frame onward the new layer will be updated/rendered in place of the old. To simply remove a layer, use `layer::detach()`, which is equivalent to transitioning to `nullptr`. For example, a UI layer might call `detach()` when the user closes that UI, and the engine will remove it cleanly after finishing the frame.
+
+## Managing Systems and Layers
+
+You manage systems and layers through the vgi API at runtime. Typically, you first initialize the VGI environment with vgi::init(...), then create your initial systems (at least one window system for graphics). You can add a system in two ways:
+
+- `vgi::add_system(std::unique_ptr<vgi::system>&& sys)` -- returns an ID (index handle) for the new system.
+- `vgi::add_system<T>(args...)` or `vgi::emplace_system<T>(args...)` -- constructs a new system of type `T` in-place. `emplace_system` is convenient because it returns a reference to the newly created system.
+
+For example, to create a window and add a layer to it in one go, you can do:
+
+```cpp
+const vgi::device& gpu = /* select a device */;
+vgi::window& window = vgi::emplace_system<vgi::window>(
+    gpu, u8"Game Window", 1280, 720, SDL_WINDOW_RESIZABLE
+);
+window.template add_layer<MyGameLayer>();
+```
+
+Once your systems and layers are set up, call `vgi::run()` to enter the main loop. The engine will then start pumping events and updates as described in the overview. Systems (and their layers) will continue running until you remove them or shut down the engine. You can add or remove systems/layers at runtime as needed:
+
+- To add a layer to an existing window at runtime, simply call `window.add_layer<NewLayer>(args...)` on the `vgi::window` object. The layer's `on_attach` will be called immediately upon addition.
+- To remove or replace a layer during the game, from within that layer call `detach()` or `transition_to<OtherLayer>()` as discussed, or from outside you can remove it by its ID if you kept the handle (the `add_layer` method returns a layer ID).
+- To remove a system (for example, closing a window), you can call `vgi::get_system(id).detach()` or have the system itself call `detach()`. The `vgi::window` system internally calls `detach()` on itself when the window is closed by the user, which signals the main loop to remove that window system.
+
+Finally, to gracefully shut down the entire engine (e.g. when your game wants to exit), you can call `vgi::shutdown()`. This sets a flag that breaks out of the main loop after the current frame. After `vgi::run()` returns, call `vgi::quit()` to clean up all remaining systems and release resources.

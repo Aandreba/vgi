@@ -48,6 +48,7 @@ endif()
 ### `src/main.cpp`
 
 ```cpp
+#include <vgi/main.hpp>
 #include <vgi/vgi.hpp>
 #include <vgi/device.hpp>
 #include <vgi/window.hpp>
