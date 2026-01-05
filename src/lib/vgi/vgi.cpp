@@ -292,31 +292,15 @@ namespace vgi {
         };
     }
 
-    static void destroy_user_event(SDL_Event& event) {
-        if (event.type != custom_event_type()) return;
-        const event_info* info = reinterpret_cast<event_info*>(event.user.data2);
-        if (event.user.code == 0) {
-            info->destructor(event.user.data1);
-        } else {
-            VGI_UNREACHABLE;
-        }
-    }
-
     void run() {
         while (!shutdown_requested) {
             /// Process all events that ocurred since last frame
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
-                try {
-                    shutdown_requested |= event.type == SDL_EVENT_QUIT;
-                    for (std::unique_ptr<system>& l: systems.values()) {
-                        l->on_event(event);
-                    }
-                } catch (...) {
-                    destroy_user_event(event);
-                    throw;
+                shutdown_requested |= event.type == SDL_EVENT_QUIT;
+                for (std::unique_ptr<system>& l: systems.values()) {
+                    l->on_event(event);
                 }
-                destroy_user_event(event);
             }
 
             // Handle transitions & run system updates
