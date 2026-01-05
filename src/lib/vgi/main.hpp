@@ -14,10 +14,28 @@
 #include <windows.h>
 #endif
 
+#include "event.hpp"
 #include "log.hpp"
 #include "vgi.hpp"
 
 int main(int argc, char* argv[]) {
+    auto destroy_remaining_events = []() {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type != vgi::custom_event_type()) continue;
+            const vgi::event_info* info = reinterpret_cast<vgi::event_info*>(event.user.data2);
+            if (event.user.code == 0) {
+                try {
+                    info->destructor(event.user.data1);
+                } catch (...) {
+                    // TODO: What should we do here?
+                }
+            } else {
+                VGI_UNREACHABLE;
+            }
+        }
+    };
+
     extern int __vgi_main_();
     extern std::span<const std::filesystem::path::value_type* const> __vgi_arguments_;
 
@@ -41,7 +59,14 @@ int main(int argc, char* argv[]) {
         __vgi_arguments_ = std::span<const char* const>{static_cast<const char* const*>(argv),
                                                         static_cast<size_t>(argc)};
 #endif
-        exit_code = __vgi_main_();
+
+        try {
+            exit_code = __vgi_main_();
+        } catch (...) {
+            destroy_remaining_events();
+            throw;
+        }
+        destroy_remaining_events();
     } catch (const vgi::vgi_error& e) {
         vgi::log_err("error: {}({}:{}): {}", e.location.file_name(), e.location.line(),
                      e.location.column(), e.what());

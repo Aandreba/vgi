@@ -1,9 +1,9 @@
-#include "waves.hpp"
-
 #include <vgi/asset/gltf.hpp>
 #include <vgi/buffer/storage.hpp>
 #include <vgi/fs.hpp>
 #include <vgi/texture.hpp>
+
+#include "skeleton.hpp"
 
 namespace skeleton {
     // https://www.khronos.org/files/gltf20-reference-guide.pdf
