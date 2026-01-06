@@ -43,7 +43,8 @@ jobs:
         wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc &&
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list &&
         sudo apt update &&
-        sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk
+        sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk &&
+        cmake -E make_directory ${{ github.workspace }}/docs/book/api
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
