@@ -168,7 +168,7 @@ if (NOT VMA_INCLUDE_DIR)
         GIT_TAG        v3.3.0
     )
     FetchContent_MakeAvailable(VulkanMemoryAllocator)
-    list(APPEND vgi_libraries GPUOpen::VulkanMemoryAllocator)
+    target_link_libraries(vgi_vma PUBLIC GPUOpen::VulkanMemoryAllocator)
 endif()
 
 # Link the required libraries into VGI
