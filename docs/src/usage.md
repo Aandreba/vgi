@@ -13,7 +13,7 @@ my_vgi_app/
 ### `CMakeLists.txt`
 
 ```cmake
-cmake_minimum_required(VERSION 3.40)
+cmake_minimum_required(VERSION 3.20)
 project(my_vgi_app LANGUAGES CXX)
 include(FetchContent)
 

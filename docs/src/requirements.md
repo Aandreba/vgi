@@ -4,5 +4,6 @@ To build and use VGI, ensure your development environment meets the following pr
 
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (**1.3** or newer)
     - The official Vulkan Software Development Kit, which provides vulkan headers, libraries and tools.
-- [CMake](https://cmake.org/) (**3.4** or newer)
+    - Make sure you install the SDK with both the **GLSL Compiler** and **VMA** components.
+- [CMake](https://cmake.org/) (**3.20** or newer)
     - Build system used by VGI

@@ -5,7 +5,7 @@
 This are the dependencies you'll have to manually install on your system to build and compile.
 
 - Vulkan SDK (1.3 or higher)
-- CMake (3.4 or higher)
+- CMake (3.2 or higher)
 - Just (optional)
 - Doxygen (optional)
 - GraphViz (optional)

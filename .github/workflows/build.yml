@@ -38,6 +38,13 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.2.1
+      with:
+        vulkan-query-version: 1.4.304.1
+        vulkan-components: Vulkan-Headers, Vulkan-Loader, Glslang
+        vulkan-use-cache: true
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
@@ -57,12 +64,12 @@ jobs:
 
     - name: Build docs
       run: mdbook build
-      working-directory: docs
+      working-directory: ${{ github.workspace }}/docs
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: "docs/book"
+        path: "${{ github.workspace }}/docs/book"
 
     - name: Deploy to GitHub Pages
       id: deployment
