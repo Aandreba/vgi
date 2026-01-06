@@ -139,6 +139,17 @@ else()
     set(GLSLC_PATH Vulkan::glslc)
 endif()
 
+# Fetch VMA if not found
+find_path(VMA_INCLUDE_DIR NAMES "vma/vk_mem_alloc.h")
+if (NOT VMA_INCLUDE_DIR)
+    FetchContent_Declare(VulkanMemoryAllocator
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+        GIT_TAG        v3.3.0
+    )
+    FetchContent_MakeAvailable(VulkanMemoryAllocator)
+    list(APPEND vgi_libraries GPUOpen::VulkanMemoryAllocator)
+endif()
+
 # Link the required libraries into VGI
 target_link_libraries(vgi_static PUBLIC ${vgi_static_libraries} ${vgi_libraries})
 target_link_libraries(vgi_shared PUBLIC ${vgi_shared_libraries} ${vgi_libraries})
