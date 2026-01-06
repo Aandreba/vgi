@@ -6,5 +6,5 @@
 - [Requirements](requirements.md)
 - [Dependencies](dependencies.md)
 - [Usage](usage.md)
-- [Architecture](architecture/README.md)
-    - [Systems and Layers](architecture/systems_and_layers.md)
+- [Systems and Layers](systems_and_layers.md)
+- [API Reference](doxygen/)

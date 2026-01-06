@@ -83,7 +83,7 @@ Similar to systems, a layer can replace itself or remove itself at runtime. Call
 
 ## Managing Systems and Layers
 
-You manage systems and layers through the vgi API at runtime. Typically, you first initialize the VGI environment with vgi::init(...), then create your initial systems (at least one window system for graphics). You can add a system in two ways:
+You manage systems and layers through the vgi API at runtime. Typically, you first initialize the VGI environment with `vgi::init(...)`, then create your initial systems (at least one window system for graphics). You can add a system in two ways:
 
 - `vgi::add_system(std::unique_ptr<vgi::system>&& sys)` -- returns an ID (index handle) for the new system.
 - `vgi::add_system<T>(args...)` or `vgi::emplace_system<T>(args...)` -- constructs a new system of type `T` in-place. `emplace_system` is convenient because it returns a reference to the newly created system.

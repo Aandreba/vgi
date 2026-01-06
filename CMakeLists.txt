@@ -27,6 +27,7 @@ endif()
 # Define compile options
 option(VGI_SHARED "Utilitza la versió dinamica de la llibreria per defecte" OFF)
 option(VGI_DOXYGEN "Generar documentacio Doxygen" OFF)
+option(VGI_DOXYGEN_OUTPUT "Directori de sortida de la documentacio Doxygen" "${PROJECT_BINARY_DIR}/docs")
 
 # Define library options
 set(BUILD_SHARED_LIBS OFF)
@@ -168,7 +169,7 @@ endif()
 # Generate Doxygen docs (if enabled)
 find_package(Doxygen)
 if(Doxygen_FOUND)
-    set(DOXYGEN_HTML_OUTPUT            ${PROJECT_BINARY_DIR}/docs)
+    set(DOXYGEN_HTML_OUTPUT            ${VGI_DOXYGEN_OUTPUT})
     set(DOXYGEN_GENERATE_HTML          YES)
     set(DOXYGEN_MULTILINE_CPP_IS_BRIEF YES)
     set(DOXYGEN_BUILTIN_STL_SUPPORT    YES)

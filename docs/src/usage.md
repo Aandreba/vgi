@@ -13,14 +13,13 @@ my_vgi_app/
 ### `CMakeLists.txt`
 
 ```cmake
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.40)
 project(my_vgi_app LANGUAGES CXX)
+include(FetchContent)
 
 # VGI is C++20 - keep this consistent in your app too.
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-include(FetchContent)
 
 # ---- Options you may want to set BEFORE fetching VGI ----
 set(VGI_SHARED OFF)
