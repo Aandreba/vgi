@@ -42,7 +42,6 @@ jobs:
       run: |
         wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc &&
         sudo apt update &&
-        sudo apt upgrade -y &&
         sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk
 
     - name: Configure CMake
