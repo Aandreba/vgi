@@ -7,7 +7,6 @@
 
 #include "collections/slab.hpp"
 #include "defs.hpp"
-#include "event.hpp"
 #include "fs.hpp"
 #include "log.hpp"
 #include "math.hpp"

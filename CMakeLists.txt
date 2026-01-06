@@ -140,7 +140,28 @@ else()
 endif()
 
 # Fetch VMA if not found
-find_path(VMA_INCLUDE_DIR NAMES "vma/vk_mem_alloc.h")
+set(vma_header "vma/vk_mem_alloc.h")
+set(vma_hints "")
+
+if(TARGET Vulkan::Vulkan)
+  get_target_property(vk_inc Vulkan::Vulkan INTERFACE_INCLUDE_DIRECTORIES)
+  if(vk_inc)
+    list(APPEND vma_hints ${vk_inc})
+  endif()
+endif()
+
+if(DEFINED ENV{VULKAN_SDK})
+  list(APPEND vma_hints
+    "$ENV{VULKAN_SDK}/Include"
+    "$ENV{VULKAN_SDK}/include"
+  )
+endif()
+
+find_path(VMA_INCLUDE_DIR
+  NAMES ${vma_header}
+  HINTS ${vma_hints}
+)
+
 if (NOT VMA_INCLUDE_DIR)
     FetchContent_Declare(VulkanMemoryAllocator
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
