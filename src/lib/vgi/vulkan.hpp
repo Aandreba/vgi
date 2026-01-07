@@ -7,4 +7,8 @@
 #endif
 #include <vulkan/vulkan.hpp>
 #define VMA_VULKAN_VERSION 1003000
+#if __has_include(<vma/vk_mem_alloc.h>)
 #include <vma/vk_mem_alloc.h>
+#else
+#include <vk_mem_alloc.h>
+#endif
