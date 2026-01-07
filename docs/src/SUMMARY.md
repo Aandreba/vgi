@@ -7,4 +7,3 @@
 - [Dependencies](dependencies.md)
 - [Usage](usage.md)
 - [Systems and Layers](systems_and_layers.md)
-- [API Reference](doxygen/)
