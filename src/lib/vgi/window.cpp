@@ -78,11 +78,11 @@ namespace vgi {
                            vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
                 features;
 
-        features.get<vk::PhysicalDeviceFeatures2>().features = {
+        features.get<vk::PhysicalDeviceFeatures2>().features = vk::PhysicalDeviceFeatures{
                 // Enable sampler anisotropy (if available)
                 .samplerAnisotropy = physical.feats().samplerAnisotropy,
         };
-        features.get<vk::PhysicalDeviceVulkan13Features>() = {
+        features.get<vk::PhysicalDeviceVulkan13Features>() = vk::PhysicalDeviceVulkan13Features {
                 .synchronization2 = vk::True,
                 .dynamicRendering = vk::True,
         };
