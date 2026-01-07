@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iterator>
 #include <locale>
+#include <memory>
 #include <syncstream>
 
 #ifdef VGI_LOG_BUF_SIZE

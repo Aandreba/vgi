@@ -14,7 +14,6 @@
 #include <windows.h>
 #endif
 
-#include "event.hpp"
 #include "log.hpp"
 #include "vgi.hpp"
 
