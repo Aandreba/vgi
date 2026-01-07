@@ -42,7 +42,7 @@ jobs:
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list &&
         sudo apt update &&
         sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk &&
-        cmake -E make_directory ${{ github.workspace }}/docs/book/api
+        cmake -E make_directory ${{ github.workspace }}/__doxygen
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -51,7 +51,7 @@ jobs:
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DSDL_UNIX_CONSOLE_BUILD=ON
         -DVGI_DOXYGEN=ON
-        -DVGI_DOXYGEN_OUTPUT=${{ github.workspace }}/docs/book/api
+        -DVGI_DOXYGEN_OUTPUT=${{ github.workspace }}/__doxygen
         -S ${{ github.workspace }}
 
     - name: Build
@@ -65,6 +65,10 @@ jobs:
     - name: Build docs
       run: mdbook build
       working-directory: ${{ github.workspace }}/docs
+
+    - name: Move Doxygen output
+      run: |
+        mv "${{ github.workspace }}/__doxygen" "${{ github.workspace }}/docs/book/api"
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
