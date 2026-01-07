@@ -214,7 +214,7 @@ namespace vgi::gltf {
         std::vector<skin> skins;
         std::vector<animation> animations;
         std::vector<std::shared_ptr<surface>> images;
-        std::vector<std::shared_ptr<material>> materials;
+        std::vector<std::shared_ptr<struct material>> materials;
         std::vector<size_t> transfer_buffers;
         size_t transfer_size = 0;
 
@@ -563,7 +563,7 @@ namespace vgi::gltf {
         }
 
         //! @copydoc command_buffer::window
-        inline struct window& parent() const noexcept { return cmdbuf.window(); }
+        inline struct window& parent() const noexcept { return cmdbuf.parent(); }
 
         /// @brief Registers the transfer on the command buffer.
         /// @param transfer Transfer information
@@ -598,7 +598,7 @@ namespace vgi::gltf {
 
         ~asset_uploader() {
             for (auto& buf: this->transfer_buffers) {
-                std::move(buf).destroy(cmdbuf.window());
+                std::move(buf).destroy(cmdbuf.parent());
             }
         }
     };
@@ -612,7 +612,7 @@ namespace vgi::gltf {
         fastgltf::Accessor* color = nullptr;
         fastgltf::Accessor* joints = nullptr;
         fastgltf::Accessor* weights = nullptr;
-        std::shared_ptr<material> material;
+        std::shared_ptr<struct material> material;
         vk::PrimitiveTopology topology;
         TransferOffset index_transfer;
         TransferOffset vertex_transfer;
