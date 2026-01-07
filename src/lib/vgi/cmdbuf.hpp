@@ -25,7 +25,7 @@ namespace vgi {
 
         /// @brief Access to the command buffer's parent window
         /// @return Reference to the command buffer's parent window
-        inline window& parent() const noexcept { return this->parent; }
+        inline window& parent() const noexcept { return this->_parent; }
 
         /// @brief Submits the command buffer to the device, begining execution of the commands
         /// @param signal_semaphores List of semaphores to be notified whenever the command buffer
@@ -56,7 +56,7 @@ namespace vgi {
         command_buffer& operator=(const command_buffer&) = delete;
 
     private:
-        vgi::window& parent;
+        vgi::window& _parent;
         vk::CommandBuffer cmdbuf;
         vk::Fence fence;
 

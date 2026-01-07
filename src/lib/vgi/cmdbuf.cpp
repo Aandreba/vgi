@@ -5,7 +5,7 @@
 #include "vgi.hpp"
 
 namespace vgi {
-    command_buffer::command_buffer(vgi::window& parent) : parent(parent) {
+    command_buffer::command_buffer(vgi::window& parent) : _parent(parent) {
         // Find if any of the flying command buffers has finished already
         for (size_t i = 0; i < parent.flying_cmdbufs.size(); ++i) {
             window::flying_command_buffer& flying = parent.flying_cmdbufs[i];
@@ -49,7 +49,7 @@ namespace vgi {
         if (!signal_count) throw vgi_error{"too many signal semaphores"};
 
         this->cmdbuf.end();
-        this->parent.queue.submit(
+        this->_parent.queue.submit(
                 vk::SubmitInfo{
                         .commandBufferCount = 1,
                         .pCommandBuffers = &this->cmdbuf,
@@ -61,20 +61,20 @@ namespace vgi {
 
     void command_buffer::submit(std::span<const vk::Semaphore> signal_semaphores) && {
         this->raw_submit(signal_semaphores);
-        this->parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
-                                                 std::exchange(this->fence, nullptr));
+        this->_parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
+                                                  std::exchange(this->fence, nullptr));
     }
 
     void command_buffer::submit_and_wait() && {
         this->raw_submit();
         try {
             while (true) {
-                switch (this->parent->waitForFences(this->fence, vk::True, UINT64_MAX)) {
+                switch (this->_parent->waitForFences(this->fence, vk::True, UINT64_MAX)) {
                     case vk::Result::eSuccess: {
                         // Since we know this command buffer has already finished, put it at the
                         // front of the list so the next time we need a command buffer we can find
                         // an available one quickly
-                        this->parent.flying_cmdbufs.emplace_front(
+                        this->_parent.flying_cmdbufs.emplace_front(
                                 std::exchange(this->cmdbuf, nullptr),
                                 std::exchange(this->fence, nullptr));
                         return;
@@ -89,8 +89,8 @@ namespace vgi {
         } catch (...) {
             // We don't know what happend to the command buffer, so better put it at the back of the
             // queue
-            this->parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
-                                                     std::exchange(this->fence, nullptr));
+            this->_parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
+                                                      std::exchange(this->fence, nullptr));
             throw;
         }
     }
@@ -98,19 +98,19 @@ namespace vgi {
     bool command_buffer::submit_and_wait(const std::chrono::duration<uint64_t, std::nano>& d) && {
         this->raw_submit();
         try {
-            switch (this->parent->waitForFences(this->fence, vk::True, d.count())) {
+            switch (this->_parent->waitForFences(this->fence, vk::True, d.count())) {
                 case vk::Result::eSuccess: {
                     // Since we know this command buffer has already finished, put it at the front
                     // of the list so the next time we need a command buffer we can find an
                     // available one quickly
-                    this->parent.flying_cmdbufs.emplace_front(std::exchange(this->cmdbuf, nullptr),
-                                                              std::exchange(this->fence, nullptr));
+                    this->_parent.flying_cmdbufs.emplace_front(std::exchange(this->cmdbuf, nullptr),
+                                                               std::exchange(this->fence, nullptr));
                     return true;
                 }
                 case vk::Result::eTimeout: {
                     // THe command buffer is still working, so we put it at the back of the list.
-                    this->parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
-                                                             std::exchange(this->fence, nullptr));
+                    this->_parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
+                                                              std::exchange(this->fence, nullptr));
                     return false;
                 }
                 default:
@@ -119,14 +119,14 @@ namespace vgi {
         } catch (...) {
             // We don't know what happend to the command buffer, so better put it at the back of the
             // queue
-            this->parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
-                                                     std::exchange(this->fence, nullptr));
+            this->_parent.flying_cmdbufs.emplace_back(std::exchange(this->cmdbuf, nullptr),
+                                                      std::exchange(this->fence, nullptr));
             throw;
         }
     }
 
     command_buffer::~command_buffer() {
-        if (this->cmdbuf) this->parent->freeCommandBuffers(this->parent.cmdpool, this->cmdbuf);
-        if (this->fence) this->parent->destroyFence(this->fence);
+        if (this->cmdbuf) this->_parent->freeCommandBuffers(this->_parent.cmdpool, this->cmdbuf);
+        if (this->fence) this->_parent->destroyFence(this->fence);
     }
 }  // namespace vgi

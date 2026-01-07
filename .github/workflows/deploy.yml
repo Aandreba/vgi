@@ -1,16 +1,31 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: build
+name: deploy
 
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-    
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+      # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
     steps:
     - uses: actions/checkout@v4
 
@@ -26,7 +41,8 @@ jobs:
         wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc &&
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list &&
         sudo apt update &&
-        sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk
+        sudo apt install -y cmake doxygen graphviz xz-utils vulkan-sdk &&
+        cmake -E make_directory ${{ github.workspace }}/docs/book/api
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -34,8 +50,27 @@ jobs:
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DSDL_UNIX_CONSOLE_BUILD=ON
-        -DVGI_DOXYGEN=OFF
+        -DVGI_DOXYGEN=ON
+        -DVGI_DOXYGEN_OUTPUT=${{ github.workspace }}/docs/book/api
         -S ${{ github.workspace }}
 
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }}
+
+    - name: Setup mdbook
+      uses: peaceiris/actions-mdbook@v2
+      with:
+        mdbook-version: '0.5.2'
+
+    - name: Build docs
+      run: mdbook build
+      working-directory: ${{ github.workspace }}/docs
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: "${{ github.workspace }}/docs/book"
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
