@@ -1,23 +1,8 @@
-# Entorn VGI
+[![GitHub License](https://img.shields.io/github/license/Aandreba/vgi)](https://github.com/Aandreba/vgi/blob/master/LICENSE)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/Aandreba/vgi/build.yml)
+[![Docs](https://img.shields.io/badge/docs-book-blue)](https://aandreba.github.io/vgi)
+[![API Reference](https://img.shields.io/badge/docs-api-blue)](https://aandreba.github.io/vgi/api/)
 
-## System dependencies
+# VGI
 
-This are the dependencies you'll have to manually install on your system to build and compile.
-
-- Vulkan SDK (1.3 or higher)
-- CMake (3.2 or higher)
-- Just (optional)
-- Doxygen (optional)
-- GraphViz (optional)
-
-## Tested compilers
-
-Other compilers **should** work, but have not been tested.
-
-- Visual Studio 17 2022
-- Apple Clang 17.0
-
-## Environment Variables
-
-- VGI_NO_VALIDATION_LAYER
-    - Disables the validation layer
+**VGI** is a C++20 library and engine framework for Vulkan graphics applications. It provides an environment for creating Vulkan devices, windows, and a main loop with an extensible system/layer architecture. This guide covers the key requirements to build the project, its core dependencies, and a usage tutorial to help developers get started quickly.
