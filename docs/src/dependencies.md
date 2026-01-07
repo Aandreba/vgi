@@ -7,6 +7,8 @@ Whilst requirements must be manually installed by the user of the library, depen
     - A system abstraction layer that allows for cross-platform window creation and event handling, amongst others.
 - [SDL3_image](https://wiki.libsdl.org/SDL3_image/FrontPage)
     - A library built on top of SDL3 that allows for imports of various diferent image formats
+- [VMA](github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
+    - Easy to integrate Vulkan memory allocation library.
 - [GLM](https://github.com/g-truc/glm)
     - A header only C++ math library for graphics software
 - [fastgltf](https://fastgltf.readthedocs.io)
