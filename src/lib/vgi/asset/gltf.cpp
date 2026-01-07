@@ -563,7 +563,7 @@ namespace vgi::gltf {
         }
 
         //! @copydoc command_buffer::window
-        inline window& parent() const noexcept { return cmdbuf.window(); }
+        inline struct window& parent() const noexcept { return cmdbuf.window(); }
 
         /// @brief Registers the transfer on the command buffer.
         /// @param transfer Transfer information

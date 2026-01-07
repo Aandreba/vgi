@@ -70,6 +70,6 @@ namespace vgi {
         // clang-format on
 
     private:
-        const window& window;
+        const struct window& window;
     };
 }  // namespace vgi

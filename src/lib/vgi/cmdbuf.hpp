@@ -25,7 +25,7 @@ namespace vgi {
 
         /// @brief Access to the command buffer's parent window
         /// @return Reference to the command buffer's parent window
-        inline window& window() const noexcept { return this->parent; }
+        inline struct window& window() const noexcept { return this->parent; }
 
         /// @brief Submits the command buffer to the device, begining execution of the commands
         /// @param signal_semaphores List of semaphores to be notified whenever the command buffer

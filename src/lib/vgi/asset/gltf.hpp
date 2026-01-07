@@ -52,7 +52,7 @@ namespace vgi::gltf {
         /// @brief The emissive texture
         std::optional<emissive_texture> emissive = std::nullopt;
         /// @brief The alpha rendering mode of the material
-        alpha_mode alpha_mode = alpha_mode::opaque;
+        enum alpha_mode alpha_mode = alpha_mode::opaque;
         /// @brief The alpha cutoff value of the material
         float alpha_cutoff = 1.0f;
         /// @brief Specifies whether the material is double sided
@@ -65,7 +65,7 @@ namespace vgi::gltf {
         /// @brief Vertex & index data stored on the device
         std::variant<vgi::mesh<uint16_t>, vgi::mesh<uint32_t>> mesh;
         /// @brief The material to apply to this primitive when rendering, if any
-        std::shared_ptr<material> material;
+        std::shared_ptr<struct material> material;
         /// @brief The topology type of primitives to render
         vk::PrimitiveTopology topology;
 
@@ -150,7 +150,7 @@ namespace vgi::gltf {
     struct animation_sampler {
         using duration_type = std::chrono::duration<float>;
 
-        interpolation interpolation;
+        enum interpolation interpolation;
         unique_span<const float> keyframes;
         unique_span<const float> values;
 
